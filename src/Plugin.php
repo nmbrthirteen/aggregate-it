@@ -89,7 +89,7 @@ final class Plugin {
 		$clusterer    = new Clusterer( $vectors, $cluster_repo, $facts, $this->settings );
 		$rewriter     = new Rewriter( $this->providers );
 		$keywords     = new KeywordStrategy( $this->settings );
-		$post_factory = new PostFactory( $this->settings, new SlugGenerator() );
+		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
 		$seo          = new Seo( $this->settings, new SchemaGraph() );
 
 		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items ) );

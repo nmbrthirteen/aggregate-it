@@ -149,9 +149,19 @@ final class Admin {
 		$interval = max( 1, (int) ( $_POST['interval_minutes'] ?? 30 ) );
 		$status   = ( $_POST['status'] ?? 'active' ) === 'paused' ? 'paused' : 'active';
 
+		$categories = array_values( array_filter( array_map( 'intval', (array) ( $_POST['categories'] ?? [] ) ) ) );
+		$tags_raw   = sanitize_text_field( wp_unslash( $_POST['tags'] ?? '' ) );
+		$tags       = array_values( array_filter( array_map( 'trim', explode( ',', $tags_raw ) ) ) );
+
 		if ( $url === '' ) {
 			$this->redirect( self::SLUG . '-sources', 'invalid' );
 		}
+
+		$settings = [
+			'interval_minutes' => $interval,
+			'categories'       => $categories,
+			'tags'             => $tags,
+		];
 
 		$repo = $this->plugin->sources();
 		if ( $id ) {
@@ -161,11 +171,11 @@ final class Admin {
 					'url'      => $url,
 					'title'    => $title,
 					'status'   => $status,
-					'settings' => [ 'interval_minutes' => $interval ],
+					'settings' => $settings,
 				]
 			);
 		} else {
-			$repo->create( $url, $title, [ 'interval_minutes' => $interval ] );
+			$repo->create( $url, $title, $settings );
 		}
 
 		$this->redirect( self::SLUG . '-sources', 'saved' );

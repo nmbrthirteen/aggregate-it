@@ -38,6 +38,16 @@ final class Source {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}
 
+	/** @return int[] category term IDs to assign to posts from this feed */
+	public function categories(): array {
+		return array_values( array_filter( array_map( 'intval', (array) ( $this->settings['categories'] ?? [] ) ) ) );
+	}
+
+	/** @return string[] tag names to assign to posts from this feed */
+	public function tags(): array {
+		return array_values( array_filter( array_map( 'trim', (array) ( $this->settings['tags'] ?? [] ) ) ) );
+	}
+
 	public function is_active(): bool {
 		return $this->status === 'active';
 	}

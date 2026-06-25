@@ -18,14 +18,26 @@ final class MockProvider implements AiProvider {
 	}
 
 	public function structured( string $prompt, array $schema, array $opts = [] ): array {
-		$keyword = $this->first_phrase( $prompt );
+		// The rewrite prompt embeds the real article as "TITLE: …" and "ARTICLE:\n…".
+		// Mirror those so mock output looks like the source (not the prompt instructions).
+		$title = '';
+		$body  = $prompt;
+		if ( preg_match( '/\nTITLE:\s*(.*)/', $prompt, $m ) ) {
+			$title = trim( $m[1] );
+		}
+		if ( preg_match( '/\nARTICLE:\s*\n(.*)$/s', $prompt, $m ) ) {
+			$body = trim( $m[1] );
+		}
+
+		$title   = $title !== '' ? $title : $this->first_phrase( $body );
+		$keyword = $this->first_phrase( $title );
 
 		return [
 			'result'   => [
-				'rewritten_body'   => $prompt,
-				'seo_title'        => ucfirst( $keyword ),
-				'meta_description' => substr( trim( $prompt ), 0, 155 ),
-				'slug'             => sanitize_title( $keyword ),
+				'rewritten_body'   => $body,
+				'seo_title'        => $title,
+				'meta_description' => substr( trim( $body ), 0, 155 ),
+				'slug'             => sanitize_title( $title ),
 				'primary_keyword'  => $keyword,
 				'entities'         => [],
 				'facts'            => [],

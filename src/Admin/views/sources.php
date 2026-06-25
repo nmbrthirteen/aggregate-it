@@ -52,6 +52,32 @@ $messages = [
 					<td><input name="interval_minutes" id="ai-interval" type="number" min="1" class="small-text"
 						value="<?php echo esc_attr( (string) ( $editing ? $editing->interval_minutes( $default_interval ) : $default_interval ) ); ?>"></td>
 				</tr>
+				<?php
+				$selected_cats = $editing ? $editing->categories() : [];
+				$all_cats      = get_categories( [ 'hide_empty' => false, 'number' => 200 ] );
+				?>
+				<?php if ( $all_cats ) : ?>
+				<tr>
+					<th><?php esc_html_e( 'Put posts in', 'aggregate-it' ); ?></th>
+					<td>
+						<div style="max-height:160px;overflow:auto;border:1px solid #dcdcde;border-radius:4px;padding:8px;">
+							<?php foreach ( $all_cats as $cat ) : ?>
+								<label style="display:block;margin:2px 0;">
+									<input type="checkbox" name="categories[]" value="<?php echo (int) $cat->term_id; ?>"
+										<?php checked( in_array( (int) $cat->term_id, $selected_cats, true ) ); ?>>
+									<?php echo esc_html( $cat->name ); ?>
+								</label>
+							<?php endforeach; ?>
+						</div>
+					</td>
+				</tr>
+				<?php endif; ?>
+				<tr>
+					<th><label for="ai-tags"><?php esc_html_e( 'Tags', 'aggregate-it' ); ?></label></th>
+					<td><input name="tags" id="ai-tags" type="text" class="regular-text"
+						value="<?php echo esc_attr( $editing ? implode( ', ', $editing->tags() ) : '' ); ?>"
+						placeholder="<?php esc_attr_e( 'comma separated', 'aggregate-it' ); ?>"></td>
+				</tr>
 				<?php if ( $editing ) : ?>
 				<tr>
 					<th><label for="ai-status"><?php esc_html_e( 'Status', 'aggregate-it' ); ?></label></th>
