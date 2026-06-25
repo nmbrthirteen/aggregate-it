@@ -51,7 +51,7 @@ final class Clusterer {
 
 			EventLog::info(
 				sprintf(
-					'Cluster borderline: score %.3f vs #%d but no shared fact — new cluster.',
+					'Close call: this looked %.3f similar to story #%d, but they did not share a key fact, so we started a new story.',
 					$candidate['score'],
 					$candidate['owner_id']
 				)

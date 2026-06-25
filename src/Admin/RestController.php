@@ -77,6 +77,8 @@ final class RestController {
 	}
 
 	public function run(): WP_REST_Response {
+		// Force a processing pass even when automatic processing is paused.
+		set_transient( 'aggregate_it_force_run', 1, 60 );
 		do_action( 'aggregate_it_dispatch_queue' );
 		return new WP_REST_Response( [ 'ok' => true ], 200 );
 	}

@@ -40,13 +40,13 @@ final class Admin {
 			'<div class="notice notice-warning"><p>%s <a href="%s">%s</a></p></div>',
 			esc_html(
 				sprintf(
-					/* translators: %d: number of dead feeds */
-					_n( 'Aggregate It: %d feed has stopped responding.', 'Aggregate It: %d feeds have stopped responding.', count( $dead ), 'aggregate-it' ),
+					/* translators: %d: number of feeds that stopped working */
+					_n( 'Aggregate It: %d feed has stopped working.', 'Aggregate It: %d feeds have stopped working.', count( $dead ), 'aggregate-it' ),
 					count( $dead )
 				)
 			),
 			esc_url( admin_url( 'admin.php?page=' . self::SLUG . '-sources' ) ),
-			esc_html__( 'Review sources', 'aggregate-it' )
+			esc_html__( 'Check your feeds', 'aggregate-it' )
 		);
 	}
 
@@ -74,8 +74,8 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
-			__( 'Sources', 'aggregate-it' ),
-			__( 'Sources', 'aggregate-it' ),
+			__( 'Feeds', 'aggregate-it' ),
+			__( 'Feeds', 'aggregate-it' ),
 			'manage_options',
 			self::SLUG . '-sources',
 			[ $this, 'render_sources' ]
@@ -83,8 +83,8 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
-			__( 'Entities', 'aggregate-it' ),
-			__( 'Entities', 'aggregate-it' ),
+			__( 'Linked Pages', 'aggregate-it' ),
+			__( 'Linked Pages', 'aggregate-it' ),
 			'manage_options',
 			self::SLUG . '-entities',
 			[ $this, 'render_entities' ]
@@ -118,10 +118,10 @@ final class Admin {
 				'provider' => $this->plugin->settings()->provider_key(),
 				'i18n'     => [
 					'refreshing' => __( 'Refreshing…', 'aggregate-it' ),
-					'seeded'     => __( 'Demo items queued.', 'aggregate-it' ),
-					'running'    => __( 'Processing…', 'aggregate-it' ),
-					'resumed'    => __( 'Resumed.', 'aggregate-it' ),
-					'failed'     => __( 'Request failed.', 'aggregate-it' ),
+					'seeded'     => __( 'Sample articles added.', 'aggregate-it' ),
+					'running'    => __( 'Working on it…', 'aggregate-it' ),
+					'resumed'    => __( 'Back up and running.', 'aggregate-it' ),
+					'failed'     => __( 'Something went wrong. Please try again.', 'aggregate-it' ),
 				],
 			]
 		);
@@ -196,16 +196,36 @@ final class Admin {
 	public function handle_save_rule(): void {
 		$this->guard( 'aggregate_it_save_rule' );
 
-		$entity_type = sanitize_key( wp_unslash( $_POST['entity_type'] ?? '' ) );
-		$target_cpt  = sanitize_key( wp_unslash( $_POST['target_cpt'] ?? '' ) );
-		$schema_type = sanitize_text_field( wp_unslash( $_POST['schema_type'] ?? 'Thing' ) );
+		// One field carries both the entity type the AI detects and the post type the
+		// hubs live under — keep it dead simple: "Company" → type "company", CPT "company".
+		$name        = sanitize_text_field( wp_unslash( $_POST['type_name'] ?? '' ) );
+		$slug        = sanitize_key( $name !== '' ? $name : ( $_POST['target_cpt'] ?? '' ) );
+		$entity_type = sanitize_key( wp_unslash( $_POST['entity_type'] ?? '' ) ) ?: $slug;
+		$target_cpt  = sanitize_key( wp_unslash( $_POST['target_cpt'] ?? '' ) ) ?: $slug;
+		$schema_type = $this->guess_schema( $entity_type );
 
 		if ( $entity_type && $target_cpt ) {
 			$this->plugin->rules()->add( $entity_type, $target_cpt, $schema_type );
 			flush_rewrite_rules();
+			$this->redirect( self::SLUG . '-entities', 'saved' );
 		}
 
-		$this->redirect( self::SLUG . '-entities', 'saved' );
+		$this->redirect( self::SLUG . '-entities', 'invalid' );
+	}
+
+	private function guess_schema( string $type ): string {
+		$map = [
+			'Organization' => [ 'company', 'companies', 'organization', 'org', 'business', 'brand', 'startup', 'vendor' ],
+			'Person'       => [ 'person', 'people', 'author', 'founder', 'ceo', 'executive', 'player', 'artist' ],
+			'Product'      => [ 'product', 'products', 'app', 'tool', 'device', 'gadget' ],
+			'Place'        => [ 'place', 'location', 'city', 'country', 'venue', 'region' ],
+		];
+		foreach ( $map as $schema => $words ) {
+			if ( in_array( $type, $words, true ) ) {
+				return $schema;
+			}
+		}
+		return 'Thing';
 	}
 
 	public function handle_delete_rule(): void {
@@ -253,6 +273,8 @@ final class Admin {
 				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),
 				'cluster_window_days'    => max( 1, (int) ( $_POST['cluster_window_days'] ?? 7 ) ),
 				'import_interval_minutes' => max( 1, (int) ( $_POST['import_interval_minutes'] ?? 30 ) ),
+				'processing_enabled'     => isset( $_POST['processing_enabled'] ),
+				'processing_interval_minutes' => max( 1, (int) ( $_POST['processing_interval_minutes'] ?? 1 ) ),
 				'feed_dead_after'        => max( 1, (int) ( $_POST['feed_dead_after'] ?? 5 ) ),
 				'disclosure'             => sanitize_text_field( wp_unslash( $_POST['disclosure'] ?? '' ) ),
 				'keyword_list'           => sanitize_textarea_field( wp_unslash( $_POST['keyword_list'] ?? '' ) ),

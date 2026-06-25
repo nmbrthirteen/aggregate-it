@@ -115,7 +115,7 @@ final class Plugin {
 		( new HubRenderer( $this->rules, $this->settings ) )->register();
 
 		( new Importer( $this->sources, $this->items, $this->settings ) )->register();
-		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap ) )->register();
+		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new RestController( $this ) )->register();
 
 		if ( is_admin() ) {

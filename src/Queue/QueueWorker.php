@@ -7,6 +7,7 @@ use AggregateIt\Cost\SpendCap;
 use AggregateIt\Pipeline\Item;
 use AggregateIt\Pipeline\PaidStage;
 use AggregateIt\Pipeline\Pipeline;
+use AggregateIt\Settings;
 use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
@@ -28,11 +29,12 @@ final class QueueWorker {
 		private ItemStore $items,
 		private Pipeline $pipeline,
 		private CostMeter $cost,
-		private SpendCap $cap
+		private SpendCap $cap,
+		private Settings $settings
 	) {}
 
 	public function register(): void {
-		add_action( self::HOOK, [ $this, 'run' ] );
+		add_action( self::HOOK, [ $this, 'cron_tick' ] );
 		add_action( 'aggregate_it_dispatch_queue', [ $this, 'nudge' ] );
 		add_filter( 'cron_schedules', [ $this, 'add_cron_interval' ] );
 		add_action( 'wp_ajax_nopriv_aggregate_it_run', [ $this, 'ajax_run' ] );
@@ -41,6 +43,22 @@ final class QueueWorker {
 		if ( ! wp_next_scheduled( self::HOOK ) ) {
 			wp_schedule_event( time(), 'aggregate_it_minute', self::HOOK );
 		}
+	}
+
+	/**
+	 * Background tick (every minute). Runs only when automatic processing is on, and at
+	 * most once per the configured interval — the transient gates the cadence without
+	 * rescheduling cron, so interval changes take effect immediately.
+	 */
+	public function cron_tick(): void {
+		if ( ! $this->settings->processing_enabled() ) {
+			return;
+		}
+		if ( get_transient( 'aggregate_it_processed_recently' ) ) {
+			return;
+		}
+		set_transient( 'aggregate_it_processed_recently', 1, $this->settings->processing_interval_minutes() * MINUTE_IN_SECONDS );
+		$this->run();
 	}
 
 	public function add_cron_interval( array $schedules ): array {
@@ -72,7 +90,15 @@ final class QueueWorker {
 		if ( ! hash_equals( $this->run_token(), $token ) ) {
 			wp_die( '', '', [ 'response' => 403 ] );
 		}
-		$this->run();
+
+		// "Process now" forces a run; import-triggered nudges respect the auto toggle.
+		$forced = (bool) get_transient( 'aggregate_it_force_run' );
+		if ( $forced ) {
+			delete_transient( 'aggregate_it_force_run' );
+		}
+		if ( $forced || $this->settings->processing_enabled() ) {
+			$this->run();
+		}
 		wp_die( 'ok', '', [ 'response' => 200 ] );
 	}
 
@@ -124,7 +150,7 @@ final class QueueWorker {
 		if ( $attempts >= self::MAX_ATTEMPTS ) {
 			$this->items->dead_letter( $item->id, $attempts, $e->getMessage() );
 			$this->cost->record( $item->state, 0, 0, $item->id, 'error', $e->getMessage() );
-			EventLog::error( sprintf( '#%d dead-lettered at %s: %s', $item->id, $item->state, $e->getMessage() ) );
+			EventLog::error( sprintf( 'Article #%d failed at the %s step: %s', $item->id, $item->state, $e->getMessage() ) );
 			do_action( 'aggregate_it_dead_letter', $item, $e );
 			return;
 		}

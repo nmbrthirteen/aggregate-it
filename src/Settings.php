@@ -86,6 +86,14 @@ final class Settings {
 		return max( 1, (int) $this->get( 'import_interval_minutes', 30 ) );
 	}
 
+	public function processing_enabled(): bool {
+		return (bool) $this->get( 'processing_enabled', true );
+	}
+
+	public function processing_interval_minutes(): int {
+		return max( 1, (int) $this->get( 'processing_interval_minutes', 1 ) );
+	}
+
 	public function strategic_mode(): bool {
 		return (bool) $this->get( 'strategic_mode', false );
 	}

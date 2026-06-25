@@ -54,7 +54,7 @@
 		setCard( 'spend_month', money( c.spend_month ) );
 
 		var providerPill = document.getElementById( 'ai-provider-pill' );
-		providerPill.textContent = 'provider: ' + ( cfg.provider || 'mock' );
+		providerPill.textContent = 'Using: ' + ( cfg.provider || 'mock' );
 
 		toggle( 'ai-paused-pill', c.paused );
 		toggle( 'ai-resume', c.paused );
@@ -92,7 +92,7 @@
 		var tbody = document.getElementById( 'ai-recent' );
 		tbody.innerHTML = '';
 		if ( ! rows.length ) {
-			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No items yet — try “Seed demo items”.</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No articles yet — try “Add sample articles”.</td></tr>';
 			return;
 		}
 		rows.forEach( function ( r ) {
@@ -123,7 +123,7 @@
 		var ul = document.getElementById( 'ai-events' );
 		ul.innerHTML = '';
 		if ( ! events.length ) {
-			ul.innerHTML = '<li class="ai-empty">No activity logged.</li>';
+			ul.innerHTML = '<li class="ai-empty">Nothing has happened yet.</li>';
 			return;
 		}
 		events.forEach( function ( e ) {

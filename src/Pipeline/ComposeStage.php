@@ -83,7 +83,7 @@ final class ComposeStage implements PaidStage {
 		if ( $invented ) {
 			$item->flags['invented'] = $invented;
 			update_post_meta( $post_id, '_ai_invented', $invented );
-			EventLog::warning( sprintf( 'Post #%d: possible invented figures: %s', $post_id, implode( ', ', $invented ) ) );
+			EventLog::warning( sprintf( 'Post #%d: possible made-up numbers: %s', $post_id, implode( ', ', $invented ) ) );
 		}
 
 		$this->images->maybe_import( $post_id, (string) ( $item->flags['image'] ?? '' ), (string) ( $structured['seo_title'] ?? '' ) );

@@ -55,7 +55,7 @@ final class EntityResolver {
 		}
 
 		if ( $best_id && $best_score >= $ambiguous_floor ) {
-			EventLog::warning( sprintf( 'Ambiguous entity "%s" (%.0f%% vs #%d) — skipped, needs resolution.', $name, $best_score, $best_id ) );
+			EventLog::warning( sprintf( 'Not sure which page "%s" belongs to (%.0f%% match with page #%d) — skipped it for now.', $name, $best_score, $best_id ) );
 			return [ 'action' => 'skip', 'entity_id' => null ];
 		}
 

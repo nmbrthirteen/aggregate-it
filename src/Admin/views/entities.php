@@ -11,99 +11,131 @@ defined( 'ABSPATH' ) || exit;
  * @var string[]        $cpts
  */
 
-$all_rules = $rules->all();
-$entities  = $cpts ? get_posts(
-	[
-		'post_type'      => $cpts,
-		'post_status'    => 'publish',
-		'posts_per_page' => 200,
-		'orderby'        => 'title',
-		'order'          => 'ASC',
-	]
-) : [];
+$notice   = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+$all      = $rules->all();
+$by_target = [];
+foreach ( $all as $i => $rule ) {
+	$target = (string) ( $rule['target_cpt'] ?? '' );
+	if ( $target !== '' && ! isset( $by_target[ $target ] ) ) {
+		$by_target[ $target ] = [ 'index' => $i, 'entity_type' => (string) ( $rule['entity_type'] ?? '' ) ];
+	}
+}
+
+$post_types = get_post_types( [ 'public' => true ], 'objects' );
+unset( $post_types['attachment'] );
+
+$post_action = esc_url( admin_url( 'admin-post.php' ) );
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Entities', 'aggregate-it' ); ?></h1>
+	<h1><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></h1>
 
-	<div class="ai-panel" style="max-width:760px;margin:16px 0;">
-		<h2><?php esc_html_e( 'Delegation rules', 'aggregate-it' ); ?></h2>
-		<p class="description"><?php esc_html_e( 'Map an extracted entity type to a post type. A public CPT is registered for each target, and mentions are matched, created, and linked automatically.', 'aggregate-it' ); ?></p>
+	<?php if ( $notice === 'saved' ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Updated.', 'aggregate-it' ); ?></p></div>
+	<?php elseif ( $notice === 'deleted' ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Auto-linking turned off.', 'aggregate-it' ); ?></p></div>
+	<?php elseif ( $notice === 'invalid' ) : ?>
+		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
+	<?php endif; ?>
 
-		<table class="widefat striped" style="margin:10px 0;">
+	<div class="ai-panel" style="max-width:820px;margin:16px 0;">
+		<h2><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></h2>
+		<table class="widefat striped">
 			<thead><tr>
-				<th><?php esc_html_e( 'Entity type', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Target CPT', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Schema', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Auto-linking', 'aggregate-it' ); ?></th>
 				<th></th>
 			</tr></thead>
 			<tbody>
-				<?php if ( ! $all_rules ) : ?>
-					<tr><td colspan="4"><em><?php esc_html_e( 'No rules yet.', 'aggregate-it' ); ?></em></td></tr>
-				<?php endif; ?>
-				<?php foreach ( $all_rules as $i => $rule ) : ?>
-					<?php $del = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_delete_rule&index=' . $i ), 'aggregate_it_delete_rule_' . $i ); ?>
+				<?php foreach ( $post_types as $pt ) :
+					$slug  = $pt->name;
+					$count = (int) ( wp_count_posts( $slug )->publish ?? 0 );
+					$on    = isset( $by_target[ $slug ] );
+					?>
 					<tr>
-						<td><code><?php echo esc_html( $rule['entity_type'] ?? '' ); ?></code></td>
-						<td><code><?php echo esc_html( $rule['target_cpt'] ?? '' ); ?></code></td>
-						<td><?php echo esc_html( $rule['schema_type'] ?? 'Thing' ); ?></td>
-						<td><a class="button button-small" href="<?php echo esc_url( $del ); ?>"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a></td>
+						<td><strong><?php echo esc_html( $pt->labels->singular_name ); ?></strong> <code><?php echo esc_html( $slug ); ?></code></td>
+						<td><?php echo (int) $count; ?></td>
+						<td>
+							<?php if ( $on ) : ?>
+								<span class="ai-state ai-state--published"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
+							<?php else : ?>
+								<span class="ai-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
+							<?php endif; ?>
+						</td>
+						<td>
+							<?php if ( $on ) : ?>
+								<form method="post" action="<?php echo $post_action; ?>" style="display:inline">
+									<input type="hidden" name="action" value="aggregate_it_delete_rule">
+									<input type="hidden" name="index" value="<?php echo (int) $by_target[ $slug ]['index']; ?>">
+									<?php wp_nonce_field( 'aggregate_it_delete_rule_' . (int) $by_target[ $slug ]['index'] ); ?>
+									<button class="button button-small"><?php esc_html_e( 'Turn off', 'aggregate-it' ); ?></button>
+								</form>
+							<?php else : ?>
+								<form method="post" action="<?php echo $post_action; ?>" style="display:inline">
+									<input type="hidden" name="action" value="aggregate_it_save_rule">
+									<input type="hidden" name="target_cpt" value="<?php echo esc_attr( $slug ); ?>">
+									<input type="hidden" name="entity_type" value="<?php echo esc_attr( $slug ); ?>">
+									<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
+									<button class="button button-primary button-small"><?php esc_html_e( 'Turn on', 'aggregate-it' ); ?></button>
+								</form>
+							<?php endif; ?>
+						</td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
 		</table>
 
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+		<h3 style="margin-top:18px;"><?php esc_html_e( 'Add a new content type', 'aggregate-it' ); ?></h3>
+		<form method="post" action="<?php echo $post_action; ?>" style="display:flex;gap:8px;align-items:center;">
 			<input type="hidden" name="action" value="aggregate_it_save_rule">
 			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
-			<label><?php esc_html_e( 'Entity type', 'aggregate-it' ); ?><br>
-				<input name="entity_type" type="text" required placeholder="company"></label>
-			<label><?php esc_html_e( 'Target CPT', 'aggregate-it' ); ?><br>
-				<input name="target_cpt" type="text" required placeholder="company"></label>
-			<label><?php esc_html_e( 'Schema type', 'aggregate-it' ); ?><br>
-				<select name="schema_type">
-					<option>Organization</option>
-					<option>Person</option>
-					<option>Product</option>
-					<option>Place</option>
-					<option>Thing</option>
-				</select></label>
-			<button class="button button-primary"><?php esc_html_e( 'Add rule', 'aggregate-it' ); ?></button>
+			<input name="type_name" type="text" class="regular-text" required
+				placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
+			<datalist id="ai-type-suggestions">
+				<option value="Company"></option><option value="Person"></option>
+				<option value="Product"></option><option value="Place"></option><option value="Brand"></option>
+			</datalist>
+			<button class="button button-primary"><?php esc_html_e( 'Add & turn on', 'aggregate-it' ); ?></button>
 		</form>
 	</div>
 
-	<div class="ai-panel" style="max-width:760px;margin:16px 0;">
-		<h2><?php esc_html_e( 'Merge duplicate entities', 'aggregate-it' ); ?></h2>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:flex;gap:8px;align-items:flex-end;">
+	<div class="ai-panel" style="max-width:820px;margin:16px 0;">
+		<h2><?php esc_html_e( 'Pages built automatically', 'aggregate-it' ); ?></h2>
+		<?php
+		$entities = $cpts ? get_posts(
+			[ 'post_type' => $cpts, 'post_status' => 'publish', 'posts_per_page' => 100, 'orderby' => 'modified', 'order' => 'DESC' ]
+		) : [];
+		?>
+		<?php if ( ! $entities ) : ?>
+			<p class="description"><?php esc_html_e( 'Nothing yet. As articles are processed, pages appear here automatically.', 'aggregate-it' ); ?></p>
+		<?php else : ?>
+			<table class="widefat striped">
+				<thead><tr>
+					<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $entities as $entity ) : ?>
+						<tr>
+							<td><a href="<?php echo esc_url( (string) get_edit_post_link( $entity->ID ) ); ?>"><?php echo esc_html( get_the_title( $entity ) ); ?></a></td>
+							<td><code><?php echo esc_html( $entity->post_type ); ?></code></td>
+							<td><?php echo get_post_meta( $entity->ID, '_ai_is_stub', true ) ? esc_html__( 'Basic', 'aggregate-it' ) : esc_html__( 'Detailed', 'aggregate-it' ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+	</div>
+
+	<details class="ai-panel" style="max-width:820px;">
+		<summary style="cursor:pointer;font-weight:600;"><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
+		<form method="post" action="<?php echo $post_action; ?>" style="display:flex;gap:8px;align-items:flex-end;">
 			<input type="hidden" name="action" value="aggregate_it_merge_entities">
 			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
-			<label><?php esc_html_e( 'Merge entity ID', 'aggregate-it' ); ?><br><input name="source_id" type="number" required></label>
-			<label><?php esc_html_e( 'into ID', 'aggregate-it' ); ?><br><input name="target_id" type="number" required></label>
-			<button class="button" onclick="return confirm('<?php echo esc_js( __( 'Merge and delete the source entity?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Merge', 'aggregate-it' ); ?></button>
+			<label><?php esc_html_e( 'Merge page ID', 'aggregate-it' ); ?><br><input name="source_id" type="number" required></label>
+			<label><?php esc_html_e( 'into page ID', 'aggregate-it' ); ?><br><input name="target_id" type="number" required></label>
+			<button class="button" onclick="return confirm('<?php echo esc_js( __( 'Merge and delete the source page?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Merge', 'aggregate-it' ); ?></button>
 		</form>
-	</div>
-
-	<div class="ai-panel" style="max-width:760px;">
-		<h2><?php esc_html_e( 'Entity hubs', 'aggregate-it' ); ?></h2>
-		<table class="widefat striped">
-			<thead><tr>
-				<th><?php esc_html_e( 'ID', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Stub', 'aggregate-it' ); ?></th>
-			</tr></thead>
-			<tbody>
-				<?php if ( ! $entities ) : ?>
-					<tr><td colspan="4"><em><?php esc_html_e( 'No entities yet — they appear as posts are processed.', 'aggregate-it' ); ?></em></td></tr>
-				<?php endif; ?>
-				<?php foreach ( $entities as $entity ) : ?>
-					<tr>
-						<td><?php echo (int) $entity->ID; ?></td>
-						<td><a href="<?php echo esc_url( get_edit_post_link( $entity->ID ) ); ?>"><?php echo esc_html( get_the_title( $entity ) ); ?></a></td>
-						<td><code><?php echo esc_html( $entity->post_type ); ?></code></td>
-						<td><?php echo get_post_meta( $entity->ID, '_ai_is_stub', true ) ? '✓' : '—'; ?></td>
-					</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
-	</div>
+	</details>
 </div>

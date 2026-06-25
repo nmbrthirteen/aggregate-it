@@ -98,9 +98,9 @@ final class Importer {
 
 			if ( $fails >= $this->settings->feed_dead_after() && $source->status === 'active' ) {
 				$this->sources->update( $source->id, [ 'status' => 'dead' ] );
-				EventLog::error( sprintf( 'Feed "%s" marked dead after %d failures.', $source->title ?: $source->url, $fails ) );
+				EventLog::error( sprintf( 'Feed "%s" stopped working after %d failed tries.', $source->title ?: $source->url, $fails ) );
 			} else {
-				EventLog::warning( sprintf( 'Feed "%s" import failed: %s', $source->title ?: $source->url, $e->getMessage() ) );
+				EventLog::warning( sprintf( 'Could not check feed "%s": %s', $source->title ?: $source->url, $e->getMessage() ) );
 			}
 		}
 

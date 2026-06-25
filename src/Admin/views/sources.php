@@ -14,14 +14,14 @@ defined( 'ABSPATH' ) || exit;
 
 $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 $messages = [
-	'saved'    => __( 'Source saved.', 'aggregate-it' ),
-	'deleted'  => __( 'Source deleted.', 'aggregate-it' ),
-	'imported' => __( 'Import queued.', 'aggregate-it' ),
-	'invalid'  => __( 'A valid feed URL is required.', 'aggregate-it' ),
+	'saved'    => __( 'Feed saved.', 'aggregate-it' ),
+	'deleted'  => __( 'Feed deleted.', 'aggregate-it' ),
+	'imported' => __( 'Checking that feed now.', 'aggregate-it' ),
+	'invalid'  => __( 'Please enter a valid feed address.', 'aggregate-it' ),
 ];
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Feed Sources', 'aggregate-it' ); ?></h1>
+	<h1><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h1>
 
 	<?php if ( $notice && isset( $messages[ $notice ] ) ) : ?>
 		<div class="notice notice-<?php echo $notice === 'invalid' ? 'error' : 'success'; ?> is-dismissible">
@@ -30,7 +30,7 @@ $messages = [
 	<?php endif; ?>
 
 	<div class="ai-panel" style="max-width:680px;margin:16px 0;">
-		<h2><?php echo $editing ? esc_html__( 'Edit source', 'aggregate-it' ) : esc_html__( 'Add source', 'aggregate-it' ); ?></h2>
+		<h2><?php echo $editing ? esc_html__( 'Edit feed', 'aggregate-it' ) : esc_html__( 'Add a feed', 'aggregate-it' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="aggregate_it_save_source">
 			<input type="hidden" name="id" value="<?php echo (int) ( $editing->id ?? 0 ); ?>">
@@ -38,7 +38,7 @@ $messages = [
 
 			<table class="form-table" role="presentation">
 				<tr>
-					<th><label for="ai-url"><?php esc_html_e( 'Feed URL', 'aggregate-it' ); ?></label></th>
+					<th><label for="ai-url"><?php esc_html_e( 'Feed address', 'aggregate-it' ); ?></label></th>
 					<td><input name="url" id="ai-url" type="url" class="regular-text" required
 						value="<?php echo esc_attr( $editing->url ?? '' ); ?>" placeholder="https://example.com/feed"></td>
 				</tr>
@@ -48,7 +48,7 @@ $messages = [
 						value="<?php echo esc_attr( $editing->title ?? '' ); ?>"></td>
 				</tr>
 				<tr>
-					<th><label for="ai-interval"><?php esc_html_e( 'Import every (minutes)', 'aggregate-it' ); ?></label></th>
+					<th><label for="ai-interval"><?php esc_html_e( 'Check for new posts every (minutes)', 'aggregate-it' ); ?></label></th>
 					<td><input name="interval_minutes" id="ai-interval" type="number" min="1" class="small-text"
 						value="<?php echo esc_attr( (string) ( $editing ? $editing->interval_minutes( $default_interval ) : $default_interval ) ); ?>"></td>
 				</tr>
@@ -66,7 +66,7 @@ $messages = [
 			</table>
 
 			<p>
-				<button type="submit" class="button button-primary"><?php echo $editing ? esc_html__( 'Update source', 'aggregate-it' ) : esc_html__( 'Add source', 'aggregate-it' ); ?></button>
+				<button type="submit" class="button button-primary"><?php echo $editing ? esc_html__( 'Save feed', 'aggregate-it' ) : esc_html__( 'Add a feed', 'aggregate-it' ); ?></button>
 				<?php if ( $editing ) : ?>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-sources' ) ); ?>"><?php esc_html_e( 'Cancel', 'aggregate-it' ); ?></a>
 				<?php endif; ?>
@@ -78,23 +78,23 @@ $messages = [
 		<thead>
 			<tr>
 				<th><?php esc_html_e( 'Title', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Feed URL', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Feed address', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Last checked', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Health', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'How it is doing', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Actions', 'aggregate-it' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( ! $sources ) : ?>
-				<tr><td colspan="6"><em><?php esc_html_e( 'No sources yet. Add a feed above.', 'aggregate-it' ); ?></em></td></tr>
+				<tr><td colspan="6"><em><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></em></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $sources as $source ) : ?>
 				<?php
 				$health = $source->health;
 				$health_text = ! empty( $health['last_error'] )
-					? esc_html__( 'Error: ', 'aggregate-it' ) . esc_html( $health['last_error'] )
-					: ( isset( $health['last_imported'] ) ? sprintf( /* translators: %d: item count */ esc_html__( '%d imported last run', 'aggregate-it' ), (int) $health['last_imported'] ) : '—' );
+					? esc_html__( 'Problem: ', 'aggregate-it' ) . esc_html( $health['last_error'] )
+					: ( isset( $health['last_imported'] ) ? sprintf( /* translators: %d: article count */ esc_html__( '%d new articles last time', 'aggregate-it' ), (int) $health['last_imported'] ) : '—' );
 				$import_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_import_now&id=' . $source->id ), 'aggregate_it_import_now_' . $source->id );
 				$delete_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_delete_source&id=' . $source->id ), 'aggregate_it_delete_source_' . $source->id );
 				$edit_url   = admin_url( 'admin.php?page=aggregate-it-sources&edit=' . $source->id );
@@ -106,9 +106,9 @@ $messages = [
 					<td><?php echo esc_html( $source->last_checked ?: '—' ); ?></td>
 					<td><?php echo $health_text; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 					<td>
-						<a class="button button-small" href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Import now', 'aggregate-it' ); ?></a>
+						<a class="button button-small" href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Check now', 'aggregate-it' ); ?></a>
 						<a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
-						<a class="button button-small" href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this source?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
+						<a class="button button-small" href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this feed?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
 					</td>
 				</tr>
 			<?php endforeach; ?>
