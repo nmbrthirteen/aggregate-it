@@ -247,6 +247,20 @@ final class ItemStore {
 		) ?: [];
 	}
 
+	/** @return object[] full rows for the Articles admin list */
+	public function list_detailed( int $limit, int $offset ): array {
+		global $wpdb;
+		$table = $this->table();
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, source_id, guid, url, state, post_id, flags, last_error, created_at, updated_at
+				 FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d",
+				$limit,
+				$offset
+			)
+		) ?: [];
+	}
+
 	private function update( int $id, array $data ): void {
 		global $wpdb;
 		$data['updated_at'] = $this->utc_now();

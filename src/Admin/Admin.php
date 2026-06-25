@@ -74,6 +74,15 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
+			__( 'Articles', 'aggregate-it' ),
+			__( 'Articles', 'aggregate-it' ),
+			'manage_options',
+			self::SLUG . '-articles',
+			[ $this, 'render_articles' ]
+		);
+
+		$this->hooks[] = add_submenu_page(
+			self::SLUG,
 			__( 'Feeds', 'aggregate-it' ),
 			__( 'Feeds', 'aggregate-it' ),
 			'manage_options',
@@ -130,6 +139,21 @@ final class Admin {
 	public function render_dashboard(): void {
 		$brand = $this->plugin->settings()->brand_name();
 		require AGGREGATE_IT_PATH . 'src/Admin/views/dashboard.php';
+	}
+
+	public function render_articles(): void {
+		$per_page = 30;
+		$paged    = max( 1, (int) ( $_GET['paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		$items    = $this->plugin->items();
+		$rows     = $items->list_detailed( $per_page, ( $paged - 1 ) * $per_page );
+		$total    = $items->total();
+
+		$feeds = [];
+		foreach ( $this->plugin->sources()->all() as $source ) {
+			$feeds[ $source->id ] = $source->title ?: $source->url;
+		}
+
+		require AGGREGATE_IT_PATH . 'src/Admin/views/articles.php';
 	}
 
 	public function render_sources(): void {
