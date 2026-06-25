@@ -4,6 +4,7 @@ namespace AggregateIt\Pipeline;
 
 use AggregateIt\Database\Schema;
 use AggregateIt\Queue\ItemStore;
+use AggregateIt\Settings;
 use AggregateIt\Source\ContentExtractor;
 
 defined( 'ABSPATH' ) || exit;
@@ -19,7 +20,8 @@ final class ExtractStage implements Stage {
 
 	public function __construct(
 		private ContentExtractor $extractor,
-		private ItemStore $items
+		private ItemStore $items,
+		private Settings $settings
 	) {}
 
 	public function handles(): string {
@@ -36,8 +38,14 @@ final class ExtractStage implements Stage {
 		$item->flags['content_length'] = mb_strlen( $result['content'] );
 		$item->flags['thin']           = mb_strlen( $result['content'] ) < self::MIN_CONTENT;
 
-		if ( empty( $item->flags['image'] ) && ! empty( $result['image'] ) ) {
-			$item->flags['image'] = $result['image'];
+		// Prefer the publisher's share image (og:image) over the feed enclosure — the
+		// enclosure is often a generic or sub-topic image, not the article's hero.
+		$enclosure = (string) ( $item->flags['image'] ?? '' );
+		$share     = $this->settings->image_source() === 'share' ? $this->extractor->share_image( $item->url ) : '';
+		$image     = $share ?: ( $enclosure ?: (string) ( $result['image'] ?? '' ) );
+
+		if ( $image !== '' ) {
+			$item->flags['image'] = $image;
 		}
 
 		return Schema::STATE_EXTRACTED;

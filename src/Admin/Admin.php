@@ -337,6 +337,7 @@ final class Admin {
 				'author_id'              => max( 0, (int) ( $_POST['author_id'] ?? 0 ) ),
 				'daily_spend_cap_usd'    => max( 0, (float) ( $_POST['daily_spend_cap_usd'] ?? 5 ) ),
 				'image_mode'             => sanitize_key( wp_unslash( $_POST['image_mode'] ?? 'import' ) ),
+				'image_source'           => sanitize_key( wp_unslash( $_POST['image_source'] ?? 'share' ) ),
 				'indexnow_enabled'       => isset( $_POST['indexnow_enabled'] ),
 				'strategic_mode'         => isset( $_POST['strategic_mode'] ),
 				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),

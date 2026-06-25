@@ -104,6 +104,10 @@ $has_key = $settings->api_key() !== '';
 						<option value="import" <?php selected( $settings->image_mode(), 'import' ); ?>><?php esc_html_e( 'Save images to my media library', 'aggregate-it' ); ?></option>
 						<option value="off" <?php selected( $settings->image_mode(), 'off' ); ?>><?php esc_html_e( 'Off', 'aggregate-it' ); ?></option>
 					</select>
+					<select name="image_source" id="image_source" style="margin-top:6px;">
+						<option value="share" <?php selected( $settings->image_source(), 'share' ); ?>><?php esc_html_e( 'Use the article\'s share image (recommended)', 'aggregate-it' ); ?></option>
+						<option value="feed" <?php selected( $settings->image_source(), 'feed' ); ?>><?php esc_html_e( 'Use the image from the feed', 'aggregate-it' ); ?></option>
+					</select>
 				</td>
 			</tr>
 			<tr>

@@ -125,6 +125,11 @@ final class Settings {
 		return in_array( $mode, [ 'off', 'import' ], true ) ? $mode : 'import';
 	}
 
+	public function image_source(): string {
+		$src = (string) $this->get( 'image_source', 'share' );
+		return in_array( $src, [ 'share', 'feed' ], true ) ? $src : 'share';
+	}
+
 	public function indexnow_enabled(): bool {
 		return (bool) $this->get( 'indexnow_enabled', true );
 	}

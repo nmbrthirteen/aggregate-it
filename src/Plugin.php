@@ -92,7 +92,7 @@ final class Plugin {
 		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
 		$seo          = new Seo( $this->settings, new SchemaGraph() );
 
-		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items ) );
+		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items, $this->settings ) );
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(

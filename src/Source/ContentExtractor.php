@@ -26,7 +26,7 @@ final class ContentExtractor {
 
 		$html = $url !== '' ? $this->fetcher->fetch( $url ) : null;
 		if ( is_string( $html ) && $html !== '' ) {
-			$image    = $this->og_image( $html );
+			$image    = $this->best_meta_image( $html );
 			$readable = $this->readability( $html );
 			if ( mb_strlen( $readable ) > mb_strlen( $feed_text ) ) {
 				return [ 'content' => $readable, 'source' => 'readability', 'image' => $image ];
@@ -37,14 +37,49 @@ final class ContentExtractor {
 		return [ 'content' => $feed_text, 'source' => 'feed', 'image' => '' ];
 	}
 
-	private function og_image( string $html ): string {
-		if ( preg_match( '/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m ) ) {
-			return trim( $m[1] );
+	/**
+	 * The publisher's chosen share image for this article — the correct hero in almost
+	 * all cases (feed enclosures are often generic/sub-topic images). Fetches the page
+	 * (cached + polite) and returns the best meta image, or '' on any failure.
+	 */
+	public function share_image( string $url ): string {
+		if ( $url === '' ) {
+			return '';
 		}
-		if ( preg_match( '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']/i', $html, $m ) ) {
-			return trim( $m[1] );
+		try {
+			$html = $this->fetcher->fetch( $url );
+		} catch ( \Throwable $e ) {
+			return '';
+		}
+		return is_string( $html ) ? $this->best_meta_image( $html ) : '';
+	}
+
+	private function best_meta_image( string $html ): string {
+		foreach ( [ 'og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src' ] as $key ) {
+			$image = $this->meta_content( $html, $key );
+			if ( $image !== '' && ! $this->is_junk_image( $image ) ) {
+				return $image;
+			}
 		}
 		return '';
+	}
+
+	private function meta_content( string $html, string $key ): string {
+		$e = preg_quote( $key, '/' );
+		if ( preg_match( '/<meta[^>]+(?:property|name)=["\']' . $e . '["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m ) ) {
+			return trim( html_entity_decode( $m[1] ) );
+		}
+		if ( preg_match( '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']' . $e . '["\']/i', $html, $m ) ) {
+			return trim( html_entity_decode( $m[1] ) );
+		}
+		return '';
+	}
+
+	private function is_junk_image( string $url ): bool {
+		if ( strpos( $url, 'data:' ) === 0 ) {
+			return true;
+		}
+		return (bool) preg_match( '/(logo|icon|sprite|avatar|gravatar|placeholder|default[-_]|blank|spacer|favicon)/i', $url );
 	}
 
 	private function readability( string $html ): string {
