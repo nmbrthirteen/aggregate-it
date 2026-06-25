@@ -51,10 +51,10 @@ final class PostMetaBox {
 		}
 
 		if ( $invented ) {
-			echo '<p style="color:#b91c1c"><strong>' . esc_html__( 'Possible made-up numbers:', 'aggregate-it' ) . '</strong> ' . esc_html( implode( ', ', $invented ) ) . '</p>';
+			echo '<p><span class="ai-state ai-state--dead_letter">' . esc_html__( 'Possible made-up numbers', 'aggregate-it' ) . '</span> <span class="ai-muted">' . esc_html( implode( ', ', $invented ) ) . '</span></p>';
 		}
 
 		echo '<p><strong>' . esc_html__( 'Original article text:', 'aggregate-it' ) . '</strong></p>';
-		echo '<textarea readonly rows="10" style="width:100%;font-family:monospace;font-size:12px;">' . esc_textarea( $original ) . '</textarea>';
+		echo '<textarea readonly rows="10" class="large-text code">' . esc_textarea( $original ) . '</textarea>';
 	}
 }

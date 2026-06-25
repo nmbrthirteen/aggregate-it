@@ -23,7 +23,6 @@ final class Seo {
 
 	public function register(): void {
 		add_action( 'wp_head', [ $this, 'output_schema' ], 99 );
-		add_filter( 'the_content', [ $this, 'append_disclosure' ] );
 
 		switch ( $this->detect() ) {
 			case 'yoast':
@@ -66,14 +65,6 @@ final class Seo {
 			update_post_meta( $post_id, $keys[1], $description );
 			update_post_meta( $post_id, $keys[2], $keyword );
 		}
-	}
-
-	public function append_disclosure( string $content ): string {
-		$text = $this->settings->disclosure();
-		if ( $text === '' || ! is_singular() || ! in_the_loop() || ! is_main_query() || ! $this->is_ours( get_queried_object_id() ) ) {
-			return $content;
-		}
-		return $content . '<p class="aggregate-it-disclosure"><em>' . esc_html( $text ) . '</em></p>';
 	}
 
 	public function output_schema(): void {

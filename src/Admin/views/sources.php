@@ -21,7 +21,9 @@ $messages = [
 ];
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h1>
+	<div class="ai-head">
+		<h1><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h1>
+	</div>
 
 	<?php if ( $notice && isset( $messages[ $notice ] ) ) : ?>
 		<div class="notice notice-<?php echo $notice === 'invalid' ? 'error' : 'success'; ?> is-dismissible">
@@ -29,7 +31,7 @@ $messages = [
 		</div>
 	<?php endif; ?>
 
-	<div class="ai-panel" style="max-width:680px;margin:16px 0;">
+	<div class="ai-panel ai-narrow">
 		<h2><?php echo $editing ? esc_html__( 'Edit feed', 'aggregate-it' ) : esc_html__( 'Add a feed', 'aggregate-it' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="aggregate_it_save_source">
@@ -60,9 +62,9 @@ $messages = [
 				<tr>
 					<th><?php esc_html_e( 'Put posts in', 'aggregate-it' ); ?></th>
 					<td>
-						<div style="max-height:160px;overflow:auto;border:1px solid #dcdcde;border-radius:4px;padding:8px;">
+						<div class="ai-checklist">
 							<?php foreach ( $all_cats as $cat ) : ?>
-								<label style="display:block;margin:2px 0;">
+								<label>
 									<input type="checkbox" name="categories[]" value="<?php echo (int) $cat->term_id; ?>"
 										<?php checked( in_array( (int) $cat->term_id, $selected_cats, true ) ); ?>>
 									<?php echo esc_html( $cat->name ); ?>
@@ -100,6 +102,7 @@ $messages = [
 		</form>
 	</div>
 
+	<div class="ai-panel">
 	<table class="widefat striped">
 		<thead>
 			<tr>
@@ -131,7 +134,7 @@ $messages = [
 					<td><span class="ai-state ai-state--<?php echo esc_attr( $source->status ); ?>"><?php echo esc_html( $source->status ); ?></span></td>
 					<td><?php echo esc_html( $source->last_checked ?: '—' ); ?></td>
 					<td><?php echo $health_text; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-					<td>
+					<td class="ai-row-actions ai-inline">
 						<a class="button button-small" href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Check now', 'aggregate-it' ); ?></a>
 						<a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
 						<a class="button button-small" href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this feed?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
@@ -140,4 +143,5 @@ $messages = [
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</div>
 </div>

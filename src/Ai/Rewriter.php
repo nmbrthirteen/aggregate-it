@@ -23,10 +23,13 @@ final class Rewriter {
 
 	private function prompt( string $title, string $content, ?string $target_keyword ): string {
 		$rules = [
-			'Rewrite the article below into original, well-structured prose.',
-			'PRESERVE every fact verbatim: names, numbers, dates, quotes, and claims. Never invent or alter a fact.',
+			'Rewrite the article below into original prose that reads as if a real human journalist wrote it from scratch.',
+			'PRESERVE every fact verbatim: names, numbers, dates, quotes, and claims. Never invent, alter, or DROP a fact. Fact-keeping is the top priority and overrides brevity.',
+			'Write naturally and human: vary sentence length and structure, use a plain confident voice, and make it flow. It must NOT read as AI-generated or templated.',
+			'Avoid AI tells and stock filler. Do not use phrases like "in conclusion", "furthermore", "moreover", "it is worth noting", "in today\'s world", "delve", "navigate the landscape", "robust", "leverage", "boasts", "a testament to", or formulaic intros/outros. No hedging padding.',
+			'Be concise WITHOUT losing information. Shorten by tightening wording and cutting filler, repetition, and throat-clearing — never by removing facts. If a sentence carries a fact, keep the fact; only trim the words around it.',
 			'REMOVE promotional cruft: calls-to-action, "subscribe", affiliate lines, ads, author self-promotion, "read more" links.',
-			'Keep news as news — neutral, factual tone. Do not editorialize.',
+			'Keep news as news — neutral, factual tone. Do not editorialize. Do not mention sources, the original article, or that this is a rewrite.',
 			'Return ONLY the structured object.',
 		];
 

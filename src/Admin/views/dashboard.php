@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <div class="wrap aggregate-it" id="aggregate-it-app">
 
-	<div class="ai-topbar">
+	<div class="ai-head">
 		<h1><?php echo esc_html( $brand ); ?></h1>
 		<div class="ai-actions">
 			<span class="ai-pill" id="ai-provider-pill"></span>
@@ -45,7 +45,7 @@ defined( 'ABSPATH' ) || exit;
 		<?php endforeach; ?>
 	</div>
 
-	<div class="ai-charts">
+	<div class="ai-grid ai-cols-3">
 		<div class="ai-panel">
 			<h2><?php esc_html_e( 'Article status', 'aggregate-it' ); ?></h2>
 			<div class="ai-chart-row">
@@ -63,7 +63,7 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 	</div>
 
-	<div class="ai-lower">
+	<div class="ai-grid ai-cols-2">
 		<div class="ai-panel">
 			<h2><?php esc_html_e( 'Recent articles', 'aggregate-it' ); ?></h2>
 			<table class="widefat striped ai-table">

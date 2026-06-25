@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Builds the native JSON-LD @graph for our posts: Article/NewsArticle with both
  * datePublished and dateModified (the freshness signal that makes living posts legible
- * to search), author, publisher, image, and citation -> source articles. Entity
+ * to search), author, publisher, and image. Entity
  * about/mentions are layered in by the entity engine (phase 3).
  */
 final class SchemaGraph {
@@ -41,11 +41,6 @@ final class SchemaGraph {
 		$image = get_the_post_thumbnail_url( $post, 'full' );
 		if ( $image ) {
 			$article['image'] = $image;
-		}
-
-		$citations = $this->citations( $post_id );
-		if ( $citations ) {
-			$article['citation'] = $citations;
 		}
 
 		$about = $this->about( $post_id );
@@ -107,20 +102,5 @@ final class SchemaGraph {
 			$about[] = $node;
 		}
 		return $about;
-	}
-
-	/** @return array<int,array<string,string>> */
-	private function citations( int $post_id ): array {
-		$urls = get_post_meta( $post_id, '_ai_source_urls', true );
-		if ( ! is_array( $urls ) ) {
-			return [];
-		}
-		$out = [];
-		foreach ( $urls as $url ) {
-			if ( $url ) {
-				$out[] = [ '@type' => 'CreativeWork', 'url' => esc_url_raw( $url ) ];
-			}
-		}
-		return $out;
 	}
 }

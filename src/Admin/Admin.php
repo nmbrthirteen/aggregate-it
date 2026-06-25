@@ -346,7 +346,6 @@ final class Admin {
 				'processing_enabled'     => isset( $_POST['processing_enabled'] ),
 				'processing_interval_minutes' => max( 1, (int) ( $_POST['processing_interval_minutes'] ?? 1 ) ),
 				'feed_dead_after'        => max( 1, (int) ( $_POST['feed_dead_after'] ?? 5 ) ),
-				'disclosure'             => sanitize_text_field( wp_unslash( $_POST['disclosure'] ?? '' ) ),
 				'keyword_list'           => sanitize_textarea_field( wp_unslash( $_POST['keyword_list'] ?? '' ) ),
 			]
 		);

@@ -27,7 +27,9 @@ unset( $post_types['attachment'] );
 $post_action = esc_url( admin_url( 'admin-post.php' ) );
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></h1>
+	<div class="ai-head">
+		<h1><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></h1>
+	</div>
 
 	<?php if ( $notice === 'saved' ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Updated.', 'aggregate-it' ); ?></p></div>
@@ -37,7 +39,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
 
-	<div class="ai-panel" style="max-width:820px;margin:16px 0;">
+	<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></h2>
 		<table class="widefat striped">
 			<thead><tr>
@@ -64,14 +66,14 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 						</td>
 						<td>
 							<?php if ( $on ) : ?>
-								<form method="post" action="<?php echo $post_action; ?>" style="display:inline">
+								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
 									<input type="hidden" name="action" value="aggregate_it_delete_rule">
 									<input type="hidden" name="index" value="<?php echo (int) $by_target[ $slug ]['index']; ?>">
 									<?php wp_nonce_field( 'aggregate_it_delete_rule_' . (int) $by_target[ $slug ]['index'] ); ?>
 									<button class="button button-small"><?php esc_html_e( 'Turn off', 'aggregate-it' ); ?></button>
 								</form>
 							<?php else : ?>
-								<form method="post" action="<?php echo $post_action; ?>" style="display:inline">
+								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
 									<input type="hidden" name="action" value="aggregate_it_save_rule">
 									<input type="hidden" name="target_cpt" value="<?php echo esc_attr( $slug ); ?>">
 									<input type="hidden" name="entity_type" value="<?php echo esc_attr( $slug ); ?>">
@@ -85,8 +87,8 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 			</tbody>
 		</table>
 
-		<h3 style="margin-top:18px;"><?php esc_html_e( 'Add a new content type', 'aggregate-it' ); ?></h3>
-		<form method="post" action="<?php echo $post_action; ?>" style="display:flex;gap:8px;align-items:center;">
+		<h3><?php esc_html_e( 'Add a new content type', 'aggregate-it' ); ?></h3>
+		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 			<input type="hidden" name="action" value="aggregate_it_save_rule">
 			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
 			<input name="type_name" type="text" class="regular-text" required
@@ -99,7 +101,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		</form>
 	</div>
 
-	<div class="ai-panel" style="max-width:820px;margin:16px 0;">
+	<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Pages built automatically', 'aggregate-it' ); ?></h2>
 		<?php
 		$entities = $cpts ? get_posts(
@@ -128,9 +130,9 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<?php endif; ?>
 	</div>
 
-	<details class="ai-panel" style="max-width:820px;">
+	<details class="ai-panel ai-narrow">
 		<summary style="cursor:pointer;font-weight:600;"><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
-		<form method="post" action="<?php echo $post_action; ?>" style="display:flex;gap:8px;align-items:flex-end;">
+		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 			<input type="hidden" name="action" value="aggregate_it_merge_entities">
 			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
 			<label><?php esc_html_e( 'Merge page ID', 'aggregate-it' ); ?><br><input name="source_id" type="number" required></label>

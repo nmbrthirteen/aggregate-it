@@ -14,7 +14,9 @@ $keyword_list = implode( "\n", $settings->keyword_list() );
 $has_key = $settings->api_key() !== '';
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Aggregate It — Settings', 'aggregate-it' ); ?></h1>
+	<div class="ai-head">
+		<h1><?php esc_html_e( 'Aggregate It — Settings', 'aggregate-it' ); ?></h1>
+	</div>
 
 	<?php if ( $notice === 'saved' ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'aggregate-it' ); ?></p></div>
@@ -24,6 +26,7 @@ $has_key = $settings->api_key() !== '';
 		<input type="hidden" name="action" value="aggregate_it_save_settings">
 		<?php wp_nonce_field( 'aggregate_it_save_settings' ); ?>
 
+		<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -76,7 +79,9 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="daily_spend_cap_usd" id="daily_spend_cap_usd" type="number" step="0.5" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->daily_spend_cap_usd() ); ?>"></td>
 			</tr>
 		</table>
+		</div>
 
+		<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Publishing', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -111,15 +116,13 @@ $has_key = $settings->api_key() !== '';
 				</td>
 			</tr>
 			<tr>
-				<th><label for="disclosure"><?php esc_html_e( 'AI note', 'aggregate-it' ); ?></label></th>
-				<td><input name="disclosure" id="disclosure" type="text" class="large-text" value="<?php echo esc_attr( $settings->disclosure() ); ?>" placeholder="<?php esc_attr_e( 'This article was AI-assisted from cited sources.', 'aggregate-it' ); ?>"></td>
-			</tr>
-			<tr>
 				<th><?php esc_html_e( 'Tell search engines instantly', 'aggregate-it' ); ?></th>
 				<td><label><input name="indexnow_enabled" type="checkbox" <?php checked( $settings->indexnow_enabled() ); ?>> <?php esc_html_e( 'Let search engines know right away when an article is published or updated', 'aggregate-it' ); ?></label></td>
 			</tr>
 		</table>
+		</div>
 
+		<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -139,7 +142,9 @@ $has_key = $settings->api_key() !== '';
 				<td><textarea name="keyword_list" id="keyword_list" rows="5" class="large-text" placeholder="<?php esc_attr_e( 'One keyword per line', 'aggregate-it' ); ?>"><?php echo esc_textarea( $keyword_list ); ?></textarea></td>
 			</tr>
 		</table>
+		</div>
 
+		<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -152,7 +157,9 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="processing_interval_minutes" id="processing_interval_minutes" type="number" min="1" class="small-text" value="<?php echo esc_attr( (string) $settings->processing_interval_minutes() ); ?>"></td>
 			</tr>
 		</table>
+		</div>
 
+		<div class="ai-panel ai-narrow">
 		<h2><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -164,6 +171,7 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="feed_dead_after" id="feed_dead_after" type="number" min="1" class="small-text" value="<?php echo esc_attr( (string) $settings->feed_dead_after() ); ?>"></td>
 			</tr>
 		</table>
+		</div>
 
 		<?php submit_button(); ?>
 	</form>
