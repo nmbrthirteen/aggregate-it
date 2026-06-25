@@ -25,6 +25,8 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
 		add_action( 'admin_post_aggregate_it_merge_entities', [ $this, 'handle_merge_entities' ] );
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
+		add_action( 'admin_post_aggregate_it_retry_article', [ $this, 'handle_retry_article' ] );
+		add_action( 'admin_post_aggregate_it_retry_failed', [ $this, 'handle_retry_failed' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
 	}
 
@@ -142,11 +144,23 @@ final class Admin {
 	}
 
 	public function render_articles(): void {
+		// phpcs:disable WordPress.Security.NonceVerification
 		$per_page = 30;
-		$paged    = max( 1, (int) ( $_GET['paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification
-		$items    = $this->plugin->items();
-		$rows     = $items->list_detailed( $per_page, ( $paged - 1 ) * $per_page );
-		$total    = $items->total();
+		$paged    = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+		$status   = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification
+
+		$items = $this->plugin->items();
+		$rows  = $items->list_detailed( $status ?: null, $per_page, ( $paged - 1 ) * $per_page );
+		$total = $items->count_filtered( $status ?: null );
+
+		$counts = [
+			''           => $items->count_filtered( null ),
+			'published'  => $items->count_filtered( 'published' ),
+			'processing' => $items->count_filtered( 'processing' ),
+			'skipped'    => $items->count_filtered( 'skipped' ),
+			'failed'     => $items->count_filtered( 'failed' ),
+		];
 
 		$feeds = [];
 		foreach ( $this->plugin->sources()->all() as $source ) {
@@ -154,6 +168,27 @@ final class Admin {
 		}
 
 		require AGGREGATE_IT_PATH . 'src/Admin/views/articles.php';
+	}
+
+	public function handle_retry_article(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_retry_article_' . $id );
+
+		$this->plugin->items()->requeue( $id );
+		set_transient( 'aggregate_it_force_run', 1, 60 );
+		do_action( 'aggregate_it_dispatch_queue' );
+
+		$this->redirect( self::SLUG . '-articles', 'retried' );
+	}
+
+	public function handle_retry_failed(): void {
+		$this->guard( 'aggregate_it_retry_failed' );
+
+		$this->plugin->items()->requeue_failed();
+		set_transient( 'aggregate_it_force_run', 1, 60 );
+		do_action( 'aggregate_it_dispatch_queue' );
+
+		$this->redirect( self::SLUG . '-articles', 'retried' );
 	}
 
 	public function render_sources(): void {

@@ -11,8 +11,19 @@ defined( 'ABSPATH' ) || exit;
  * @var int                 $total
  * @var int                 $paged
  * @var int                 $per_page
+ * @var string              $status
+ * @var array<string,int>   $counts
  * @var array<int,string>   $feeds
  */
+
+$post_action = esc_url( admin_url( 'admin-post.php' ) );
+$tabs        = [
+	''           => __( 'All', 'aggregate-it' ),
+	'published'  => __( 'Published', 'aggregate-it' ),
+	'processing' => __( 'Being processed', 'aggregate-it' ),
+	'skipped'    => __( 'Skipped', 'aggregate-it' ),
+	'failed'     => __( 'Failed', 'aggregate-it' ),
+];
 
 $status_label = static function ( object $row, array $flags ): array {
 	if ( $row->state === 'dead_letter' ) {
@@ -34,11 +45,38 @@ $status_label = static function ( object $row, array $flags ): array {
 
 $last_page = max( 1, (int) ceil( $total / $per_page ) );
 $base      = admin_url( 'admin.php?page=aggregate-it-articles' );
+if ( $status !== '' ) {
+	$base = add_query_arg( 'status', $status, $base );
+}
+$notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Articles', 'aggregate-it' ); ?></h1>
+	<h1 class="wp-heading-inline"><?php esc_html_e( 'Articles', 'aggregate-it' ); ?></h1>
 
-	<table class="widefat striped">
+	<?php if ( ! empty( $counts['failed'] ) ) : ?>
+		<form method="post" action="<?php echo $post_action; ?>" style="display:inline-block;margin-left:10px;">
+			<input type="hidden" name="action" value="aggregate_it_retry_failed">
+			<?php wp_nonce_field( 'aggregate_it_retry_failed' ); ?>
+			<button class="button"><?php esc_html_e( 'Retry all failed', 'aggregate-it' ); ?></button>
+		</form>
+	<?php endif; ?>
+
+	<?php if ( $notice === 'retried' ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Sent back to be processed again.', 'aggregate-it' ); ?></p></div>
+	<?php endif; ?>
+
+	<ul class="subsubsub">
+		<?php foreach ( $tabs as $key => $label ) : ?>
+			<?php $url = $key === '' ? admin_url( 'admin.php?page=aggregate-it-articles' ) : add_query_arg( 'status', $key, admin_url( 'admin.php?page=aggregate-it-articles' ) ); ?>
+			<li>
+				<a href="<?php echo esc_url( $url ); ?>" class="<?php echo $status === $key ? 'current' : ''; ?>">
+					<?php echo esc_html( $label ); ?> <span class="count">(<?php echo (int) ( $counts[ $key ] ?? 0 ); ?>)</span>
+				</a><?php echo $key !== 'failed' ? ' |' : ''; ?>
+			</li>
+		<?php endforeach; ?>
+	</ul>
+
+	<table class="widefat striped" style="clear:both;">
 		<thead>
 			<tr>
 				<th><?php esc_html_e( 'Article', 'aggregate-it' ); ?></th>
@@ -71,8 +109,16 @@ $base      = admin_url( 'admin.php?page=aggregate-it-articles' );
 					</td>
 					<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
 					<td><span class="ai-state <?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
-						<?php if ( $row->state === 'dead_letter' && $row->last_error ) : ?>
-							<div style="color:#b32d2e;font-size:12px;"><?php echo esc_html( $row->last_error ); ?></div>
+						<?php if ( $row->state === 'dead_letter' ) : ?>
+							<?php if ( $row->last_error ) : ?>
+								<div style="color:#b32d2e;font-size:12px;"><?php echo esc_html( $row->last_error ); ?></div>
+							<?php endif; ?>
+							<form method="post" action="<?php echo $post_action; ?>" style="margin-top:4px;">
+								<input type="hidden" name="action" value="aggregate_it_retry_article">
+								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
+								<?php wp_nonce_field( 'aggregate_it_retry_article_' . (int) $row->id ); ?>
+								<button class="button button-small"><?php esc_html_e( 'Retry', 'aggregate-it' ); ?></button>
+							</form>
 						<?php endif; ?>
 					</td>
 					<td>

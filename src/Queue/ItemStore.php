@@ -247,18 +247,65 @@ final class ItemStore {
 		) ?: [];
 	}
 
-	/** @return object[] full rows for the Articles admin list */
-	public function list_detailed( int $limit, int $offset ): array {
+	/** @return object[] full rows for the Articles admin list (optionally filtered) */
+	public function list_detailed( ?string $status, int $limit, int $offset ): array {
 		global $wpdb;
 		$table = $this->table();
+		[ $where, $params ] = $this->where_for( $status );
+		$params[] = $limit;
+		$params[] = $offset;
+
 		return $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT id, source_id, guid, url, state, post_id, flags, last_error, created_at, updated_at
-				 FROM {$table} ORDER BY id DESC LIMIT %d OFFSET %d",
-				$limit,
-				$offset
+				 FROM {$table} WHERE {$where} ORDER BY id DESC LIMIT %d OFFSET %d",
+				$params
 			)
 		) ?: [];
+	}
+
+	public function count_filtered( ?string $status ): int {
+		global $wpdb;
+		$table = $this->table();
+		[ $where, $params ] = $this->where_for( $status );
+
+		if ( ! $params ) {
+			return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" ); // phpcs:ignore WordPress.DB.PreparedSQL
+		}
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE {$where}", $params ) );
+	}
+
+	/** Reset every failed item so it runs again. */
+	public function requeue_failed(): int {
+		global $wpdb;
+		$table = $this->table();
+		return (int) $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET state = %s, attempts = 0, last_error = NULL, claim_token = NULL, next_attempt_at = %s, updated_at = %s
+				 WHERE state = %s",
+				Schema::STATE_FETCHED,
+				$this->utc_now(),
+				$this->utc_now(),
+				Schema::STATE_DEAD_LETTER
+			)
+		);
+	}
+
+	/** @return array{0:string,1:array<int,mixed>} WHERE clause + params for a filter */
+	private function where_for( ?string $status ): array {
+		$suppressed = '%"suppressed":%';
+		switch ( $status ) {
+			case 'failed':
+				return [ 'state = %s', [ Schema::STATE_DEAD_LETTER ] ];
+			case 'processing':
+				return [ 'state NOT IN ( %s, %s )', [ Schema::STATE_PUBLISHED, Schema::STATE_DEAD_LETTER ] ];
+			case 'published':
+				return [ 'state = %s AND COALESCE( flags, %s ) NOT LIKE %s', [ Schema::STATE_PUBLISHED, '', $suppressed ] ];
+			case 'skipped':
+				return [ 'state = %s AND flags LIKE %s', [ Schema::STATE_PUBLISHED, $suppressed ] ];
+			default:
+				return [ '1 = 1', [] ];
+		}
 	}
 
 	private function update( int $id, array $data ): void {
