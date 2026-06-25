@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.distignore
+build
+bin
+tests
+docs
+node_modules
+composer.lock
+phpunit.xml.dist
+*.md
+aggregate-it.zip
