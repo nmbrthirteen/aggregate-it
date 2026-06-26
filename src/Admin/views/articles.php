@@ -27,7 +27,7 @@ $tabs        = [
 
 $status_label = static function ( object $row, array $flags ): array {
 	if ( $row->state === 'dead_letter' ) {
-		return [ 'Failed', 'ai-state--dead_letter' ];
+		return [ __( 'Failed', 'aggregate-it' ), 'ai-state--dead_letter' ];
 	}
 	if ( $row->state === 'published' ) {
 		if ( ! empty( $flags['suppressed'] ) ) {
@@ -43,12 +43,23 @@ $status_label = static function ( object $row, array $flags ): array {
 	return [ __( 'Being processed', 'aggregate-it' ), '' ];
 };
 
+$action_link = static function ( string $action, int $id ) {
+	return esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=' . $action . '&id=' . $id ), $action . '_' . $id ) );
+};
+
 $last_page = max( 1, (int) ceil( $total / $per_page ) );
 $base      = admin_url( 'admin.php?page=aggregate-it-articles' );
 if ( $status !== '' ) {
 	$base = add_query_arg( 'status', $status, $base );
 }
-$notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+$notice  = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+$notices = [
+	'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
+	'deleted'         => __( 'Article removed.', 'aggregate-it' ),
+	'image_refreshed' => __( 'Image refreshed. Check the post.', 'aggregate-it' ),
+	'rewritten'       => __( 'Rewritten. Check the post.', 'aggregate-it' ),
+	'bulk_done'       => __( 'Done.', 'aggregate-it' ),
+];
 ?>
 <div class="wrap aggregate-it">
 	<div class="ai-head">
@@ -64,14 +75,6 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 		<?php endif; ?>
 	</div>
 
-	<?php
-	$notices = [
-		'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
-		'deleted'         => __( 'Article removed.', 'aggregate-it' ),
-		'image_refreshed' => __( 'Image refreshed. Check the post.', 'aggregate-it' ),
-		'rewritten'       => __( 'Rewritten. Check the post.', 'aggregate-it' ),
-	];
-	?>
 	<?php if ( isset( $notices[ $notice ] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
 	<?php endif; ?>
@@ -87,88 +90,89 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 		<?php endforeach; ?>
 	</ul>
 
-	<div class="ai-panel">
-	<table class="widefat striped" style="clear:both;">
-		<thead>
-			<tr>
-				<th><?php esc_html_e( 'Article', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'From feed', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Published post', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Imported', 'aggregate-it' ); ?></th>
-				<th></th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php if ( ! $rows ) : ?>
-				<tr><td colspan="6"><em><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></em></td></tr>
-			<?php endif; ?>
-			<?php foreach ( $rows as $row ) : ?>
-				<?php
-				$flags    = (array) Json::decode( $row->flags ?? null, [] );
-				$title    = (string) ( $flags['title'] ?? '' );
-				$title    = $title !== '' ? $title : '(' . esc_html__( 'untitled', 'aggregate-it' ) . ')';
-				[ $label, $class ] = $status_label( $row, $flags );
-				$post_id  = (int) ( $row->post_id ?? 0 );
-				?>
+	<div class="ai-panel" style="clear:both;">
+	<form method="post" action="<?php echo $post_action; ?>" id="aggregate-it-articles" onsubmit="return aiBulkConfirm(this);">
+		<input type="hidden" name="action" value="aggregate_it_bulk_articles">
+		<?php wp_nonce_field( 'aggregate_it_bulk_articles' ); ?>
+
+		<div class="tablenav top">
+			<div class="alignleft actions bulkactions">
+				<select name="bulk_action">
+					<option value="-1"><?php esc_html_e( 'Bulk actions', 'aggregate-it' ); ?></option>
+					<option value="publish"><?php esc_html_e( 'Publish', 'aggregate-it' ); ?></option>
+					<option value="draft"><?php esc_html_e( 'Move to draft', 'aggregate-it' ); ?></option>
+					<option value="rewrite"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></option>
+					<option value="delete"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></option>
+				</select>
+				<button type="submit" class="button"><?php esc_html_e( 'Apply', 'aggregate-it' ); ?></button>
+			</div>
+		</div>
+
+		<table class="widefat striped">
+			<thead>
 				<tr>
-					<td>
-						<?php if ( $row->url ) : ?>
-							<a href="<?php echo esc_url( $row->url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $title ); ?></a>
-						<?php else : ?>
-							<?php echo esc_html( $title ); ?>
-						<?php endif; ?>
-						<div class="ai-muted">#<?php echo (int) $row->id; ?></div>
-					</td>
-					<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
-					<td><span class="ai-state <?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
-						<?php if ( $row->state === 'dead_letter' ) : ?>
-							<?php if ( $row->last_error ) : ?>
-								<div class="ai-muted"><?php echo esc_html( $row->last_error ); ?></div>
-							<?php endif; ?>
-							<form method="post" action="<?php echo $post_action; ?>">
-								<input type="hidden" name="action" value="aggregate_it_retry_article">
-								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
-								<?php wp_nonce_field( 'aggregate_it_retry_article_' . (int) $row->id ); ?>
-								<button class="button button-small"><?php esc_html_e( 'Retry', 'aggregate-it' ); ?></button>
-							</form>
-						<?php endif; ?>
-					</td>
-					<td>
-						<?php if ( $post_id && get_post( $post_id ) ) : ?>
-							<a href="<?php echo esc_url( (string) get_permalink( $post_id ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
-							&nbsp;·&nbsp;<a href="<?php echo esc_url( (string) get_edit_post_link( $post_id ) ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
-						<?php else : ?>
-							—
-						<?php endif; ?>
-					</td>
-					<td><?php echo esc_html( $row->created_at ); ?></td>
-					<td class="ai-row-actions ai-inline">
-						<?php if ( $post_id && get_post( $post_id ) ) : ?>
-							<form method="post" action="<?php echo $post_action; ?>">
-								<input type="hidden" name="action" value="aggregate_it_rewrite_article">
-								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
-								<?php wp_nonce_field( 'aggregate_it_rewrite_article_' . (int) $row->id ); ?>
-								<button class="button button-small"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></button>
-							</form>
-							<form method="post" action="<?php echo $post_action; ?>">
-								<input type="hidden" name="action" value="aggregate_it_refresh_image">
-								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
-								<?php wp_nonce_field( 'aggregate_it_refresh_image_' . (int) $row->id ); ?>
-								<button class="button button-small"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></button>
-							</form>
-						<?php endif; ?>
-						<form method="post" action="<?php echo $post_action; ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');">
-							<input type="hidden" name="action" value="aggregate_it_delete_article">
-							<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
-							<?php wp_nonce_field( 'aggregate_it_delete_article_' . (int) $row->id ); ?>
-							<button class="button button-small"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></button>
-						</form>
-					</td>
+					<td class="manage-column check-column"><input type="checkbox" id="ai-cb-all"></td>
+					<th><?php esc_html_e( 'Article', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'From feed', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Published post', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Imported', 'aggregate-it' ); ?></th>
+					<th></th>
 				</tr>
-			<?php endforeach; ?>
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				<?php if ( ! $rows ) : ?>
+					<tr><td colspan="7"><em><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></em></td></tr>
+				<?php endif; ?>
+				<?php foreach ( $rows as $row ) : ?>
+					<?php
+					$flags = (array) Json::decode( $row->flags ?? null, [] );
+					$title = (string) ( $flags['title'] ?? '' );
+					$title = $title !== '' ? $title : '(' . esc_html__( 'untitled', 'aggregate-it' ) . ')';
+					[ $label, $class ] = $status_label( $row, $flags );
+					$post_id = (int) ( $row->post_id ?? 0 );
+					$has_post = $post_id && get_post( $post_id );
+					?>
+					<tr>
+						<th scope="row" class="check-column"><input type="checkbox" name="ids[]" value="<?php echo (int) $row->id; ?>"></th>
+						<td>
+							<?php if ( $row->url ) : ?>
+								<a href="<?php echo esc_url( $row->url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $title ); ?></a>
+							<?php else : ?>
+								<?php echo esc_html( $title ); ?>
+							<?php endif; ?>
+							<div class="ai-muted">#<?php echo (int) $row->id; ?></div>
+						</td>
+						<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
+						<td><span class="ai-state <?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
+							<?php if ( $row->state === 'dead_letter' ) : ?>
+								<?php if ( $row->last_error ) : ?>
+									<div class="ai-muted"><?php echo esc_html( $row->last_error ); ?></div>
+								<?php endif; ?>
+								<div><a class="button button-small" href="<?php echo $action_link( 'aggregate_it_retry_article', (int) $row->id ); ?>"><?php esc_html_e( 'Retry', 'aggregate-it' ); ?></a></div>
+							<?php endif; ?>
+						</td>
+						<td>
+							<?php if ( $has_post ) : ?>
+								<a href="<?php echo esc_url( (string) get_permalink( $post_id ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
+								&nbsp;·&nbsp;<a href="<?php echo esc_url( (string) get_edit_post_link( $post_id ) ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
+							<?php else : ?>
+								—
+							<?php endif; ?>
+						</td>
+						<td><?php echo esc_html( $row->created_at ); ?></td>
+						<td class="ai-row-actions ai-inline">
+							<?php if ( $has_post ) : ?>
+								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_rewrite_article', (int) $row->id ); ?>"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></a>
+								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_refresh_image', (int) $row->id ); ?>"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></a>
+							<?php endif; ?>
+							<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_delete_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	</form>
 
 	<?php if ( $last_page > 1 ) : ?>
 		<p class="ai-inline">
@@ -183,3 +187,19 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 	<?php endif; ?>
 	</div>
 </div>
+<script>
+( function () {
+	var all = document.getElementById( 'ai-cb-all' );
+	var form = document.getElementById( 'aggregate-it-articles' );
+	if ( all && form ) {
+		all.addEventListener( 'change', function ( e ) {
+			form.querySelectorAll( 'input[name="ids[]"]' ).forEach( function ( c ) { c.checked = e.target.checked; } );
+		} );
+	}
+	window.aiBulkConfirm = function ( f ) {
+		if ( f.bulk_action.value === '-1' ) { return false; }
+		if ( f.bulk_action.value === 'delete' ) { return confirm( '<?php echo esc_js( __( 'Delete the selected articles? Their posts move to Trash.', 'aggregate-it' ) ); ?>' ); }
+		return true;
+	};
+} )();
+</script>

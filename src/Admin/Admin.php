@@ -36,6 +36,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_delete_article', [ $this, 'handle_delete_article' ] );
 		add_action( 'admin_post_aggregate_it_refresh_image', [ $this, 'handle_refresh_image' ] );
 		add_action( 'admin_post_aggregate_it_rewrite_article', [ $this, 'handle_rewrite_article' ] );
+		add_action( 'admin_post_aggregate_it_bulk_articles', [ $this, 'handle_bulk_articles' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
 	}
 
@@ -241,6 +242,56 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'rewritten' );
+	}
+
+	public function handle_bulk_articles(): void {
+		$this->guard( 'aggregate_it_bulk_articles' );
+
+		$action = sanitize_key( wp_unslash( $_POST['bulk_action'] ?? '' ) );
+		$ids    = array_slice( array_values( array_filter( array_map( 'intval', (array) ( $_POST['ids'] ?? [] ) ) ) ), 0, 30 );
+
+		if ( ! $ids || ! in_array( $action, [ 'delete', 'publish', 'draft', 'rewrite' ], true ) ) {
+			$this->redirect( self::SLUG . '-articles', '' );
+		}
+
+		$items  = $this->plugin->items();
+		$reproc = $action === 'rewrite'
+			? new Reprocessor( new Rewriter( $this->plugin->providers(), $this->plugin->settings() ), new Seo( $this->plugin->settings(), new SchemaGraph() ) )
+			: null;
+
+		foreach ( $ids as $id ) {
+			$item = $items->find( $id );
+			if ( ! $item ) {
+				continue;
+			}
+			$post_id = (int) ( $item->post_id ?? 0 );
+
+			switch ( $action ) {
+				case 'delete':
+					if ( $post_id ) {
+						wp_delete_post( $post_id );
+					}
+					$items->delete( $id );
+					break;
+				case 'publish':
+					if ( $post_id ) {
+						wp_update_post( [ 'ID' => $post_id, 'post_status' => 'publish' ] );
+					}
+					break;
+				case 'draft':
+					if ( $post_id ) {
+						wp_update_post( [ 'ID' => $post_id, 'post_status' => 'draft' ] );
+					}
+					break;
+				case 'rewrite':
+					if ( $post_id && $reproc ) {
+						$reproc->reprocess( $post_id );
+					}
+					break;
+			}
+		}
+
+		$this->redirect( self::SLUG . '-articles', 'bulk_done' );
 	}
 
 	public function render_sources(): void {
