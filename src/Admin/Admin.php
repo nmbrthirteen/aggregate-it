@@ -28,6 +28,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_import_now', [ $this, 'handle_import_now' ] );
 		add_action( 'admin_post_aggregate_it_import_opml', [ $this, 'handle_import_opml' ] );
 		add_action( 'admin_post_aggregate_it_save_rule', [ $this, 'handle_save_rule' ] );
+		add_action( 'admin_post_aggregate_it_save_fields', [ $this, 'handle_save_fields' ] );
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
 		add_action( 'admin_post_aggregate_it_merge_entities', [ $this, 'handle_merge_entities' ] );
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
@@ -416,6 +417,17 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-entities', 'invalid' );
+	}
+
+	public function handle_save_fields(): void {
+		$this->guard( 'aggregate_it_save_fields' );
+
+		$index  = (int) ( $_POST['index'] ?? -1 );
+		$raw    = sanitize_text_field( wp_unslash( $_POST['fields'] ?? '' ) );
+		$fields = array_values( array_filter( array_map( 'trim', explode( ',', $raw ) ) ) );
+
+		$this->plugin->rules()->set_fields( $index, $fields );
+		$this->redirect( self::SLUG . '-entities', 'saved' );
 	}
 
 	private function guess_schema( string $type ): string {

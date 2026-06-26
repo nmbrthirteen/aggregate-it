@@ -2,6 +2,7 @@
 
 namespace AggregateIt\Entity;
 
+use AggregateIt\Ai\ProviderFactory;
 use AggregateIt\Research\ResearchProvider;
 use AggregateIt\Settings;
 
@@ -15,7 +16,65 @@ defined( 'ABSPATH' ) || exit;
  */
 final class EntityResearcher {
 
-	public function __construct( private Settings $settings ) {}
+	public function __construct(
+		private Settings $settings,
+		private ProviderFactory $providers
+	) {}
+
+	/**
+	 * Fill the plain field labels the user asked for (Founded, Industry, Website…) from
+	 * the article and well-known facts. Returns label => value, dropping blanks. One cheap
+	 * AI call, only when the content type has fields and a new entity is created.
+	 *
+	 * @param array<string,mixed> $rule
+	 * @return array<string,string>
+	 */
+	public function fields( array $rule, string $name, string $type, string $context ): array {
+		$labels = array_values( array_filter( array_map( 'trim', (array) ( $rule['fields'] ?? [] ) ) ) );
+		if ( ! $labels ) {
+			return [];
+		}
+
+		$keys  = [];
+		$props = [];
+		foreach ( $labels as $label ) {
+			$key            = sanitize_key( str_replace( ' ', '_', $label ) );
+			if ( $key === '' ) {
+				continue;
+			}
+			$keys[ $key ]   = $label;
+			$props[ $key ]  = [ 'type' => 'string' ];
+		}
+		if ( ! $props ) {
+			return [];
+		}
+
+		$prompt = sprintf(
+			"For the %s \"%s\", fill in these details from the article and well-known facts. "
+			. "Leave a field empty if you are not confident — do not guess. Fields: %s.\n\nARTICLE:\n%s",
+			$type !== '' ? $type : 'subject',
+			$name,
+			implode( ', ', $labels ),
+			$context
+		);
+
+		$schema = [ 'type' => 'object', 'additionalProperties' => false, 'properties' => $props ];
+
+		try {
+			$result = $this->providers->get()->structured( $prompt, $schema );
+		} catch ( \Throwable $e ) {
+			return [];
+		}
+
+		$out = [];
+		foreach ( $keys as $key => $label ) {
+			$value = trim( (string) ( $result['result'][ $key ] ?? '' ) );
+			if ( $value !== '' ) {
+				$out[ $label ] = $value;
+			}
+		}
+		return $out;
+	}
 
 	/**
 	 * @param array<string,mixed> $rule

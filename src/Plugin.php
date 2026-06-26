@@ -102,7 +102,7 @@ final class Plugin {
 			new EntityStage(
 				$this->rules,
 				new EntityResolver( $this->entities ),
-				new EntityResearcher( $this->settings ),
+				new EntityResearcher( $this->settings, $this->providers ),
 				new EntityLinker(),
 				$this->entities
 			)

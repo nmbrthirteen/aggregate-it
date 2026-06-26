@@ -72,6 +72,7 @@ final class EntityStage implements Stage {
 
 			if ( $decision['action'] === 'create' ) {
 				$entity_id = $this->repo->create( $rule['target_cpt'], $name, $this->researcher->research( $rule, $name, $type, $content, $item->url, $desc ) );
+				$this->repo->set_fields( $entity_id, $this->researcher->fields( $rule, $name, $type, $content ) );
 			} else {
 				$entity_id = (int) $decision['entity_id'];
 				// Delegate the news into an existing hub: fill it in if it's still a stub.

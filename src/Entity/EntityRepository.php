@@ -86,6 +86,13 @@ final class EntityRepository {
 		return (bool) get_post_meta( $id, '_ai_is_stub', true );
 	}
 
+	/** @param array<string,string> $fields label => value */
+	public function set_fields( int $id, array $fields ): void {
+		if ( $fields ) {
+			update_post_meta( $id, '_ai_fields', $fields );
+		}
+	}
+
 	/** Fill a stub hub with a real description from the news, then mark it no longer a stub. */
 	public function enrich( int $id, string $description ): void {
 		$description = trim( $description );

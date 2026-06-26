@@ -39,13 +39,14 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
 
-	<div class="ai-panel ai-narrow">
+	<div class="ai-panel">
 		<h2><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></h2>
 		<table class="widefat striped">
 			<thead><tr>
 				<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Auto-linking', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Fields the AI fills in', 'aggregate-it' ); ?></th>
 				<th></th>
 			</tr></thead>
 			<tbody>
@@ -62,6 +63,23 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 								<span class="ai-state ai-state--published"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
 							<?php else : ?>
 								<span class="ai-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
+							<?php endif; ?>
+						</td>
+						<td>
+							<?php if ( $on ) : ?>
+								<?php
+								$ridx       = (int) $by_target[ $slug ]['index'];
+								$fields_csv = implode( ', ', (array) ( $all[ $ridx ]['fields'] ?? [] ) );
+								?>
+								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
+									<input type="hidden" name="action" value="aggregate_it_save_fields">
+									<input type="hidden" name="index" value="<?php echo $ridx; ?>">
+									<?php wp_nonce_field( 'aggregate_it_save_fields' ); ?>
+									<input type="text" name="fields" value="<?php echo esc_attr( $fields_csv ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Founded, Industry, Website', 'aggregate-it' ); ?>">
+									<button class="button button-small"><?php esc_html_e( 'Save', 'aggregate-it' ); ?></button>
+								</form>
+							<?php else : ?>
+								<span class="ai-muted">—</span>
 							<?php endif; ?>
 						</td>
 						<td>

@@ -28,18 +28,34 @@ final class HubRenderer {
 			return $content;
 		}
 
-		$posts = $this->related_posts( get_queried_object_id() );
-		if ( ! $posts ) {
-			return $content;
+		$id      = get_queried_object_id();
+		$content = $this->details_table( $id ) . $content;
+
+		$posts = $this->related_posts( $id );
+		if ( $posts ) {
+			$list = '<section class="aggregate-it-related"><h2>' . esc_html__( 'Related coverage', 'aggregate-it' ) . '</h2><ul>';
+			foreach ( $posts as $post_id ) {
+				$list .= '<li><a href="' . esc_url( get_permalink( $post_id ) ) . '">' . esc_html( get_the_title( $post_id ) ) . '</a></li>';
+			}
+			$list   .= '</ul></section>';
+			$content = $content . $list;
 		}
 
-		$list = '<section class="aggregate-it-related"><h2>' . esc_html__( 'Related coverage', 'aggregate-it' ) . '</h2><ul>';
-		foreach ( $posts as $post_id ) {
-			$list .= '<li><a href="' . esc_url( get_permalink( $post_id ) ) . '">' . esc_html( get_the_title( $post_id ) ) . '</a></li>';
-		}
-		$list .= '</ul></section>';
+		return $content;
+	}
 
-		return $content . $list;
+	private function details_table( int $id ): string {
+		$fields = get_post_meta( $id, '_ai_fields', true );
+		if ( ! is_array( $fields ) || ! $fields ) {
+			return '';
+		}
+
+		$rows = '';
+		foreach ( $fields as $label => $value ) {
+			$rows .= '<tr><th scope="row">' . esc_html( (string) $label ) . '</th><td>' . esc_html( (string) $value ) . '</td></tr>';
+		}
+
+		return '<table class="aggregate-it-details">' . $rows . '</table>';
 	}
 
 	public function output_schema(): void {

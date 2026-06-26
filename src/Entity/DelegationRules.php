@@ -56,11 +56,22 @@ final class DelegationRules {
 		update_option( self::OPTION, array_values( $rules ) );
 	}
 
+	/** @param string[] $fields plain field labels the AI should fill (e.g. Founded, Website) */
+	public function set_fields( int $index, array $fields ): void {
+		$rules = $this->all();
+		if ( ! isset( $rules[ $index ] ) ) {
+			return;
+		}
+		$rules[ $index ]['fields'] = array_values( array_filter( array_map( 'sanitize_text_field', $fields ) ) );
+		update_option( self::OPTION, array_values( $rules ) );
+	}
+
 	private function hydrate( array $rule ): array {
 		return wp_parse_args(
 			$rule,
 			[
 				'schema_type' => 'Thing',
+				'fields'      => [],
 				'match'       => [ 'link_threshold' => 92, 'ambiguous_floor' => 75 ],
 				'linking'     => [ 'max_links_per_post' => 5, 'first_mention_only' => true ],
 				'research'    => [ 'enabled' => true, 'max_lookups' => 3 ],
