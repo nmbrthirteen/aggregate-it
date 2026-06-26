@@ -81,6 +81,8 @@ final class EntityStage implements Stage {
 				}
 			}
 
+			$this->repo->add_timeline( $entity_id, $post_id, $desc );
+
 			$resolved[] = [
 				'id'   => $entity_id,
 				'name' => $name,

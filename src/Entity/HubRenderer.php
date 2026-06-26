@@ -31,6 +31,12 @@ final class HubRenderer {
 		$id      = get_queried_object_id();
 		$content = $this->details_table( $id ) . $content;
 
+		$timeline = $this->timeline_section( $id );
+		if ( $timeline !== '' ) {
+			return $content . $timeline;
+		}
+
+		// No timeline yet (older hub): fall back to a plain related-coverage list.
 		$posts = $this->related_posts( $id );
 		if ( $posts ) {
 			$list = '<section class="aggregate-it-related"><h2>' . esc_html__( 'Related coverage', 'aggregate-it' ) . '</h2><ul>';
@@ -42,6 +48,35 @@ final class HubRenderer {
 		}
 
 		return $content;
+	}
+
+	private function timeline_section( int $id ): string {
+		$timeline = get_post_meta( $id, '_ai_timeline', true );
+		if ( ! is_array( $timeline ) || ! $timeline ) {
+			return '';
+		}
+
+		$items = '';
+		foreach ( $timeline as $entry ) {
+			$post_id = (int) ( $entry['post_id'] ?? 0 );
+			if ( ! $post_id || ! get_post( $post_id ) ) {
+				continue;
+			}
+			$date = get_the_date( '', $post_id ) ?: gmdate( get_option( 'date_format' ), strtotime( (string) ( $entry['time'] ?? 'now' ) ) );
+			$note = trim( (string) ( $entry['note'] ?? '' ) );
+
+			$items .= '<li class="aggregate-it-news-item">'
+				. '<span class="aggregate-it-news-date">' . esc_html( $date ) . '</span> '
+				. '<a href="' . esc_url( get_permalink( $post_id ) ) . '">' . esc_html( get_the_title( $post_id ) ) . '</a>'
+				. ( $note !== '' ? '<div class="aggregate-it-news-note">' . esc_html( $note ) . '</div>' : '' )
+				. '</li>';
+		}
+
+		if ( $items === '' ) {
+			return '';
+		}
+
+		return '<section class="aggregate-it-timeline"><h2>' . esc_html__( 'In the news', 'aggregate-it' ) . '</h2><ul>' . $items . '</ul></section>';
 	}
 
 	private function details_table( int $id ): string {

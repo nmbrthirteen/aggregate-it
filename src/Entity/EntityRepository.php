@@ -93,6 +93,27 @@ final class EntityRepository {
 		}
 	}
 
+	/** Record that a post mentioned this entity — builds the hub's "In the news" timeline. */
+	public function add_timeline( int $id, int $post_id, string $note ): void {
+		if ( ! $post_id ) {
+			return;
+		}
+		$timeline = get_post_meta( $id, '_ai_timeline', true );
+		$timeline = is_array( $timeline ) ? $timeline : [];
+
+		foreach ( $timeline as $entry ) {
+			if ( (int) ( $entry['post_id'] ?? 0 ) === $post_id ) {
+				return; // already recorded
+			}
+		}
+
+		array_unshift(
+			$timeline,
+			[ 'post_id' => $post_id, 'note' => $note, 'time' => gmdate( 'Y-m-d H:i:s' ) ]
+		);
+		update_post_meta( $id, '_ai_timeline', array_slice( $timeline, 0, 50 ) );
+	}
+
 	/** Fill a stub hub with a real description from the news, then mark it no longer a stub. */
 	public function enrich( int $id, string $description ): void {
 		$description = trim( $description );
