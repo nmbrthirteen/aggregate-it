@@ -82,6 +82,20 @@ final class EntityRepository {
 		return (int) $post_id;
 	}
 
+	public function is_stub( int $id ): bool {
+		return (bool) get_post_meta( $id, '_ai_is_stub', true );
+	}
+
+	/** Fill a stub hub with a real description from the news, then mark it no longer a stub. */
+	public function enrich( int $id, string $description ): void {
+		$description = trim( $description );
+		if ( $description === '' ) {
+			return;
+		}
+		wp_update_post( [ 'ID' => $id, 'post_content' => '<p>' . esc_html( $description ) . '</p>' ] );
+		update_post_meta( $id, '_ai_is_stub', 0 );
+	}
+
 	public function add_alias( int $id, string $normalized ): void {
 		$aliases = (array) get_post_meta( $id, '_ai_aliases', true );
 		if ( $normalized !== '' && ! in_array( $normalized, $aliases, true ) ) {

@@ -52,6 +52,7 @@ final class EntityStage implements Stage {
 		foreach ( $entities as $entity ) {
 			$name = (string) ( $entity['name'] ?? '' );
 			$type = (string) ( $entity['type'] ?? '' );
+			$desc = (string) ( $entity['description'] ?? '' );
 			$norm = Name::normalize( $name );
 
 			if ( $norm === '' || isset( $seen[ $norm ] ) ) {
@@ -69,9 +70,15 @@ final class EntityStage implements Stage {
 				continue;
 			}
 
-			$entity_id = $decision['action'] === 'create'
-				? $this->repo->create( $rule['target_cpt'], $name, $this->researcher->research( $rule, $name, $type, $content, $item->url ) )
-				: (int) $decision['entity_id'];
+			if ( $decision['action'] === 'create' ) {
+				$entity_id = $this->repo->create( $rule['target_cpt'], $name, $this->researcher->research( $rule, $name, $type, $content, $item->url, $desc ) );
+			} else {
+				$entity_id = (int) $decision['entity_id'];
+				// Delegate the news into an existing hub: fill it in if it's still a stub.
+				if ( $desc !== '' && $this->repo->is_stub( $entity_id ) ) {
+					$this->repo->enrich( $entity_id, $desc );
+				}
+			}
 
 			$resolved[] = [
 				'id'   => $entity_id,

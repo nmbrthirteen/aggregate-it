@@ -21,8 +21,11 @@ final class EntityResearcher {
 	 * @param array<string,mixed> $rule
 	 * @return array{description:string,sameas:string[],citations:string[],schema_type:string,is_stub:bool}
 	 */
-	public function research( array $rule, string $name, string $type, string $context, string $source_url ): array {
+	public function research( array $rule, string $name, string $type, string $context, string $source_url, string $article_description = '' ): array {
 		$schema_type = (string) ( $rule['schema_type'] ?? 'Thing' );
+
+		// Prefer the AI's per-entity description from the article; fall back to a sentence.
+		$description = $article_description !== '' ? $article_description : $this->context_sentence( $name, $context );
 
 		$provider = apply_filters( 'aggregate_it_research_provider', null, $this->settings );
 		if ( ! empty( $rule['research']['enabled'] ) && $provider instanceof ResearchProvider ) {
@@ -30,24 +33,24 @@ final class EntityResearcher {
 			$data = $provider->research( $name, $type, $max );
 
 			$facts      = $data['facts'] ?? [];
-			$desc_parts = array_map( static fn ( $f ) => (string) ( $f['value'] ?? '' ), $facts );
+			$desc_parts = array_filter( array_merge( [ $description ], array_map( static fn ( $f ) => (string) ( $f['value'] ?? '' ), $facts ) ) );
 			$citations  = array_map( static fn ( $f ) => (string) ( $f['source'] ?? '' ), $facts );
 
 			return [
-				'description' => trim( implode( ' ', array_filter( $desc_parts ) ) ),
+				'description' => trim( implode( ' ', $desc_parts ) ),
 				'sameas'      => array_values( array_filter( $data['sameas'] ?? [] ) ),
 				'citations'   => array_values( array_filter( array_merge( $citations, [ $source_url ] ) ) ),
 				'schema_type' => $schema_type,
-				'is_stub'     => true,
+				'is_stub'     => $article_description === '',
 			];
 		}
 
 		return [
-			'description' => $this->context_sentence( $name, $context ),
+			'description' => $description,
 			'sameas'      => [],
 			'citations'   => array_filter( [ $source_url ] ),
 			'schema_type' => $schema_type,
-			'is_stub'     => true,
+			'is_stub'     => $article_description === '',
 		];
 	}
 

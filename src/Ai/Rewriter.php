@@ -33,6 +33,7 @@ final class Rewriter {
 			'Be concise WITHOUT losing information. Shorten by tightening wording and cutting filler, repetition, and throat-clearing — never by removing facts. If a sentence carries a fact, keep the fact; only trim the words around it.',
 			'REMOVE promotional cruft: calls-to-action, "subscribe", affiliate lines, ads, author self-promotion, "read more" links.',
 			'Keep news as news — neutral, factual tone. Do not editorialize. Do not mention sources, the original article, or that this is a rewrite.',
+			'In "entities", list the notable organizations, people, products, and places the article is about (the main subjects, not every passing mention). For each, give its name, a one-word type (company, person, product, place), and a "description": one or two neutral sentences explaining what it is and its role in this story. Keep descriptions factual; do not invent specific figures.',
 			'Return ONLY the structured object.',
 		];
 
@@ -70,8 +71,9 @@ final class Rewriter {
 					'items' => [
 						'type'       => 'object',
 						'properties' => [
-							'name' => [ 'type' => 'string' ],
-							'type' => [ 'type' => 'string' ],
+							'name'        => [ 'type' => 'string' ],
+							'type'        => [ 'type' => 'string' ],
+							'description' => [ 'type' => 'string' ],
 						],
 					],
 				],
