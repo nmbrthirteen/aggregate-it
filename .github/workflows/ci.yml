@@ -28,7 +28,7 @@ jobs:
             | xargs -0 -n1 -P4 php -l > /dev/null
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer update --no-interaction --no-progress --prefer-dist
 
       - name: Run tests
         run: vendor/bin/phpunit --colors=never
