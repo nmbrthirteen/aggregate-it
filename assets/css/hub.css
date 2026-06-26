@@ -1,0 +1,57 @@
+/* Aggregate It — entity hub front-end styles. Neutral + theme-agnostic. */
+.aggregate-it-details {
+	border-collapse: collapse;
+	width: 100%;
+	max-width: 540px;
+	margin: 0 0 1.75em;
+}
+.aggregate-it-details th {
+	text-align: left;
+	vertical-align: top;
+	width: 35%;
+	padding: .55em .8em;
+	color: #50575e;
+	font-weight: 600;
+	border-bottom: 1px solid #e6e6e6;
+}
+.aggregate-it-details td {
+	padding: .55em .8em;
+	border-bottom: 1px solid #e6e6e6;
+}
+
+.aggregate-it-timeline,
+.aggregate-it-related {
+	margin: 2em 0;
+}
+.aggregate-it-timeline > h2,
+.aggregate-it-related > h2 {
+	font-size: 1.15em;
+	margin: 0 0 .85em;
+}
+.aggregate-it-timeline ul,
+.aggregate-it-related ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.aggregate-it-news-item {
+	padding: .8em 0;
+	border-bottom: 1px solid #ededed;
+}
+.aggregate-it-news-item:last-child {
+	border-bottom: 0;
+}
+.aggregate-it-news-date {
+	display: inline-block;
+	min-width: 7.5em;
+	color: #787c82;
+	font-size: .85em;
+}
+.aggregate-it-news-note {
+	color: #50575e;
+	font-size: .92em;
+	margin-top: .3em;
+}
+.aggregate-it-related li {
+	padding: .35em 0;
+}

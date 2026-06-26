@@ -21,6 +21,13 @@ final class HubRenderer {
 	public function register(): void {
 		add_filter( 'the_content', [ $this, 'append_related' ] );
 		add_action( 'wp_head', [ $this, 'output_schema' ], 99 );
+		add_action( 'wp_enqueue_scripts', [ $this, 'styles' ] );
+	}
+
+	public function styles(): void {
+		if ( is_singular( $this->rules->post_types() ) ) {
+			wp_enqueue_style( 'aggregate-it-hub', AGGREGATE_IT_URL . 'assets/css/hub.css', [], AGGREGATE_IT_VERSION );
+		}
 	}
 
 	public function append_related( string $content ): string {

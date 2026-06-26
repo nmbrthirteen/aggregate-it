@@ -490,6 +490,7 @@ final class Admin {
 				'image_mode'             => sanitize_key( wp_unslash( $_POST['image_mode'] ?? 'import' ) ),
 				'image_source'           => sanitize_key( wp_unslash( $_POST['image_source'] ?? 'share' ) ),
 				'indexnow_enabled'       => isset( $_POST['indexnow_enabled'] ),
+				'wikipedia_research'     => isset( $_POST['wikipedia_research'] ),
 				'strategic_mode'         => isset( $_POST['strategic_mode'] ),
 				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),
 				'cluster_window_days'    => max( 1, (int) ( $_POST['cluster_window_days'] ?? 7 ) ),

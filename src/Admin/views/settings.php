@@ -133,6 +133,10 @@ $has_key = $settings->api_key() !== '';
 				<th><?php esc_html_e( 'Tell search engines instantly', 'aggregate-it' ); ?></th>
 				<td><label><input name="indexnow_enabled" type="checkbox" <?php checked( $settings->indexnow_enabled() ); ?>> <?php esc_html_e( 'Let search engines know right away when an article is published or updated', 'aggregate-it' ); ?></label></td>
 			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Wikipedia lookup', 'aggregate-it' ); ?></th>
+				<td><label><input name="wikipedia_research" type="checkbox" <?php checked( $settings->wikipedia_research() ); ?>> <?php esc_html_e( 'Add a short summary and a Wikipedia link to entity pages (companies, people, etc.) when one is found', 'aggregate-it' ); ?></label></td>
+			</tr>
 		</table>
 		</div>
 

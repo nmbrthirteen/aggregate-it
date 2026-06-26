@@ -114,6 +114,10 @@ final class Plugin {
 		( new EntityRegistrar( $this->rules ) )->register();
 		( new HubRenderer( $this->rules, $this->settings ) )->register();
 
+		if ( $this->settings->wikipedia_research() ) {
+			add_filter( 'aggregate_it_research_provider', static fn () => new \AggregateIt\Research\WikipediaProvider() );
+		}
+
 		( new Importer( $this->sources, $this->items, $this->settings ) )->register();
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
