@@ -113,6 +113,18 @@ $has_key = $settings->api_key() !== '';
 				<td><textarea name="writing_instructions" id="writing_instructions" rows="3" class="large-text" placeholder="<?php esc_attr_e( 'Optional. e.g. Friendly and to the point. Use British spelling. Always include a short intro.', 'aggregate-it' ); ?>"><?php echo esc_textarea( $settings->writing_instructions() ); ?></textarea></td>
 			</tr>
 			<tr>
+				<th><label for="article_length"><?php esc_html_e( 'Article length', 'aggregate-it' ); ?></label></th>
+				<td>
+					<select name="article_length" id="article_length">
+						<option value="auto" <?php selected( $settings->article_length(), 'auto' ); ?>><?php esc_html_e( 'As needed (recommended)', 'aggregate-it' ); ?></option>
+						<option value="short" <?php selected( $settings->article_length(), 'short' ); ?>><?php esc_html_e( 'Short (~300 words)', 'aggregate-it' ); ?></option>
+						<option value="medium" <?php selected( $settings->article_length(), 'medium' ); ?>><?php esc_html_e( 'Medium (~600 words)', 'aggregate-it' ); ?></option>
+						<option value="long" <?php selected( $settings->article_length(), 'long' ); ?>><?php esc_html_e( 'Long (~1000 words)', 'aggregate-it' ); ?></option>
+						<option value="match" <?php selected( $settings->article_length(), 'match' ); ?>><?php esc_html_e( 'Match the original', 'aggregate-it' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
 				<th><label for="author_id"><?php esc_html_e( 'Author', 'aggregate-it' ); ?></label></th>
 				<td><?php wp_dropdown_users( [ 'name' => 'author_id', 'id' => 'author_id', 'selected' => $settings->author_id() ] ); ?></td>
 			</tr>

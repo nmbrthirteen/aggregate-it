@@ -41,6 +41,17 @@ final class Rewriter {
 			$rules[] = sprintf( 'Target keyword "%s": include it naturally in the title and first paragraph. Never keyword-stuff.', $target_keyword );
 		}
 
+		$lengths = [
+			'auto'   => 'Let the length follow the facts: long enough to include every fact, and no longer.',
+			'short'  => 'Aim for a short article, about 250-350 words.',
+			'medium' => 'Aim for a medium-length article, about 500-650 words.',
+			'long'   => 'Aim for a longer article, about 900-1100 words; add depth only from the source, never invent.',
+			'match'  => 'Roughly match the length of the source article.',
+		];
+		$length  = $this->settings->article_length();
+		$rules[] = ( $lengths[ $length ] ?? $lengths['auto'] )
+			. ( $length === 'auto' ? '' : ' Treat this as a target, not a hard limit — never drop or shorten facts to hit it.' );
+
 		$custom = $this->settings->writing_instructions();
 		if ( $custom !== '' ) {
 			$rules[] = 'Site owner instructions (follow these, but never at the cost of dropping a fact): ' . $custom;

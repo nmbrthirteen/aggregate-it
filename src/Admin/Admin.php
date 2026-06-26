@@ -500,6 +500,7 @@ final class Admin {
 				'target_post_type'       => sanitize_key( wp_unslash( $_POST['target_post_type'] ?? 'post' ) ),
 				'publish_status'         => sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'publish' ) ),
 				'writing_instructions'   => sanitize_textarea_field( wp_unslash( $_POST['writing_instructions'] ?? '' ) ),
+				'article_length'         => sanitize_key( wp_unslash( $_POST['article_length'] ?? 'auto' ) ),
 				'retention_days'         => max( 0, (int) ( $_POST['retention_days'] ?? 90 ) ),
 				'author_id'              => max( 0, (int) ( $_POST['author_id'] ?? 0 ) ),
 				'daily_spend_cap_usd'    => max( 0, (float) ( $_POST['daily_spend_cap_usd'] ?? 5 ) ),

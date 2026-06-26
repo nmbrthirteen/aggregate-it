@@ -83,6 +83,11 @@ final class Settings {
 		return trim( (string) $this->get( 'writing_instructions', '' ) );
 	}
 
+	public function article_length(): string {
+		$v = (string) $this->get( 'article_length', 'auto' );
+		return in_array( $v, [ 'auto', 'short', 'medium', 'long', 'match' ], true ) ? $v : 'auto';
+	}
+
 	public function retention_days(): int {
 		return max( 0, (int) $this->get( 'retention_days', 90 ) );
 	}
