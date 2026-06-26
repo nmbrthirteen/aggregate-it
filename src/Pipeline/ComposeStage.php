@@ -10,6 +10,7 @@ use AggregateIt\Database\Schema;
 use AggregateIt\Keyword\KeywordStrategy;
 use AggregateIt\Publish\ImageImporter;
 use AggregateIt\Publish\PostFactory;
+use AggregateIt\Publish\RelatedArticles;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Seo\Seo;
 use AggregateIt\Settings;
@@ -33,6 +34,7 @@ final class ComposeStage implements PaidStage {
 		private ClusterRepository $clusters,
 		private PostFactory $posts,
 		private ImageImporter $images,
+		private RelatedArticles $related,
 		private Seo $seo,
 		private VectorStore $vectors,
 		private ItemStore $items,
@@ -77,7 +79,8 @@ final class ComposeStage implements PaidStage {
 		$keyword = $decision['keyword'];
 
 		$cluster_id = $this->clusters->create( $keyword, $this->facts->salient( $content ), $this->settings->cluster_window_days() );
-		$this->vectors->put( 'cluster', $cluster_id, $this->vectors->get( 'item', $item->id ) );
+		$vector     = $this->vectors->get( 'item', $item->id );
+		$this->vectors->put( 'cluster', $cluster_id, $vector );
 		$this->items->set_cluster( $item->id, $cluster_id );
 		$item->cluster_id = $cluster_id;
 
@@ -106,6 +109,8 @@ final class ComposeStage implements PaidStage {
 		$this->clusters->set_canonical_post( $cluster_id, $post_id );
 		$this->items->set_post( $item->id, $post_id );
 		$item->flags['post_id'] = $post_id;
+
+		$this->related->build( $post_id, $cluster_id, $vector );
 
 		return Schema::STATE_ENTITY_LINKED;
 	}

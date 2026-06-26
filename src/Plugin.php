@@ -29,6 +29,7 @@ use AggregateIt\Pipeline\ExtractStage;
 use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Publish\ImageImporter;
 use AggregateIt\Publish\PostFactory;
+use AggregateIt\Publish\RelatedArticles;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Queue\QueueWorker;
 use AggregateIt\Seo\IndexNow;
@@ -90,13 +91,14 @@ final class Plugin {
 		$rewriter     = new Rewriter( $this->providers, $this->settings );
 		$keywords     = new KeywordStrategy( $this->settings );
 		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
+		$related      = new RelatedArticles( $vectors, $cluster_repo, $this->settings );
 		$seo          = new Seo( $this->settings, new SchemaGraph() );
 
 		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items, $this->settings ) );
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(
-			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, new ImageImporter( $this->settings ), $seo, $vectors, $this->items, $this->cost, $this->settings )
+			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, new ImageImporter( $this->settings ), $related, $seo, $vectors, $this->items, $this->cost, $this->settings )
 		);
 		$this->pipeline->register(
 			new EntityStage(
@@ -110,6 +112,7 @@ final class Plugin {
 		$this->pipeline->register_passthroughs();
 
 		$seo->register();
+		$related->register();
 		( new IndexNow( $this->settings ) )->register();
 		( new EntityRegistrar( $this->rules ) )->register();
 		( new HubRenderer( $this->rules, $this->settings ) )->register();

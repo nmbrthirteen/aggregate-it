@@ -149,6 +149,10 @@ $has_key = $settings->api_key() !== '';
 				<th><?php esc_html_e( 'Wikipedia lookup', 'aggregate-it' ); ?></th>
 				<td><label><input name="wikipedia_research" type="checkbox" <?php checked( $settings->wikipedia_research() ); ?>> <?php esc_html_e( 'Add a short summary and a Wikipedia link to entity pages (companies, people, etc.) when one is found', 'aggregate-it' ); ?></label></td>
 			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Related articles', 'aggregate-it' ); ?></th>
+				<td><label><input name="related_articles" type="checkbox" <?php checked( $settings->related_articles() ); ?>> <?php esc_html_e( 'Automatically link each article to your other articles on similar topics', 'aggregate-it' ); ?></label></td>
+			</tr>
 		</table>
 		</div>
 

@@ -3,7 +3,7 @@
  * Plugin Name: Aggregate It
  * Plugin URI:  https://github.com/nmbrthirteen/aggregate-it
  * Description: An SEO content engine that uses RSS as raw material - imports feeds, faithfully rewrites with AI, deduplicates into living topic pages, and auto-builds entity hubs with an internal-link graph.
- * Version:     0.1.17
+ * Version:     0.1.18
  * Author:      Nika Siradze
  * Author URI:  https://nikusha.com
  * Text Domain: aggregate-it
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AGGREGATE_IT_VERSION', '0.1.17' );
+define( 'AGGREGATE_IT_VERSION', '0.1.18' );
 define( 'AGGREGATE_IT_FILE', __FILE__ );
 define( 'AGGREGATE_IT_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AGGREGATE_IT_URL', plugin_dir_url( __FILE__ ) );

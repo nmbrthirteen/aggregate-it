@@ -156,6 +156,10 @@ final class Settings {
 		return (bool) $this->get( 'wikipedia_research', false );
 	}
 
+	public function related_articles(): bool {
+		return (bool) $this->get( 'related_articles', true );
+	}
+
 	public function disclosure(): string {
 		return trim( (string) $this->get( 'disclosure', '' ) );
 	}
