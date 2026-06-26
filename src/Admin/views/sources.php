@@ -18,6 +18,8 @@ $messages = [
 	'deleted'  => __( 'Feed deleted.', 'aggregate-it' ),
 	'imported' => __( 'Checking that feed now.', 'aggregate-it' ),
 	'invalid'  => __( 'Please enter a valid feed address.', 'aggregate-it' ),
+	'opml_added' => __( 'Feeds imported.', 'aggregate-it' ),
+	'opml_none'  => __( 'No new feeds found in that OPML.', 'aggregate-it' ),
 ];
 ?>
 <div class="wrap aggregate-it">
@@ -80,6 +82,18 @@ $messages = [
 						value="<?php echo esc_attr( $editing ? implode( ', ', $editing->tags() ) : '' ); ?>"
 						placeholder="<?php esc_attr_e( 'comma separated', 'aggregate-it' ); ?>"></td>
 				</tr>
+				<tr>
+					<th><label for="ai-include"><?php esc_html_e( 'Only import if it mentions', 'aggregate-it' ); ?></label></th>
+					<td><input name="include_keywords" id="ai-include" type="text" class="regular-text"
+						value="<?php echo esc_attr( (string) ( $editing->settings['include_keywords'] ?? '' ) ); ?>"
+						placeholder="<?php esc_attr_e( 'comma separated — leave blank for all', 'aggregate-it' ); ?>"></td>
+				</tr>
+				<tr>
+					<th><label for="ai-exclude"><?php esc_html_e( 'Skip if it mentions', 'aggregate-it' ); ?></label></th>
+					<td><input name="exclude_keywords" id="ai-exclude" type="text" class="regular-text"
+						value="<?php echo esc_attr( (string) ( $editing->settings['exclude_keywords'] ?? '' ) ); ?>"
+						placeholder="<?php esc_attr_e( 'comma separated', 'aggregate-it' ); ?>"></td>
+				</tr>
 				<?php $feed_status = $editing ? (string) ( $editing->settings['publish_status'] ?? 'default' ) : 'default'; ?>
 				<tr>
 					<th><label for="ai-publish"><?php esc_html_e( 'Publish as', 'aggregate-it' ); ?></label></th>
@@ -113,6 +127,16 @@ $messages = [
 			</p>
 		</form>
 	</div>
+
+	<details class="ai-panel ai-narrow">
+		<summary style="cursor:pointer;font-weight:600;"><?php esc_html_e( 'Import many feeds at once (OPML)', 'aggregate-it' ); ?></summary>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:12px;">
+			<input type="hidden" name="action" value="aggregate_it_import_opml">
+			<?php wp_nonce_field( 'aggregate_it_import_opml' ); ?>
+			<textarea name="opml" rows="6" class="large-text code" placeholder="<?php esc_attr_e( 'Paste your OPML export here', 'aggregate-it' ); ?>"></textarea>
+			<p><button type="submit" class="button"><?php esc_html_e( 'Import feeds', 'aggregate-it' ); ?></button></p>
+		</form>
+	</details>
 
 	<div class="ai-panel">
 	<table class="widefat striped">

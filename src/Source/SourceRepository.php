@@ -48,6 +48,13 @@ final class SourceRepository {
 		return $row ? Source::from_row( $row ) : null;
 	}
 
+	public function exists_url( string $url ): bool {
+		global $wpdb;
+		return (bool) $wpdb->get_var(
+			$wpdb->prepare( "SELECT id FROM {$this->table()} WHERE url = %s LIMIT 1", $url )
+		);
+	}
+
 	/** @return Source[] */
 	public function all(): array {
 		global $wpdb;

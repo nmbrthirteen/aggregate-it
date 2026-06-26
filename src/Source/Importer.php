@@ -111,7 +111,10 @@ final class Importer {
 	 * @param array<int,array{guid:string,url:string,title:string,content:string}> $entries
 	 */
 	private function ingest( Source $source, array $entries ): int {
+		$include  = $source->include_keywords();
+		$exclude  = $source->exclude_keywords();
 		$imported = 0;
+
 		foreach ( $entries as $entry ) {
 			if ( $imported >= self::MAX_PER_FEED ) {
 				break;
@@ -120,6 +123,9 @@ final class Importer {
 				continue;
 			}
 			if ( $this->items->exists_hash( hash( 'sha256', $entry['content'] ) ) ) {
+				continue;
+			}
+			if ( ! $this->keywords_allow( $entry, $include, $exclude ) ) {
 				continue;
 			}
 
@@ -192,6 +198,33 @@ final class Importer {
 			];
 		}
 		return $entries;
+	}
+
+	/**
+	 * @param array{title:string,content:string} $entry
+	 * @param string[]                            $include
+	 * @param string[]                            $exclude
+	 */
+	private function keywords_allow( array $entry, array $include, array $exclude ): bool {
+		if ( ! $include && ! $exclude ) {
+			return true;
+		}
+		$haystack = strtolower( wp_strip_all_tags( $entry['title'] . ' ' . $entry['content'] ) );
+
+		foreach ( $exclude as $word ) {
+			if ( $word !== '' && strpos( $haystack, $word ) !== false ) {
+				return false;
+			}
+		}
+		if ( $include ) {
+			foreach ( $include as $word ) {
+				if ( $word !== '' && strpos( $haystack, $word ) !== false ) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return true;
 	}
 
 	private function item_image( \SimplePie_Item $item ): string {

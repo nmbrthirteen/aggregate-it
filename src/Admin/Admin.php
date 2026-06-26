@@ -2,8 +2,12 @@
 
 namespace AggregateIt\Admin;
 
+use AggregateIt\Ai\Rewriter;
 use AggregateIt\Plugin;
 use AggregateIt\Publish\ImageImporter;
+use AggregateIt\Publish\Reprocessor;
+use AggregateIt\Seo\SchemaGraph;
+use AggregateIt\Seo\Seo;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,6 +26,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_save_source', [ $this, 'handle_save_source' ] );
 		add_action( 'admin_post_aggregate_it_delete_source', [ $this, 'handle_delete_source' ] );
 		add_action( 'admin_post_aggregate_it_import_now', [ $this, 'handle_import_now' ] );
+		add_action( 'admin_post_aggregate_it_import_opml', [ $this, 'handle_import_opml' ] );
 		add_action( 'admin_post_aggregate_it_save_rule', [ $this, 'handle_save_rule' ] );
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
 		add_action( 'admin_post_aggregate_it_merge_entities', [ $this, 'handle_merge_entities' ] );
@@ -30,6 +35,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_retry_failed', [ $this, 'handle_retry_failed' ] );
 		add_action( 'admin_post_aggregate_it_delete_article', [ $this, 'handle_delete_article' ] );
 		add_action( 'admin_post_aggregate_it_refresh_image', [ $this, 'handle_refresh_image' ] );
+		add_action( 'admin_post_aggregate_it_rewrite_article', [ $this, 'handle_rewrite_article' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
 	}
 
@@ -223,6 +229,20 @@ final class Admin {
 		$this->redirect( self::SLUG . '-articles', 'image_refreshed' );
 	}
 
+	public function handle_rewrite_article(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_rewrite_article_' . $id );
+
+		$item = $this->plugin->items()->find( $id );
+		if ( $item && ! empty( $item->post_id ) ) {
+			$rewriter = new Rewriter( $this->plugin->providers(), $this->plugin->settings() );
+			$seo      = new Seo( $this->plugin->settings(), new SchemaGraph() );
+			( new Reprocessor( $rewriter, $seo ) )->reprocess( (int) $item->post_id );
+		}
+
+		$this->redirect( self::SLUG . '-articles', 'rewritten' );
+	}
+
 	public function render_sources(): void {
 		$sources = $this->plugin->sources()->all();
 		$edit_id = isset( $_GET['edit'] ) ? (int) $_GET['edit'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
@@ -244,6 +264,8 @@ final class Admin {
 		$tags_raw   = sanitize_text_field( wp_unslash( $_POST['tags'] ?? '' ) );
 		$tags       = array_values( array_filter( array_map( 'trim', explode( ',', $tags_raw ) ) ) );
 		$publish    = sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'default' ) );
+		$include    = sanitize_text_field( wp_unslash( $_POST['include_keywords'] ?? '' ) );
+		$exclude    = sanitize_text_field( wp_unslash( $_POST['exclude_keywords'] ?? '' ) );
 
 		if ( $url === '' ) {
 			$this->redirect( self::SLUG . '-sources', 'invalid' );
@@ -254,6 +276,8 @@ final class Admin {
 			'categories'       => $categories,
 			'tags'             => $tags,
 			'publish_status'   => $publish,
+			'include_keywords' => $include,
+			'exclude_keywords' => $exclude,
 		];
 
 		$repo = $this->plugin->sources();
@@ -288,6 +312,33 @@ final class Admin {
 
 		do_action( 'aggregate_it_import_now', $id );
 		$this->redirect( self::SLUG . '-sources', 'imported' );
+	}
+
+	public function handle_import_opml(): void {
+		$this->guard( 'aggregate_it_import_opml' );
+
+		$opml  = (string) wp_unslash( $_POST['opml'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$repo  = $this->plugin->sources();
+		$added = 0;
+
+		$prev = libxml_use_internal_errors( true );
+		$xml  = simplexml_load_string( $opml );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev );
+
+		if ( $xml !== false ) {
+			foreach ( $xml->xpath( '//outline[@xmlUrl]' ) ?: [] as $outline ) {
+				$url = esc_url_raw( (string) $outline['xmlUrl'] );
+				if ( $url === '' || $repo->exists_url( $url ) ) {
+					continue;
+				}
+				$title = sanitize_text_field( (string) ( $outline['title'] ?? $outline['text'] ?? '' ) );
+				$repo->create( $url, $title, [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+				$added++;
+			}
+		}
+
+		$this->redirect( self::SLUG . '-sources', $added > 0 ? 'opml_added' : 'opml_none' );
 	}
 
 	public function render_entities(): void {

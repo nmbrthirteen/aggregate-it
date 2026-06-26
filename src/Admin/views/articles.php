@@ -69,6 +69,7 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 		'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
 		'deleted'         => __( 'Article removed.', 'aggregate-it' ),
 		'image_refreshed' => __( 'Image refreshed. Check the post.', 'aggregate-it' ),
+		'rewritten'       => __( 'Rewritten. Check the post.', 'aggregate-it' ),
 	];
 	?>
 	<?php if ( isset( $notices[ $notice ] ) ) : ?>
@@ -144,6 +145,12 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 					<td><?php echo esc_html( $row->created_at ); ?></td>
 					<td class="ai-row-actions ai-inline">
 						<?php if ( $post_id && get_post( $post_id ) ) : ?>
+							<form method="post" action="<?php echo $post_action; ?>">
+								<input type="hidden" name="action" value="aggregate_it_rewrite_article">
+								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
+								<?php wp_nonce_field( 'aggregate_it_rewrite_article_' . (int) $row->id ); ?>
+								<button class="button button-small"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></button>
+							</form>
 							<form method="post" action="<?php echo $post_action; ?>">
 								<input type="hidden" name="action" value="aggregate_it_refresh_image">
 								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">

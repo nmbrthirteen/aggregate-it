@@ -53,6 +53,25 @@ final class Source {
 		return array_values( array_filter( array_map( 'trim', (array) ( $this->settings['tags'] ?? [] ) ) ) );
 	}
 
+	/** @return string[] only import items mentioning one of these (empty = no filter) */
+	public function include_keywords(): array {
+		return $this->keyword_list( 'include_keywords' );
+	}
+
+	/** @return string[] skip items mentioning any of these */
+	public function exclude_keywords(): array {
+		return $this->keyword_list( 'exclude_keywords' );
+	}
+
+	/** @return string[] */
+	private function keyword_list( string $key ): array {
+		$raw = $this->settings[ $key ] ?? [];
+		if ( is_string( $raw ) ) {
+			$raw = explode( ',', $raw );
+		}
+		return array_values( array_filter( array_map( static fn ( $w ) => strtolower( trim( (string) $w ) ), (array) $raw ) ) );
+	}
+
 	public function is_active(): bool {
 		return $this->status === 'active';
 	}
