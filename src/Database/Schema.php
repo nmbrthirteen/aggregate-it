@@ -141,7 +141,7 @@ final class Schema {
 			$table = self::table( $name );
 			$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB
 		}
-		foreach ( [ 'db_version', 'settings', 'events', 'run_token', 'delegation_rules', 'indexnow_key' ] as $option ) {
+		foreach ( [ 'db_version', 'settings', 'events', 'run_token', 'delegation_rules', 'indexnow_key', 'setup_dismissed' ] as $option ) {
 			delete_option( 'aggregate_it_' . $option );
 		}
 	}

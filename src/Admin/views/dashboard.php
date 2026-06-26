@@ -4,7 +4,11 @@ namespace AggregateIt\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** @var string $brand */
+/**
+ * @var string             $brand
+ * @var array<string,bool> $setup
+ * @var bool               $show_setup
+ */
 ?>
 <div class="wrap aggregate-it" id="aggregate-it-app">
 
@@ -21,6 +25,39 @@ defined( 'ABSPATH' ) || exit;
 			<button class="button button-primary" id="ai-refresh" type="button"><?php esc_html_e( 'Refresh', 'aggregate-it' ); ?></button>
 		</div>
 	</div>
+
+	<?php if ( ! empty( $show_setup ) ) : ?>
+		<div class="ai-panel ai-narrow ai-setup">
+			<h2><?php esc_html_e( 'Get started', 'aggregate-it' ); ?></h2>
+			<ol>
+				<li>
+					<?php esc_html_e( 'Connect an AI service and add its key', 'aggregate-it' ); ?>
+					<?php if ( ! empty( $setup['provider'] ) ) : ?>
+						<span class="ai-state ai-state--published"><?php esc_html_e( 'Done', 'aggregate-it' ); ?></span>
+					<?php else : ?>
+						<a class="button button-primary button-small" href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-settings' ) ); ?>"><?php esc_html_e( 'Open Settings', 'aggregate-it' ); ?></a>
+					<?php endif; ?>
+				</li>
+				<li>
+					<?php esc_html_e( 'Add a feed to pull articles from', 'aggregate-it' ); ?>
+					<?php if ( ! empty( $setup['feeds'] ) ) : ?>
+						<span class="ai-state ai-state--published"><?php esc_html_e( 'Done', 'aggregate-it' ); ?></span>
+					<?php else : ?>
+						<a class="button button-primary button-small" href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-sources' ) ); ?>"><?php esc_html_e( 'Add a feed', 'aggregate-it' ); ?></a>
+					<?php endif; ?>
+				</li>
+				<li>
+					<?php esc_html_e( 'Optional: turn on content types so the news builds pages (companies, people…)', 'aggregate-it' ); ?>
+					<?php if ( ! empty( $setup['types'] ) ) : ?>
+						<span class="ai-state ai-state--published"><?php esc_html_e( 'Done', 'aggregate-it' ); ?></span>
+					<?php else : ?>
+						<a class="button button-small" href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Set up pages', 'aggregate-it' ); ?></a>
+					<?php endif; ?>
+				</li>
+			</ol>
+			<p><a class="ai-muted" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_dismiss_setup' ), 'aggregate_it_dismiss_setup' ) ); ?>"><?php esc_html_e( 'Dismiss', 'aggregate-it' ); ?></a></p>
+		</div>
+	<?php endif; ?>
 
 	<div class="ai-status" id="ai-status" aria-live="polite"></div>
 

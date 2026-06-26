@@ -32,6 +32,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
 		add_action( 'admin_post_aggregate_it_merge_entities', [ $this, 'handle_merge_entities' ] );
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
+		add_action( 'admin_post_aggregate_it_dismiss_setup', [ $this, 'handle_dismiss_setup' ] );
 		add_action( 'admin_post_aggregate_it_retry_article', [ $this, 'handle_retry_article' ] );
 		add_action( 'admin_post_aggregate_it_retry_failed', [ $this, 'handle_retry_failed' ] );
 		add_action( 'admin_post_aggregate_it_delete_article', [ $this, 'handle_delete_article' ] );
@@ -150,8 +151,23 @@ final class Admin {
 	}
 
 	public function render_dashboard(): void {
-		$brand = $this->plugin->settings()->brand_name();
+		$s     = $this->plugin->settings();
+		$brand = $s->brand_name();
+
+		$setup = [
+			'provider' => $s->provider_key() !== 'mock' && $s->api_key() !== '',
+			'feeds'    => (bool) $this->plugin->sources()->all(),
+			'types'    => (bool) $this->plugin->rules()->post_types(),
+		];
+		$show_setup = ! get_option( 'aggregate_it_setup_dismissed' ) && ( ! $setup['provider'] || ! $setup['feeds'] );
+
 		require AGGREGATE_IT_PATH . 'src/Admin/views/dashboard.php';
+	}
+
+	public function handle_dismiss_setup(): void {
+		$this->guard( 'aggregate_it_dismiss_setup' );
+		update_option( 'aggregate_it_setup_dismissed', 1, false );
+		$this->redirect( self::SLUG, '' );
 	}
 
 	public function render_articles(): void {

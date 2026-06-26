@@ -287,3 +287,16 @@
 	display: inline-block;
 	margin: 0;
 }
+
+/* Get-started checklist ------------------------------------------------ */
+.aggregate-it .ai-setup ol {
+	margin: 0;
+	padding-left: 1.4em;
+}
+.aggregate-it .ai-setup li {
+	padding: 7px 0;
+}
+.aggregate-it .ai-setup li .button,
+.aggregate-it .ai-setup li .ai-state {
+	margin-left: 8px;
+}
