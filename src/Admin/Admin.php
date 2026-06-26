@@ -334,6 +334,7 @@ final class Admin {
 		$publish    = sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'default' ) );
 		$include    = sanitize_text_field( wp_unslash( $_POST['include_keywords'] ?? '' ) );
 		$exclude    = sanitize_text_field( wp_unslash( $_POST['exclude_keywords'] ?? '' ) );
+		$length     = sanitize_key( wp_unslash( $_POST['article_length'] ?? 'default' ) );
 
 		if ( $url === '' ) {
 			$this->redirect( self::SLUG . '-sources', 'invalid' );
@@ -346,6 +347,7 @@ final class Admin {
 			'publish_status'   => $publish,
 			'include_keywords' => $include,
 			'exclude_keywords' => $exclude,
+			'article_length'   => $length,
 		];
 
 		$repo = $this->plugin->sources();

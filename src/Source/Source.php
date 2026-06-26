@@ -43,6 +43,12 @@ final class Source {
 		return in_array( $status, [ 'publish', 'draft', 'pending' ], true ) ? $status : $default;
 	}
 
+	/** Returns one of auto|short|medium|long|match, or '' to use the global default. */
+	public function article_length(): string {
+		$v = (string) ( $this->settings['article_length'] ?? 'default' );
+		return in_array( $v, [ 'auto', 'short', 'medium', 'long', 'match' ], true ) ? $v : '';
+	}
+
 	/** @return int[] category term IDs to assign to posts from this feed */
 	public function categories(): array {
 		return array_values( array_filter( array_map( 'intval', (array) ( $this->settings['categories'] ?? [] ) ) ) );

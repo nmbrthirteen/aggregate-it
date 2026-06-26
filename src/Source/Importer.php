@@ -137,6 +137,7 @@ final class Importer {
 				[
 					'title'                 => $entry['title'],
 					'image'                 => $entry['image'],
+					'article_length'        => $source->article_length(),
 					'full_content_threshold' => $source->full_content_threshold(),
 				]
 			);

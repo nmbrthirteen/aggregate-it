@@ -106,6 +106,20 @@ $messages = [
 						</select>
 					</td>
 				</tr>
+				<?php $feed_length = $editing ? (string) ( $editing->settings['article_length'] ?? 'default' ) : 'default'; ?>
+				<tr>
+					<th><label for="ai-length"><?php esc_html_e( 'Article length', 'aggregate-it' ); ?></label></th>
+					<td>
+						<select name="article_length" id="ai-length">
+							<option value="default" <?php selected( $feed_length, 'default' ); ?>><?php esc_html_e( 'Use the global setting', 'aggregate-it' ); ?></option>
+							<option value="auto" <?php selected( $feed_length, 'auto' ); ?>><?php esc_html_e( 'As needed', 'aggregate-it' ); ?></option>
+							<option value="short" <?php selected( $feed_length, 'short' ); ?>><?php esc_html_e( 'Short (~300 words)', 'aggregate-it' ); ?></option>
+							<option value="medium" <?php selected( $feed_length, 'medium' ); ?>><?php esc_html_e( 'Medium (~600 words)', 'aggregate-it' ); ?></option>
+							<option value="long" <?php selected( $feed_length, 'long' ); ?>><?php esc_html_e( 'Long (~1000 words)', 'aggregate-it' ); ?></option>
+							<option value="match" <?php selected( $feed_length, 'match' ); ?>><?php esc_html_e( 'Match the original', 'aggregate-it' ); ?></option>
+						</select>
+					</td>
+				</tr>
 				<?php if ( $editing ) : ?>
 				<tr>
 					<th><label for="ai-status"><?php esc_html_e( 'Status', 'aggregate-it' ); ?></label></th>

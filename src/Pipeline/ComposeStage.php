@@ -44,6 +44,12 @@ final class ComposeStage implements PaidStage {
 		return Schema::STATE_CLUSTERED;
 	}
 
+	/** Per-feed article-length override, or null to use the global setting. */
+	private function length( Item $item ): ?string {
+		$len = (string) ( $item->flags['article_length'] ?? '' );
+		return $len !== '' ? $len : null;
+	}
+
 	public function process( Item $item ): string {
 		if ( ! empty( $item->flags['thin'] ) ) {
 			$item->flags['suppressed'] = 'thin';
@@ -59,7 +65,7 @@ final class ComposeStage implements PaidStage {
 		$content = (string) $item->raw_content;
 		$title   = (string) ( $item->flags['title'] ?? '' );
 
-		$rewrite    = $this->rewriter->rewrite( $title, $content );
+		$rewrite    = $this->rewriter->rewrite( $title, $content, null, $this->length( $item ) );
 		$structured = $rewrite['result'];
 		$this->cost->record( Schema::STATE_CLUSTERED, $rewrite['tokens'], $rewrite['cost_usd'], $item->id );
 
@@ -115,7 +121,7 @@ final class ComposeStage implements PaidStage {
 			return Schema::STATE_ENTITY_LINKED;
 		}
 
-		$rewrite    = $this->rewriter->rewrite( (string) ( $item->flags['title'] ?? '' ), $content );
+		$rewrite    = $this->rewriter->rewrite( (string) ( $item->flags['title'] ?? '' ), $content, null, $this->length( $item ) );
 		$structured = $rewrite['result'];
 		$this->cost->record( Schema::STATE_CLUSTERED, $rewrite['tokens'], $rewrite['cost_usd'], $item->id );
 

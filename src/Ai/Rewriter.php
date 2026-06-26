@@ -19,12 +19,12 @@ final class Rewriter {
 	/**
 	 * @return array{result:array<string,mixed>,tokens:int,cost_usd:float}
 	 */
-	public function rewrite( string $title, string $content, ?string $target_keyword = null ): array {
-		$prompt = $this->prompt( $title, $content, $target_keyword );
+	public function rewrite( string $title, string $content, ?string $target_keyword = null, ?string $length = null ): array {
+		$prompt = $this->prompt( $title, $content, $target_keyword, $length );
 		return $this->providers->get()->structured( $prompt, $this->schema() );
 	}
 
-	private function prompt( string $title, string $content, ?string $target_keyword ): string {
+	private function prompt( string $title, string $content, ?string $target_keyword, ?string $length = null ): string {
 		$rules = [
 			'Rewrite the article below into original prose that reads as if a real human journalist wrote it from scratch.',
 			'PRESERVE every fact verbatim: names, numbers, dates, quotes, and claims. Never invent, alter, or DROP a fact. Fact-keeping is the top priority and overrides brevity.',
@@ -48,7 +48,7 @@ final class Rewriter {
 			'long'   => 'Aim for a longer article, about 900-1100 words; add depth only from the source, never invent.',
 			'match'  => 'Roughly match the length of the source article.',
 		];
-		$length  = $this->settings->article_length();
+		$length  = $length ?: $this->settings->article_length();
 		$rules[] = ( $lengths[ $length ] ?? $lengths['auto'] )
 			. ( $length === 'auto' ? '' : ' Treat this as a target, not a hard limit — never drop or shorten facts to hit it.' );
 
