@@ -3,6 +3,7 @@
 namespace AggregateIt\Publish;
 
 use AggregateIt\Settings;
+use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,7 +17,11 @@ final class ImageImporter {
 	public function __construct( private Settings $settings ) {}
 
 	public function maybe_import( int $post_id, string $image_url, string $alt ): void {
-		if ( $this->settings->image_mode() === 'off' || $image_url === '' ) {
+		if ( $this->settings->image_mode() === 'off' ) {
+			return;
+		}
+		if ( $image_url === '' ) {
+			EventLog::warning( sprintf( 'Post #%d: no image found for this article.', $post_id ) );
 			return;
 		}
 		if ( has_post_thumbnail( $post_id ) ) {
@@ -27,6 +32,7 @@ final class ImageImporter {
 
 		$attachment_id = media_sideload_image( esc_url_raw( $image_url ), $post_id, $alt, 'id' );
 		if ( is_wp_error( $attachment_id ) ) {
+			EventLog::warning( sprintf( 'Post #%d: could not save the image (%s): %s', $post_id, esc_url_raw( $image_url ), $attachment_id->get_error_message() ) );
 			return;
 		}
 

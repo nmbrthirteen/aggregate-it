@@ -11,7 +11,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class HttpFetcher {
 
-	private const UA            = 'AggregateIt/0.1 (+https://github.com/nmbrthirteen/aggregate-it)';
+	// Many publisher sites block non-browser user-agents (returning a stripped page or
+	// a 403), which loses og:image and article content. Present as a real browser so we
+	// get the same HTML a visitor would; we still respect robots.txt and rate-limit.
+	private const UA            = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 	private const MIN_GAP       = 3;      // seconds between requests to the same host
 	private const CACHE_TTL     = 3600;   // response cache
 	private const ROBOTS_TTL    = 43200;  // robots.txt cache
@@ -42,7 +45,10 @@ final class HttpFetcher {
 				'timeout'     => 15,
 				'redirection' => 3,
 				'user-agent'  => self::UA,
-				'headers'     => [ 'Accept' => 'text/html,application/xhtml+xml' ],
+				'headers'     => [
+					'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+					'Accept-Language' => 'en-US,en;q=0.9',
+				],
 			]
 		);
 

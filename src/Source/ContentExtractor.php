@@ -61,6 +61,32 @@ final class ContentExtractor {
 				return $image;
 			}
 		}
+		// Last resort: the link rel="image_src" hint, then the first real in-page image.
+		$link = $this->link_image( $html );
+		if ( $link !== '' ) {
+			return $link;
+		}
+		return $this->first_content_image( $html );
+	}
+
+	private function link_image( string $html ): string {
+		if ( preg_match( '/<link[^>]+rel=["\']image_src["\'][^>]+href=["\']([^"\']+)["\']/i', $html, $m ) ) {
+			$url = trim( html_entity_decode( $m[1] ) );
+			return $this->is_junk_image( $url ) ? '' : $url;
+		}
+		return '';
+	}
+
+	private function first_content_image( string $html ): string {
+		if ( ! preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m ) ) {
+			return '';
+		}
+		foreach ( $m[1] as $src ) {
+			$src = trim( html_entity_decode( $src ) );
+			if ( preg_match( '#^https?://#i', $src ) && ! $this->is_junk_image( $src ) ) {
+				return $src;
+			}
+		}
 		return '';
 	}
 
