@@ -38,6 +38,11 @@ final class Source {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}
 
+	public function publish_status( string $default ): string {
+		$status = (string) ( $this->settings['publish_status'] ?? 'default' );
+		return in_array( $status, [ 'publish', 'draft', 'pending' ], true ) ? $status : $default;
+	}
+
 	/** @return int[] category term IDs to assign to posts from this feed */
 	public function categories(): array {
 		return array_values( array_filter( array_map( 'intval', (array) ( $this->settings['categories'] ?? [] ) ) ) );

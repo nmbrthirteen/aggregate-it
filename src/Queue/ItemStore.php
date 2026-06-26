@@ -170,6 +170,32 @@ final class ItemStore {
 		);
 	}
 
+	public function find( int $id ): ?object {
+		global $wpdb;
+		$table = $this->table();
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) ) ?: null;
+	}
+
+	public function delete( int $id ): void {
+		global $wpdb;
+		$wpdb->delete( $this->table(), [ 'id' => $id ] );
+	}
+
+	/** Delete finished/failed item rows older than $days (the published posts stay). */
+	public function purge_old( int $days ): int {
+		global $wpdb;
+		$table  = $this->table();
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS );
+		return (int) $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$table} WHERE state IN ( %s, %s ) AND updated_at < %s",
+				Schema::STATE_PUBLISHED,
+				Schema::STATE_DEAD_LETTER,
+				$cutoff
+			)
+		);
+	}
+
 	public function requeue( int $id ): void {
 		$this->update(
 			$id,

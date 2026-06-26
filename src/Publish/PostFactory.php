@@ -26,10 +26,13 @@ final class PostFactory {
 		$slug  = (string) ( $structured['slug'] ?? '' );
 		$slug  = $this->slugs->generate( $slug !== '' ? $slug : $keyword, $title );
 
+		$source = $item->source_id ? $this->sources->get( $item->source_id ) : null;
+		$status = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
+
 		$post_id = wp_insert_post(
 			[
 				'post_type'    => $this->settings->target_post_type(),
-				'post_status'  => 'publish',
+				'post_status'  => $status,
 				'post_title'   => $title,
 				'post_name'    => $slug,
 				'post_content' => $this->body( (string) ( $structured['rewritten_body'] ?? '' ) ),

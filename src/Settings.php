@@ -74,6 +74,19 @@ final class Settings {
 		return (string) $this->get( 'target_post_type', 'post' );
 	}
 
+	public function publish_status(): string {
+		$status = (string) $this->get( 'publish_status', 'publish' );
+		return in_array( $status, [ 'publish', 'draft', 'pending' ], true ) ? $status : 'publish';
+	}
+
+	public function writing_instructions(): string {
+		return trim( (string) $this->get( 'writing_instructions', '' ) );
+	}
+
+	public function retention_days(): int {
+		return max( 0, (int) $this->get( 'retention_days', 90 ) );
+	}
+
 	public function daily_spend_cap_usd(): float {
 		return (float) $this->get( 'daily_spend_cap_usd', 5.0 );
 	}

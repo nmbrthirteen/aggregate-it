@@ -64,8 +64,15 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 		<?php endif; ?>
 	</div>
 
-	<?php if ( $notice === 'retried' ) : ?>
-		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Sent back to be processed again.', 'aggregate-it' ); ?></p></div>
+	<?php
+	$notices = [
+		'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
+		'deleted'         => __( 'Article removed.', 'aggregate-it' ),
+		'image_refreshed' => __( 'Image refreshed. Check the post.', 'aggregate-it' ),
+	];
+	?>
+	<?php if ( isset( $notices[ $notice ] ) ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
 	<?php endif; ?>
 
 	<ul class="subsubsub">
@@ -88,11 +95,12 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Published post', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Imported', 'aggregate-it' ); ?></th>
+				<th></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( ! $rows ) : ?>
-				<tr><td colspan="5"><em><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></em></td></tr>
+				<tr><td colspan="6"><em><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></em></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $rows as $row ) : ?>
 				<?php
@@ -134,6 +142,22 @@ $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_noti
 						<?php endif; ?>
 					</td>
 					<td><?php echo esc_html( $row->created_at ); ?></td>
+					<td class="ai-row-actions ai-inline">
+						<?php if ( $post_id && get_post( $post_id ) ) : ?>
+							<form method="post" action="<?php echo $post_action; ?>">
+								<input type="hidden" name="action" value="aggregate_it_refresh_image">
+								<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
+								<?php wp_nonce_field( 'aggregate_it_refresh_image_' . (int) $row->id ); ?>
+								<button class="button button-small"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></button>
+							</form>
+						<?php endif; ?>
+						<form method="post" action="<?php echo $post_action; ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');">
+							<input type="hidden" name="action" value="aggregate_it_delete_article">
+							<input type="hidden" name="id" value="<?php echo (int) $row->id; ?>">
+							<?php wp_nonce_field( 'aggregate_it_delete_article_' . (int) $row->id ); ?>
+							<button class="button button-small"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></button>
+						</form>
+					</td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>

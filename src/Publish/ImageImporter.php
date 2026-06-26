@@ -16,15 +16,15 @@ final class ImageImporter {
 
 	public function __construct( private Settings $settings ) {}
 
-	public function maybe_import( int $post_id, string $image_url, string $alt ): void {
-		if ( $this->settings->image_mode() === 'off' ) {
+	public function maybe_import( int $post_id, string $image_url, string $alt, bool $replace = false ): void {
+		if ( ! $replace && $this->settings->image_mode() === 'off' ) {
 			return;
 		}
 		if ( $image_url === '' ) {
 			EventLog::warning( sprintf( 'Post #%d: no image found for this article.', $post_id ) );
 			return;
 		}
-		if ( has_post_thumbnail( $post_id ) ) {
+		if ( has_post_thumbnail( $post_id ) && ! $replace ) {
 			return;
 		}
 

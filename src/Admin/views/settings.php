@@ -99,6 +99,20 @@ $has_key = $settings->api_key() !== '';
 				</td>
 			</tr>
 			<tr>
+				<th><label for="publish_status"><?php esc_html_e( 'Publish as', 'aggregate-it' ); ?></label></th>
+				<td>
+					<select name="publish_status" id="publish_status">
+						<option value="publish" <?php selected( $settings->publish_status(), 'publish' ); ?>><?php esc_html_e( 'Published (go live right away)', 'aggregate-it' ); ?></option>
+						<option value="draft" <?php selected( $settings->publish_status(), 'draft' ); ?>><?php esc_html_e( 'Draft (review before publishing)', 'aggregate-it' ); ?></option>
+						<option value="pending" <?php selected( $settings->publish_status(), 'pending' ); ?>><?php esc_html_e( 'Pending review', 'aggregate-it' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="writing_instructions"><?php esc_html_e( 'Your writing style', 'aggregate-it' ); ?></label></th>
+				<td><textarea name="writing_instructions" id="writing_instructions" rows="3" class="large-text" placeholder="<?php esc_attr_e( 'Optional. e.g. Friendly and to the point. Use British spelling. Always include a short intro.', 'aggregate-it' ); ?>"><?php echo esc_textarea( $settings->writing_instructions() ); ?></textarea></td>
+			</tr>
+			<tr>
 				<th><label for="author_id"><?php esc_html_e( 'Author', 'aggregate-it' ); ?></label></th>
 				<td><?php wp_dropdown_users( [ 'name' => 'author_id', 'id' => 'author_id', 'selected' => $settings->author_id() ] ); ?></td>
 			</tr>
@@ -155,6 +169,10 @@ $has_key = $settings->api_key() !== '';
 			<tr>
 				<th><label for="processing_interval_minutes"><?php esc_html_e( 'Run every (minutes)', 'aggregate-it' ); ?></label></th>
 				<td><input name="processing_interval_minutes" id="processing_interval_minutes" type="number" min="1" class="small-text" value="<?php echo esc_attr( (string) $settings->processing_interval_minutes() ); ?>"></td>
+			</tr>
+			<tr>
+				<th><label for="retention_days"><?php esc_html_e( 'Keep the article history for (days)', 'aggregate-it' ); ?></label></th>
+				<td><input name="retention_days" id="retention_days" type="number" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->retention_days() ); ?>"> <span class="ai-muted"><?php esc_html_e( '0 = keep forever. Your published posts are never deleted.', 'aggregate-it' ); ?></span></td>
 			</tr>
 		</table>
 		</div>

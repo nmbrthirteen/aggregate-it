@@ -11,7 +11,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Rewriter {
 
-	public function __construct( private ProviderFactory $providers ) {}
+	public function __construct(
+		private ProviderFactory $providers,
+		private \AggregateIt\Settings $settings
+	) {}
 
 	/**
 	 * @return array{result:array<string,mixed>,tokens:int,cost_usd:float}
@@ -35,6 +38,11 @@ final class Rewriter {
 
 		if ( $target_keyword ) {
 			$rules[] = sprintf( 'Target keyword "%s": include it naturally in the title and first paragraph. Never keyword-stuff.', $target_keyword );
+		}
+
+		$custom = $this->settings->writing_instructions();
+		if ( $custom !== '' ) {
+			$rules[] = 'Site owner instructions (follow these, but never at the cost of dropping a fact): ' . $custom;
 		}
 
 		$prompt = "You are a faithful news rewriter.\n\n"

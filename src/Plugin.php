@@ -87,7 +87,7 @@ final class Plugin {
 		$facts        = new FactsGuard();
 		$cluster_repo = new ClusterRepository();
 		$clusterer    = new Clusterer( $vectors, $cluster_repo, $facts, $this->settings );
-		$rewriter     = new Rewriter( $this->providers );
+		$rewriter     = new Rewriter( $this->providers, $this->settings );
 		$keywords     = new KeywordStrategy( $this->settings );
 		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
 		$seo          = new Seo( $this->settings, new SchemaGraph() );
@@ -116,6 +116,7 @@ final class Plugin {
 
 		( new Importer( $this->sources, $this->items, $this->settings ) )->register();
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
+		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
 		( new RestController( $this ) )->register();
 
 		if ( is_admin() ) {
@@ -129,6 +130,7 @@ final class Plugin {
 	public static function deactivate(): void {
 		wp_clear_scheduled_hook( 'aggregate_it_process_queue' );
 		wp_clear_scheduled_hook( 'aggregate_it_import' );
+		wp_clear_scheduled_hook( 'aggregate_it_retention' );
 	}
 
 	public function settings(): Settings {
@@ -157,6 +159,10 @@ final class Plugin {
 
 	public function sources(): SourceRepository {
 		return $this->sources;
+	}
+
+	public function extractor(): ContentExtractor {
+		return $this->extractor;
 	}
 
 	public function rules(): DelegationRules {

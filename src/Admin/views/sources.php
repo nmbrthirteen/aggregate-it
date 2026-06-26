@@ -80,6 +80,18 @@ $messages = [
 						value="<?php echo esc_attr( $editing ? implode( ', ', $editing->tags() ) : '' ); ?>"
 						placeholder="<?php esc_attr_e( 'comma separated', 'aggregate-it' ); ?>"></td>
 				</tr>
+				<?php $feed_status = $editing ? (string) ( $editing->settings['publish_status'] ?? 'default' ) : 'default'; ?>
+				<tr>
+					<th><label for="ai-publish"><?php esc_html_e( 'Publish as', 'aggregate-it' ); ?></label></th>
+					<td>
+						<select name="publish_status" id="ai-publish">
+							<option value="default" <?php selected( $feed_status, 'default' ); ?>><?php esc_html_e( 'Use the global setting', 'aggregate-it' ); ?></option>
+							<option value="publish" <?php selected( $feed_status, 'publish' ); ?>><?php esc_html_e( 'Published', 'aggregate-it' ); ?></option>
+							<option value="draft" <?php selected( $feed_status, 'draft' ); ?>><?php esc_html_e( 'Draft', 'aggregate-it' ); ?></option>
+							<option value="pending" <?php selected( $feed_status, 'pending' ); ?>><?php esc_html_e( 'Pending review', 'aggregate-it' ); ?></option>
+						</select>
+					</td>
+				</tr>
 				<?php if ( $editing ) : ?>
 				<tr>
 					<th><label for="ai-status"><?php esc_html_e( 'Status', 'aggregate-it' ); ?></label></th>

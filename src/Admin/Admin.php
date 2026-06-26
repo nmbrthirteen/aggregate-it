@@ -3,6 +3,7 @@
 namespace AggregateIt\Admin;
 
 use AggregateIt\Plugin;
+use AggregateIt\Publish\ImageImporter;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,6 +28,8 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
 		add_action( 'admin_post_aggregate_it_retry_article', [ $this, 'handle_retry_article' ] );
 		add_action( 'admin_post_aggregate_it_retry_failed', [ $this, 'handle_retry_failed' ] );
+		add_action( 'admin_post_aggregate_it_delete_article', [ $this, 'handle_delete_article' ] );
+		add_action( 'admin_post_aggregate_it_refresh_image', [ $this, 'handle_refresh_image' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
 	}
 
@@ -191,6 +194,35 @@ final class Admin {
 		$this->redirect( self::SLUG . '-articles', 'retried' );
 	}
 
+	public function handle_delete_article(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_delete_article_' . $id );
+
+		$item = $this->plugin->items()->find( $id );
+		if ( $item ) {
+			if ( ! empty( $item->post_id ) ) {
+				wp_delete_post( (int) $item->post_id ); // to trash (recoverable)
+			}
+			$this->plugin->items()->delete( $id );
+		}
+
+		$this->redirect( self::SLUG . '-articles', 'deleted' );
+	}
+
+	public function handle_refresh_image(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_refresh_image_' . $id );
+
+		$item = $this->plugin->items()->find( $id );
+		if ( $item && ! empty( $item->post_id ) && $item->url ) {
+			$image = $this->plugin->extractor()->share_image( (string) $item->url );
+			$alt   = get_the_title( (int) $item->post_id );
+			( new ImageImporter( $this->plugin->settings() ) )->maybe_import( (int) $item->post_id, $image, $alt, true );
+		}
+
+		$this->redirect( self::SLUG . '-articles', 'image_refreshed' );
+	}
+
 	public function render_sources(): void {
 		$sources = $this->plugin->sources()->all();
 		$edit_id = isset( $_GET['edit'] ) ? (int) $_GET['edit'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
@@ -211,6 +243,7 @@ final class Admin {
 		$categories = array_values( array_filter( array_map( 'intval', (array) ( $_POST['categories'] ?? [] ) ) ) );
 		$tags_raw   = sanitize_text_field( wp_unslash( $_POST['tags'] ?? '' ) );
 		$tags       = array_values( array_filter( array_map( 'trim', explode( ',', $tags_raw ) ) ) );
+		$publish    = sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'default' ) );
 
 		if ( $url === '' ) {
 			$this->redirect( self::SLUG . '-sources', 'invalid' );
@@ -220,6 +253,7 @@ final class Admin {
 			'interval_minutes' => $interval,
 			'categories'       => $categories,
 			'tags'             => $tags,
+			'publish_status'   => $publish,
 		];
 
 		$repo = $this->plugin->sources();
@@ -334,6 +368,9 @@ final class Admin {
 				'ai_model'               => sanitize_text_field( wp_unslash( $_POST['ai_model'] ?? '' ) ),
 				'max_output_tokens'      => max( 1024, (int) ( $_POST['max_output_tokens'] ?? 8000 ) ),
 				'target_post_type'       => sanitize_key( wp_unslash( $_POST['target_post_type'] ?? 'post' ) ),
+				'publish_status'         => sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'publish' ) ),
+				'writing_instructions'   => sanitize_textarea_field( wp_unslash( $_POST['writing_instructions'] ?? '' ) ),
+				'retention_days'         => max( 0, (int) ( $_POST['retention_days'] ?? 90 ) ),
 				'author_id'              => max( 0, (int) ( $_POST['author_id'] ?? 0 ) ),
 				'daily_spend_cap_usd'    => max( 0, (float) ( $_POST['daily_spend_cap_usd'] ?? 5 ) ),
 				'image_mode'             => sanitize_key( wp_unslash( $_POST['image_mode'] ?? 'import' ) ),
