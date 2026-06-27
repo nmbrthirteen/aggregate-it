@@ -26,9 +26,7 @@ $has_key = $settings->api_key() !== '';
 		<input type="hidden" name="action" value="aggregate_it_save_settings">
 		<?php wp_nonce_field( 'aggregate_it_save_settings' ); ?>
 
-		<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
+		<h2><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="provider"><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></label></th>
@@ -85,12 +83,8 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="daily_spend_cap_usd" id="daily_spend_cap_usd" type="number" step="0.5" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->daily_spend_cap_usd() ); ?>"></td>
 			</tr>
 		</table>
-		</div>
-		</div>
 
-		<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Publishing', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
+		<h2><?php esc_html_e( 'Publishing', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="brand_name"><?php esc_html_e( 'Site / publisher brand', 'aggregate-it' ); ?></label></th>
@@ -165,12 +159,8 @@ $has_key = $settings->api_key() !== '';
 				<td><label><input name="related_articles" type="checkbox" <?php checked( $settings->related_articles() ); ?>> <?php esc_html_e( 'Automatically link each article to your other articles on similar topics', 'aggregate-it' ); ?></label></td>
 			</tr>
 		</table>
-		</div>
-		</div>
 
-		<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
+		<h2><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="similarity_threshold"><?php esc_html_e( 'Duplicate sensitivity', 'aggregate-it' ); ?></label></th>
@@ -189,12 +179,8 @@ $has_key = $settings->api_key() !== '';
 				<td><textarea name="keyword_list" id="keyword_list" rows="5" class="large-text" placeholder="<?php esc_attr_e( 'One keyword per line', 'aggregate-it' ); ?>"><?php echo esc_textarea( $keyword_list ); ?></textarea></td>
 			</tr>
 		</table>
-		</div>
-		</div>
 
-		<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
+		<h2><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><?php esc_html_e( 'Run by itself', 'aggregate-it' ); ?></th>
@@ -210,12 +196,8 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="retention_days" id="retention_days" type="number" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->retention_days() ); ?>"> <span class="description"><?php esc_html_e( '0 = keep forever. Your published posts are never deleted.', 'aggregate-it' ); ?></span></td>
 			</tr>
 		</table>
-		</div>
-		</div>
 
-		<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
+		<h2><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="import_interval_minutes"><?php esc_html_e( 'Check for new posts every (minutes)', 'aggregate-it' ); ?></label></th>
@@ -226,8 +208,6 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="feed_dead_after" id="feed_dead_after" type="number" min="1" class="small-text" value="<?php echo esc_attr( (string) $settings->feed_dead_after() ); ?>"></td>
 			</tr>
 		</table>
-		</div>
-		</div>
 
 		<?php submit_button(); ?>
 	</form>

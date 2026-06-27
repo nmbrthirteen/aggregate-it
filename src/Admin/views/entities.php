@@ -24,6 +24,32 @@ foreach ( $all as $i => $rule ) {
 $post_types = get_post_types( [ 'public' => true ], 'objects' );
 unset( $post_types['attachment'] );
 
+$show_all = isset( $_GET['show_all'] ) && (string) $_GET['show_all'] === '1'; // phpcs:ignore WordPress.Security.NonceVerification
+$is_internal_type = static function ( string $slug, \WP_Post_Type $pt ): bool {
+	$internal_patterns = [
+		'/^e-/',
+		'/elementor/',
+		'/template/',
+		'/library/',
+		'/block/',
+		'/penci/',
+		'/revision/',
+	];
+	foreach ( $internal_patterns as $pattern ) {
+		if ( preg_match( $pattern, $slug ) ) {
+			return true;
+		}
+	}
+	return empty( $pt->show_ui );
+};
+
+$visible_post_types = [];
+foreach ( $post_types as $slug => $pt ) {
+	if ( $show_all || isset( $by_target[ $slug ] ) || ! $is_internal_type( $slug, $pt ) ) {
+		$visible_post_types[ $slug ] = $pt;
+	}
+}
+
 $post_action = esc_url( admin_url( 'admin-post.php' ) );
 ?>
 <div class="wrap aggregate-it">
@@ -43,31 +69,68 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
 
+	<div class="notice notice-info">
+		<p>
+			<?php esc_html_e( 'Linked Pages creates public pages for people, companies, products, places, or other entities mentioned in imported articles. Turn on a target type, process articles, then preview the pages in the output list below.', 'aggregate-it' ); ?>
+		</p>
+	</div>
+
 	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></span></h2>
+		<h2 class="hndle"><span><?php esc_html_e( 'Choose where linked pages are created', 'aggregate-it' ); ?></span></h2>
 		<div class="inside">
+		<p class="description">
+			<?php esc_html_e( 'Use real public content types such as Company, Person, Directory, Event, Product, or Page. Builder templates and block libraries are hidden by default because they are not useful output destinations.', 'aggregate-it' ); ?>
+			<?php if ( $show_all ) : ?>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Hide internal types', 'aggregate-it' ); ?></a>
+			<?php else : ?>
+				<a href="<?php echo esc_url( add_query_arg( 'show_all', '1', admin_url( 'admin.php?page=aggregate-it-entities' ) ) ); ?>"><?php esc_html_e( 'Show all types', 'aggregate-it' ); ?></a>
+			<?php endif; ?>
+		</p>
 		<table class="widefat striped">
 			<thead><tr>
-				<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Auto-linking', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Fields the AI fills in', 'aggregate-it' ); ?></th>
-				<th></th>
+				<th><?php esc_html_e( 'Output type', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Existing pages', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'AI-filled fields', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
 			</tr></thead>
 			<tbody>
-				<?php foreach ( $post_types as $pt ) :
+				<?php foreach ( $visible_post_types as $pt ) :
 					$slug  = $pt->name;
 					$count = (int) ( wp_count_posts( $slug )->publish ?? 0 );
 					$on    = isset( $by_target[ $slug ] );
+					$archive_url = get_post_type_archive_link( $slug );
 					?>
 					<tr>
-						<td><strong><?php echo esc_html( $pt->labels->singular_name ); ?></strong> <code><?php echo esc_html( $slug ); ?></code></td>
+						<td>
+							<strong><?php echo esc_html( $pt->labels->singular_name ); ?></strong> <code><?php echo esc_html( $slug ); ?></code>
+							<div class="row-actions">
+								<?php if ( $on ) : ?>
+									<form method="post" action="<?php echo $post_action; ?>">
+										<input type="hidden" name="action" value="aggregate_it_delete_rule">
+										<input type="hidden" name="index" value="<?php echo (int) $by_target[ $slug ]['index']; ?>">
+										<?php wp_nonce_field( 'aggregate_it_delete_rule_' . (int) $by_target[ $slug ]['index'] ); ?>
+										<button class="button-link-delete"><?php esc_html_e( 'Turn off', 'aggregate-it' ); ?></button>
+									</form>
+								<?php else : ?>
+									<form method="post" action="<?php echo $post_action; ?>">
+										<input type="hidden" name="action" value="aggregate_it_save_rule">
+										<input type="hidden" name="target_cpt" value="<?php echo esc_attr( $slug ); ?>">
+										<input type="hidden" name="entity_type" value="<?php echo esc_attr( $slug ); ?>">
+										<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
+										<button class="button-link"><?php esc_html_e( 'Turn on', 'aggregate-it' ); ?></button>
+									</form>
+								<?php endif; ?>
+							</div>
+						</td>
 						<td><?php echo (int) $count; ?></td>
 						<td>
 							<?php if ( $on ) : ?>
 								<span class="post-state"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
+								<p class="description"><?php esc_html_e( 'New article mentions can create or update pages here.', 'aggregate-it' ); ?></p>
 							<?php else : ?>
 								<span class="post-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
+								<p class="description"><?php esc_html_e( 'Aggregate It will not create pages in this type.', 'aggregate-it' ); ?></p>
 							<?php endif; ?>
 						</td>
 						<td>
@@ -88,21 +151,10 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 							<?php endif; ?>
 						</td>
 						<td>
-							<?php if ( $on ) : ?>
-								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
-									<input type="hidden" name="action" value="aggregate_it_delete_rule">
-									<input type="hidden" name="index" value="<?php echo (int) $by_target[ $slug ]['index']; ?>">
-									<?php wp_nonce_field( 'aggregate_it_delete_rule_' . (int) $by_target[ $slug ]['index'] ); ?>
-									<button class="button button-small"><?php esc_html_e( 'Turn off', 'aggregate-it' ); ?></button>
-								</form>
+							<?php if ( $archive_url ) : ?>
+								<a href="<?php echo esc_url( $archive_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View archive', 'aggregate-it' ); ?></a>
 							<?php else : ?>
-								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
-									<input type="hidden" name="action" value="aggregate_it_save_rule">
-									<input type="hidden" name="target_cpt" value="<?php echo esc_attr( $slug ); ?>">
-									<input type="hidden" name="entity_type" value="<?php echo esc_attr( $slug ); ?>">
-									<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
-									<button class="button button-primary button-small"><?php esc_html_e( 'Turn on', 'aggregate-it' ); ?></button>
-								</form>
+								<span class="description"><?php esc_html_e( 'Preview individual pages below', 'aggregate-it' ); ?></span>
 							<?php endif; ?>
 						</td>
 					</tr>
@@ -127,7 +179,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 	</div>
 
 	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Pages built automatically', 'aggregate-it' ); ?></span></h2>
+		<h2 class="hndle"><span><?php esc_html_e( 'Preview generated output', 'aggregate-it' ); ?></span></h2>
 		<div class="inside">
 		<?php
 		$entities = $cpts ? get_posts(
@@ -135,20 +187,28 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		) : [];
 		?>
 		<?php if ( ! $entities ) : ?>
-			<p class="description"><?php esc_html_e( 'Nothing yet. As articles are processed, pages appear here automatically.', 'aggregate-it' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Nothing to preview yet. Turn on a target type, add feeds, and process articles. Generated pages will appear here with View and Edit links.', 'aggregate-it' ); ?></p>
 		<?php else : ?>
 			<table class="widefat striped">
 				<thead><tr>
 					<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
 				</tr></thead>
 				<tbody>
 					<?php foreach ( $entities as $entity ) : ?>
 						<tr>
-							<td><a href="<?php echo esc_url( (string) get_edit_post_link( $entity->ID ) ); ?>"><?php echo esc_html( get_the_title( $entity ) ); ?></a></td>
+							<td>
+								<strong><?php echo esc_html( get_the_title( $entity ) ); ?></strong>
+								<div class="row-actions">
+									<span class="view"><a href="<?php echo esc_url( (string) get_permalink( $entity ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View', 'aggregate-it' ); ?></a> | </span>
+									<span class="edit"><a href="<?php echo esc_url( (string) get_edit_post_link( $entity->ID ) ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a></span>
+								</div>
+							</td>
 							<td><code><?php echo esc_html( $entity->post_type ); ?></code></td>
 							<td><?php echo get_post_meta( $entity->ID, '_ai_is_stub', true ) ? esc_html__( 'Basic', 'aggregate-it' ) : esc_html__( 'Detailed', 'aggregate-it' ); ?></td>
+							<td><a href="<?php echo esc_url( (string) get_permalink( $entity ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View page', 'aggregate-it' ); ?></a></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>

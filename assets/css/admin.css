@@ -24,8 +24,7 @@
 }
 
 .aggregate-it .ai-actions,
-.aggregate-it .ai-inline,
-.aggregate-it .ai-row-actions {
+.aggregate-it .ai-inline {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
@@ -113,6 +112,22 @@
 	vertical-align: middle;
 }
 
+.aggregate-it .row-actions form {
+	display: inline;
+}
+
+.aggregate-it .form-table {
+	max-width: 960px;
+}
+
+.aggregate-it .form-table td {
+	max-width: 680px;
+}
+
+.aggregate-it .form-table textarea.large-text {
+	max-width: 100%;
+}
+
 .aggregate-it .ai-trunc {
 	max-width: 360px;
 	overflow: hidden;
@@ -186,11 +201,6 @@
 	display: none !important;
 }
 
-.aggregate-it .ai-row-actions form {
-	display: inline-block;
-	margin: 0;
-}
-
 .aggregate-it .ai-setup ol {
 	margin: 0;
 	padding-left: 1.4em;
@@ -221,5 +231,15 @@
 @media ( max-width: 782px ) {
 	.aggregate-it .ai-cards {
 		grid-template-columns: 1fr;
+	}
+
+	.aggregate-it .form-table,
+	.aggregate-it .form-table tbody,
+	.aggregate-it .form-table tr,
+	.aggregate-it .form-table th,
+	.aggregate-it .form-table td {
+		display: block;
+		width: auto;
+		max-width: none;
 	}
 }

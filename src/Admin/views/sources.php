@@ -208,12 +208,11 @@ $messages = [
 				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Last checked', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'How it is doing', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Actions', 'aggregate-it' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( ! $sources ) : ?>
-				<tr><td colspan="7" class="ai-empty"><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></td></tr>
+				<tr><td colspan="6" class="ai-empty"><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $sources as $source ) : ?>
 				<?php
@@ -227,16 +226,18 @@ $messages = [
 				?>
 				<tr>
 					<th scope="row" class="check-column"><input type="checkbox" name="source_ids[]" value="<?php echo (int) $source->id; ?>"></th>
-					<td><?php echo esc_html( $source->title ?: '—' ); ?></td>
+					<td>
+						<strong><?php echo esc_html( $source->title ?: '—' ); ?></strong>
+						<div class="row-actions">
+							<span class="check"><a href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Check now', 'aggregate-it' ); ?></a> | </span>
+							<span class="edit"><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a> | </span>
+							<span class="trash"><a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this feed?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a></span>
+						</div>
+					</td>
 					<td class="ai-trunc"><?php echo esc_html( $source->url ); ?></td>
 					<td><span class="post-state"><?php echo esc_html( $source->status ); ?></span></td>
 					<td><?php echo esc_html( $source->last_checked ?: '—' ); ?></td>
 					<td><?php echo $health_text; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
-					<td class="ai-row-actions ai-inline">
-						<a class="button button-small" href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Check now', 'aggregate-it' ); ?></a>
-						<a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
-						<a class="button button-small" href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this feed?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
-					</td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>

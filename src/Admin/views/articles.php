@@ -116,12 +116,11 @@ $notices = [
 					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'Published post', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'Imported', 'aggregate-it' ); ?></th>
-					<th></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php if ( ! $rows ) : ?>
-					<tr><td colspan="7" class="ai-empty"><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></td></tr>
+					<tr><td colspan="6" class="ai-empty"><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ( $rows as $row ) : ?>
 					<?php
@@ -141,6 +140,13 @@ $notices = [
 								<?php echo esc_html( $title ); ?>
 							<?php endif; ?>
 							<div class="description">#<?php echo (int) $row->id; ?></div>
+							<div class="row-actions">
+								<?php if ( $has_post ) : ?>
+									<span class="edit"><a href="<?php echo $action_link( 'aggregate_it_rewrite_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Rewrite this article with AI now? This makes a paid API call.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></a> | </span>
+									<span class="edit"><a href="<?php echo $action_link( 'aggregate_it_refresh_image', (int) $row->id ); ?>"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></a> | </span>
+								<?php endif; ?>
+								<span class="trash"><a href="<?php echo $action_link( 'aggregate_it_delete_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a></span>
+							</div>
 						</td>
 						<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
 						<td><span class="<?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
@@ -160,13 +166,6 @@ $notices = [
 							<?php endif; ?>
 						</td>
 						<td><?php echo esc_html( $row->created_at ); ?></td>
-						<td class="ai-row-actions ai-inline">
-							<?php if ( $has_post ) : ?>
-								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_rewrite_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Rewrite this article with AI now? This makes a paid API call.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></a>
-								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_refresh_image', (int) $row->id ); ?>"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></a>
-							<?php endif; ?>
-							<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_delete_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
-						</td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
