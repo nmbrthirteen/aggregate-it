@@ -121,6 +121,11 @@ if ( ! function_exists( 'esc_url_raw' ) ) {
 		return (string) $s;
 	}
 }
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	function wp_parse_url( $url, $component = -1 ) {
+		return parse_url( (string) $url, $component );
+	}
+}
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( $v ) {
 		return json_encode( $v );

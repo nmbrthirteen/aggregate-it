@@ -69,11 +69,9 @@ final class Admin {
 	}
 
 	public function menu(): void {
-		$brand = $this->plugin->settings()->brand_name();
-
 		$this->hooks[] = add_menu_page(
-			$brand,
-			$brand,
+			__( 'Aggregate It', 'aggregate-it' ),
+			__( 'Aggregate It', 'aggregate-it' ),
 			'manage_options',
 			self::SLUG,
 			[ $this, 'render_dashboard' ],
@@ -171,7 +169,6 @@ final class Admin {
 
 	public function render_dashboard(): void {
 		$s     = $this->plugin->settings();
-		$brand = $s->brand_name();
 
 		$setup = [
 			'provider' => $s->provider_key() !== 'mock' && $s->api_key() !== '',

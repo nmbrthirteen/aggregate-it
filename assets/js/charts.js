@@ -9,19 +9,14 @@
 	];
 
 	function theme() {
-		var el = document.querySelector( '.aggregate-it' ) || document.documentElement;
-		var cs = window.getComputedStyle( el );
-		function v( name, fallback ) {
-			return ( cs.getPropertyValue( name ) || '' ).trim() || fallback;
-		}
 		return {
-			accent: v( '--ai-accent', '#2271b1' ),
-			ink: v( '--ai-ink', '#1d2327' ),
-			muted: v( '--ai-muted', '#646970' ),
-			line: v( '--ai-line', '#dcdcde' ),
-			success: v( '--ai-success', '#008a20' ),
-			warning: v( '--ai-warning', '#bd8600' ),
-			error: v( '--ai-error', '#d63638' )
+			accent: '#2271b1',
+			ink: '#1d2327',
+			muted: '#646970',
+			line: '#dcdcde',
+			success: '#008a20',
+			warning: '#bd8600',
+			error: '#d63638'
 		};
 	}
 

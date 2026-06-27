@@ -43,8 +43,9 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
 
-	<div class="ai-panel">
-		<h2><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></h2>
+	<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Your content types', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="widefat striped">
 			<thead><tr>
 				<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
@@ -64,9 +65,9 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 						<td><?php echo (int) $count; ?></td>
 						<td>
 							<?php if ( $on ) : ?>
-								<span class="ai-state ai-state--published"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
+								<span class="post-state"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
 							<?php else : ?>
-								<span class="ai-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
+								<span class="post-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
 							<?php endif; ?>
 						</td>
 						<td>
@@ -83,7 +84,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 									<button class="button button-small"><?php esc_html_e( 'Save', 'aggregate-it' ); ?></button>
 								</form>
 							<?php else : ?>
-								<span class="ai-muted">—</span>
+								<span class="description">—</span>
 							<?php endif; ?>
 						</td>
 						<td>
@@ -122,10 +123,12 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 			</datalist>
 			<button class="button button-primary"><?php esc_html_e( 'Add & turn on', 'aggregate-it' ); ?></button>
 		</form>
+		</div>
 	</div>
 
-	<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'Pages built automatically', 'aggregate-it' ); ?></h2>
+	<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Pages built automatically', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<?php
 		$entities = $cpts ? get_posts(
 			[ 'post_type' => $cpts, 'post_status' => 'publish', 'posts_per_page' => 100, 'orderby' => 'modified', 'order' => 'DESC' ]
@@ -151,10 +154,12 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 				</tbody>
 			</table>
 		<?php endif; ?>
+		</div>
 	</div>
 
-	<details class="ai-panel ai-narrow">
+	<details class="postbox">
 		<summary><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
+		<div class="inside">
 		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 			<input type="hidden" name="action" value="aggregate_it_merge_entities">
 			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
@@ -162,5 +167,6 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 			<label><?php esc_html_e( 'into page ID', 'aggregate-it' ); ?><br><input name="target_id" type="number" required></label>
 			<button class="button" onclick="return confirm('<?php echo esc_js( __( 'Merge and delete the source page?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Merge', 'aggregate-it' ); ?></button>
 		</form>
+		</div>
 	</details>
 </div>

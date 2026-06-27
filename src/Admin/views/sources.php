@@ -35,8 +35,9 @@ $messages = [
 		</div>
 	<?php endif; ?>
 
-	<div class="ai-panel ai-narrow">
-		<h2><?php echo $editing ? esc_html__( 'Edit feed', 'aggregate-it' ) : esc_html__( 'Add a feed', 'aggregate-it' ); ?></h2>
+	<div class="postbox">
+		<h2 class="hndle"><span><?php echo $editing ? esc_html__( 'Edit feed', 'aggregate-it' ) : esc_html__( 'Add a feed', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="aggregate_it_save_source">
 			<input type="hidden" name="id" value="<?php echo (int) ( $editing->id ?? 0 ); ?>">
@@ -142,10 +143,12 @@ $messages = [
 				<?php endif; ?>
 			</p>
 		</form>
+		</div>
 	</div>
 
-	<details class="ai-panel ai-narrow">
+	<details class="postbox">
 		<summary><?php esc_html_e( 'Import many feeds at once (OPML)', 'aggregate-it' ); ?></summary>
+		<div class="inside">
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="aggregate_it_import_opml">
 			<?php wp_nonce_field( 'aggregate_it_import_opml' ); ?>
@@ -169,9 +172,9 @@ $messages = [
 			} );
 		} )();
 		</script>
+		</div>
 	</details>
 
-	<div class="ai-panel">
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="ai-bulk-sources">
 	<input type="hidden" name="action" value="aggregate_it_bulk_sources">
 	<?php wp_nonce_field( 'aggregate_it_bulk_sources' ); ?>
@@ -226,7 +229,7 @@ $messages = [
 					<th scope="row" class="check-column"><input type="checkbox" name="source_ids[]" value="<?php echo (int) $source->id; ?>"></th>
 					<td><?php echo esc_html( $source->title ?: '—' ); ?></td>
 					<td class="ai-trunc"><?php echo esc_html( $source->url ); ?></td>
-					<td><span class="ai-state ai-state--<?php echo esc_attr( $source->status ); ?>"><?php echo esc_html( $source->status ); ?></span></td>
+					<td><span class="post-state"><?php echo esc_html( $source->status ); ?></span></td>
 					<td><?php echo esc_html( $source->last_checked ?: '—' ); ?></td>
 					<td><?php echo $health_text; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 					<td class="ai-row-actions ai-inline">
@@ -260,5 +263,4 @@ $messages = [
 		}
 	} )();
 	</script>
-	</div>
 </div>

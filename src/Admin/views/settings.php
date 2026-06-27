@@ -26,8 +26,9 @@ $has_key = $settings->api_key() !== '';
 		<input type="hidden" name="action" value="aggregate_it_save_settings">
 		<?php wp_nonce_field( 'aggregate_it_save_settings' ); ?>
 
-		<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></h2>
+		<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="provider"><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></label></th>
@@ -63,7 +64,7 @@ $has_key = $settings->api_key() !== '';
 						placeholder="<?php echo $has_key ? esc_attr__( '•••••••• (saved)', 'aggregate-it' ) : ''; ?>">
 						<p>
 							<button type="button" class="button" id="ai-test-key"><?php esc_html_e( 'Test connection', 'aggregate-it' ); ?></button>
-							<span id="ai-test-result" class="ai-muted"></span>
+							<span id="ai-test-result" class="description"></span>
 						</p>
 						<p class="description"><?php esc_html_e( 'Save your settings first, then test.', 'aggregate-it' ); ?></p>
 				</td>
@@ -85,13 +86,18 @@ $has_key = $settings->api_key() !== '';
 			</tr>
 		</table>
 		</div>
+		</div>
 
-		<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'Publishing', 'aggregate-it' ); ?></h2>
+		<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Publishing', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="form-table" role="presentation">
 			<tr>
-				<th><label for="brand_name"><?php esc_html_e( 'Brand name', 'aggregate-it' ); ?></label></th>
-				<td><input name="brand_name" id="brand_name" type="text" class="regular-text" value="<?php echo esc_attr( $settings->brand_name() ); ?>"></td>
+				<th><label for="brand_name"><?php esc_html_e( 'Site / publisher brand', 'aggregate-it' ); ?></label></th>
+				<td>
+					<input name="brand_name" id="brand_name" type="text" class="regular-text" value="<?php echo esc_attr( $settings->brand_name() ); ?>">
+					<p class="description"><?php esc_html_e( 'Used in generated article context and SEO metadata. The plugin menu stays named Aggregate It.', 'aggregate-it' ); ?></p>
+				</td>
 			</tr>
 			<tr>
 				<th><label for="target_post_type"><?php esc_html_e( 'Where to publish', 'aggregate-it' ); ?></label></th>
@@ -160,9 +166,11 @@ $has_key = $settings->api_key() !== '';
 			</tr>
 		</table>
 		</div>
+		</div>
 
-		<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></h2>
+		<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="similarity_threshold"><?php esc_html_e( 'Duplicate sensitivity', 'aggregate-it' ); ?></label></th>
@@ -182,9 +190,11 @@ $has_key = $settings->api_key() !== '';
 			</tr>
 		</table>
 		</div>
+		</div>
 
-		<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></h2>
+		<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><?php esc_html_e( 'Run by itself', 'aggregate-it' ); ?></th>
@@ -197,13 +207,15 @@ $has_key = $settings->api_key() !== '';
 			</tr>
 			<tr>
 				<th><label for="retention_days"><?php esc_html_e( 'Keep the article history for (days)', 'aggregate-it' ); ?></label></th>
-				<td><input name="retention_days" id="retention_days" type="number" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->retention_days() ); ?>"> <span class="ai-muted"><?php esc_html_e( '0 = keep forever. Your published posts are never deleted.', 'aggregate-it' ); ?></span></td>
+				<td><input name="retention_days" id="retention_days" type="number" min="0" class="small-text" value="<?php echo esc_attr( (string) $settings->retention_days() ); ?>"> <span class="description"><?php esc_html_e( '0 = keep forever. Your published posts are never deleted.', 'aggregate-it' ); ?></span></td>
 			</tr>
 		</table>
 		</div>
+		</div>
 
-		<div class="ai-panel ai-narrow">
-		<h2><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></h2>
+		<div class="postbox">
+		<h2 class="hndle"><span><?php esc_html_e( 'Feeds', 'aggregate-it' ); ?></span></h2>
+		<div class="inside">
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="import_interval_minutes"><?php esc_html_e( 'Check for new posts every (minutes)', 'aggregate-it' ); ?></label></th>
@@ -214,6 +226,7 @@ $has_key = $settings->api_key() !== '';
 				<td><input name="feed_dead_after" id="feed_dead_after" type="number" min="1" class="small-text" value="<?php echo esc_attr( (string) $settings->feed_dead_after() ); ?>"></td>
 			</tr>
 		</table>
+		</div>
 		</div>
 
 		<?php submit_button(); ?>

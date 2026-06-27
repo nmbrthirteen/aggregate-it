@@ -1,236 +1,118 @@
 /**
- * Aggregate It — admin design system.
- * Minimal, aligned to the WordPress 6.x admin palette so it reads as native.
- * Buttons are intentionally NOT restyled — use core .button / .button-primary.
+ * Aggregate It admin helpers.
+ *
+ * WordPress admin supplies the visual system. This file only handles layout
+ * gaps that core classes do not cover: responsive columns, charts, truncation,
+ * and small inline form alignment.
  */
 .aggregate-it {
-	--ai-ink: #1d2327;
-	--ai-muted: #646970;
-	--ai-line: #dcdcde;
-	--ai-bg: #fff;
-	--ai-accent: #2271b1;
-	--ai-success: #008a20;
-	--ai-warning: #bd8600;
-	--ai-error: #d63638;
-	--ai-success-ink: #00701a;
-	--ai-warning-ink: #8a6500;
-	--ai-error-ink: #b32d2e;
-	--ai-s1: 4px;
-	--ai-s2: 8px;
-	--ai-s3: 12px;
-	--ai-s4: 16px;
-	--ai-s5: 24px;
-	--ai-radius: 8px;
 	max-width: 1240px;
 }
 
-/* Page header ---------------------------------------------------------- */
 .aggregate-it .ai-head {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--ai-s4);
+	gap: 12px;
 	flex-wrap: wrap;
-	margin: 4px 0 var(--ai-s4);
+	margin: 4px 0 16px;
 }
+
 .aggregate-it .ai-head h1 {
 	margin: 0;
 	padding: 0;
-	font-size: 23px;
-	font-weight: 400;
-	line-height: 1.3;
 }
-.aggregate-it .ai-actions {
-	display: flex;
+
+.aggregate-it .ai-actions,
+.aggregate-it .ai-inline,
+.aggregate-it .ai-row-actions {
+	display: inline-flex;
 	align-items: center;
-	gap: var(--ai-s2);
+	gap: 8px;
 	flex-wrap: wrap;
 }
 
-/* Surfaces ------------------------------------------------------------- */
-.aggregate-it .ai-panel {
-	background: var(--ai-bg);
-	border: 1px solid var(--ai-line);
-	border-radius: var(--ai-radius);
-	padding: var(--ai-s5);
-	margin: 0 0 var(--ai-s4);
-}
-.aggregate-it .ai-panel > h2 {
-	margin: 0 0 var(--ai-s4);
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--ai-ink);
-}
-.aggregate-it .ai-panel > h3 {
-	margin: var(--ai-s5) 0 var(--ai-s3);
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--ai-ink);
-}
-.aggregate-it .ai-narrow {
-	max-width: 760px;
-}
-.aggregate-it .ai-panel form + form {
-	margin-top: var(--ai-s4);
-}
-.aggregate-it .ai-danger {
-	border-color: #f0c4c4;
-}
-.aggregate-it .ai-danger > h2 {
-	color: var(--ai-error-ink);
-}
-
-/* Grids ---------------------------------------------------------------- */
 .aggregate-it .ai-grid {
 	display: grid;
-	gap: var(--ai-s4);
+	gap: 16px;
 }
+
 .aggregate-it .ai-cols-3 {
 	grid-template-columns: 320px 1fr 1fr;
 }
+
 .aggregate-it .ai-cols-2 {
-	grid-template-columns: 2fr 1fr;
-}
-@media ( max-width: 1100px ) {
-	.aggregate-it .ai-cols-3 {
-		grid-template-columns: 1fr 1fr;
-	}
-	.aggregate-it .ai-cols-3 > .ai-panel:last-child {
-		grid-column: 1 / -1;
-	}
-}
-@media ( max-width: 782px ) {
-	.aggregate-it .ai-cols-3,
-	.aggregate-it .ai-cols-2 {
-		grid-template-columns: 1fr;
-	}
+	grid-template-columns: 1fr 1fr;
 }
 
-/* Stat cards ----------------------------------------------------------- */
 .aggregate-it .ai-cards {
 	display: grid;
 	grid-template-columns: repeat( 4, 1fr );
-	gap: var(--ai-s3);
-	margin: 0 0 var(--ai-s4);
+	gap: 12px;
+	margin: 0 0 16px;
 }
-@media ( max-width: 960px ) {
-	.aggregate-it .ai-cards {
-		grid-template-columns: repeat( 2, 1fr );
-	}
+
+.aggregate-it .ai-card .inside {
+	margin-bottom: 0;
 }
-.aggregate-it .ai-card {
-	background: var(--ai-bg);
-	border: 1px solid var(--ai-line);
-	border-radius: var(--ai-radius);
-	padding: var(--ai-s4);
-	display: flex;
-	flex-direction: column;
-	gap: var(--ai-s1);
-}
+
 .aggregate-it .ai-card__label {
-	font-size: 11px;
-	text-transform: uppercase;
-	letter-spacing: .05em;
-	font-weight: 600;
-	color: var(--ai-muted);
+	display: block;
+	margin-bottom: 4px;
+	color: #646970;
 }
+
 .aggregate-it .ai-card__value {
-	font-size: 26px;
+	display: block;
+	font-size: 24px;
+	line-height: 1.3;
 	font-weight: 600;
-	line-height: 1.2;
-	color: var(--ai-ink);
 	font-variant-numeric: tabular-nums;
 }
+
 .aggregate-it .ai-card__value[data-tone="error"] {
-	color: var(--ai-error);
+	color: #d63638;
 }
 
-/* Status badges -------------------------------------------------------- */
-.aggregate-it .ai-state {
-	display: inline-block;
-	font-size: 11px;
-	font-weight: 500;
-	line-height: 1.6;
-	padding: 2px 8px;
-	border-radius: 999px;
-	background: #f0f0f1;
-	color: #3c434a;
-	text-transform: capitalize;
-}
-.aggregate-it .ai-state--published,
-.aggregate-it .ai-state--active {
-	background: #edfaef;
-	color: var(--ai-success-ink);
-}
-.aggregate-it .ai-state--dead_letter,
-.aggregate-it .ai-state--dead {
-	background: #fcf0f1;
-	color: var(--ai-error-ink);
-}
-.aggregate-it .ai-state--paused {
-	background: #fcf9e8;
-	color: var(--ai-warning-ink);
-}
-
-/* Pills (header chips) ------------------------------------------------- */
-.aggregate-it .ai-pill {
-	font-size: 12px;
-	color: var(--ai-muted);
-	background: #f0f0f1;
-	border-radius: 999px;
-	padding: 3px 10px;
-}
-.aggregate-it .ai-pill--warn {
-	color: var(--ai-warning);
-	background: #fcf9e8;
-}
-
-/* Inline status banner ------------------------------------------------- */
 .aggregate-it .ai-status {
 	display: none;
-	margin: 0 0 var(--ai-s4);
-	padding: var(--ai-s2) var(--ai-s3);
-	background: #f0f6fc;
-	border: 1px solid #c5d9ed;
-	border-left-width: 4px;
-	border-radius: 4px;
-	color: #0a4b78;
 }
 
-/* Charts --------------------------------------------------------------- */
 .aggregate-it canvas {
 	max-width: 100%;
 }
+
 .aggregate-it .ai-chart-row {
 	display: flex;
 	align-items: center;
-	gap: var(--ai-s4);
+	gap: 16px;
 	flex-wrap: wrap;
 }
-.aggregate-it .ai-legend {
+
+.aggregate-it .ai-legend,
+.aggregate-it .ai-events {
 	margin: 0;
 	list-style: none;
-	font-size: 12px;
-	color: #3c434a;
 }
+
 .aggregate-it .ai-legend li {
 	display: flex;
 	align-items: center;
-	gap: var(--ai-s2);
-	margin: 0 0 var(--ai-s1);
+	gap: 8px;
+	margin: 0 0 4px;
 }
+
 .aggregate-it .ai-dot {
 	width: 10px;
 	height: 10px;
-	border-radius: 3px;
 	display: inline-block;
 }
 
-/* Tables --------------------------------------------------------------- */
 .aggregate-it .widefat td,
 .aggregate-it .widefat th {
 	vertical-align: middle;
 }
+
 .aggregate-it .ai-trunc {
 	max-width: 360px;
 	overflow: hidden;
@@ -238,94 +120,106 @@
 	white-space: nowrap;
 }
 
-/* Activity ------------------------------------------------------------- */
 .aggregate-it .ai-events {
-	margin: 0;
-	font-size: 12px;
 	max-height: 320px;
 	overflow: auto;
 }
+
 .aggregate-it .ai-event {
 	padding: 6px 0;
 	border-bottom: 1px solid #f0f0f1;
-	color: #3c434a;
 }
+
 .aggregate-it .ai-event:last-child {
 	border-bottom: 0;
 }
+
 .aggregate-it .ai-event time {
-	color: var(--ai-muted);
+	color: #646970;
 	margin-right: 6px;
 }
+
 .aggregate-it .ai-event--error {
-	color: var(--ai-error);
-}
-.aggregate-it .ai-event--warning {
-	color: var(--ai-warning);
+	color: #d63638;
 }
 
-/* Forms ---------------------------------------------------------------- */
+.aggregate-it .ai-event--warning {
+	color: #996800;
+}
+
 .aggregate-it .ai-field-grid {
 	display: flex;
-	gap: var(--ai-s3);
+	gap: 12px;
 	align-items: flex-end;
 	flex-wrap: wrap;
 }
+
 .aggregate-it .ai-checklist {
 	max-height: 180px;
 	overflow: auto;
-	border: 1px solid var(--ai-line);
-	border-radius: 6px;
-	padding: var(--ai-s2) var(--ai-s3);
+	border: 1px solid #c3c4c7;
+	padding: 8px 12px;
+	background: #fff;
 }
+
 .aggregate-it .ai-checklist label {
 	display: block;
 	margin: 2px 0;
 }
-.aggregate-it details.ai-panel > summary {
+
+.aggregate-it details.postbox > summary {
 	cursor: pointer;
 	font-weight: 600;
-}
-.aggregate-it details.ai-panel > summary + * {
-	margin-top: var(--ai-s3);
-}
-.aggregate-it .ai-field-grid .ai-result {
-	flex-basis: 100%;
-	margin: var(--ai-s1) 0 0;
+	padding: 12px;
 }
 
-/* Utilities ------------------------------------------------------------ */
-.aggregate-it .ai-muted {
-	color: var(--ai-muted);
+.aggregate-it details.postbox > .inside {
+	margin-top: 0;
 }
+
 .aggregate-it .ai-empty {
-	color: var(--ai-muted);
+	color: #646970;
 	font-style: italic;
-	padding: 10px 0;
 }
+
 .aggregate-it .ai-hidden {
 	display: none !important;
 }
-.aggregate-it .ai-inline {
-	display: inline-flex;
-	gap: var(--ai-s2);
-	align-items: center;
-	flex-wrap: wrap;
-}
+
 .aggregate-it .ai-row-actions form {
 	display: inline-block;
 	margin: 0;
 }
 
-/* Get-started checklist ------------------------------------------------ */
 .aggregate-it .ai-setup ol {
 	margin: 0;
 	padding-left: 1.4em;
 }
+
 .aggregate-it .ai-setup li {
 	padding: 7px 0;
 }
+
 .aggregate-it .ai-setup li .button,
-.aggregate-it .ai-setup li .ai-state {
+.aggregate-it .ai-setup li .post-state {
 	margin-left: 8px;
+}
+
+@media ( max-width: 1100px ) {
+	.aggregate-it .ai-cols-3,
+	.aggregate-it .ai-cols-2 {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media ( max-width: 960px ) {
+	.aggregate-it .ai-cards {
+		grid-template-columns: repeat( 2, 1fr );
+	}
+}
+
+@media ( max-width: 782px ) {
+	.aggregate-it .ai-cards {
+		grid-template-columns: 1fr;
+	}
 }

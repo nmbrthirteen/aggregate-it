@@ -250,10 +250,68 @@ final class Importer {
 	}
 
 	private function item_image( \SimplePie_Item $item ): string {
+		$media = $this->media_image( $item );
+		if ( $media !== '' ) {
+			return $media;
+		}
+
 		$enclosure = $item->get_enclosure();
 		if ( ! $enclosure ) {
 			return '';
 		}
-		return (string) ( $enclosure->get_thumbnail() ?: ( $enclosure->get_link() ?: '' ) );
+		foreach ( [ $enclosure->get_thumbnail(), $enclosure->get_link() ] as $url ) {
+			$url = (string) $url;
+			if ( $this->usable_image_url( $url ) ) {
+				return $url;
+			}
+		}
+		return '';
+	}
+
+	private function media_image( \SimplePie_Item $item ): string {
+		foreach ( [ 'http://search.yahoo.com/mrss/', 'https://search.yahoo.com/mrss/' ] as $namespace ) {
+			foreach ( [ 'content', 'thumbnail' ] as $tag ) {
+				$image = $this->best_media_image( (array) $item->get_item_tags( $namespace, $tag ) );
+				if ( $image !== '' ) {
+					return $image;
+				}
+			}
+		}
+		return '';
+	}
+
+	/** @param array<int,array<string,mixed>> $tags */
+	private function best_media_image( array $tags ): string {
+		foreach ( $tags as $tag ) {
+			$attrs = (array) ( $tag['attribs'] ?? [] );
+			foreach ( $attrs as $values ) {
+				$values = (array) $values;
+				$url    = (string) ( $values['url'] ?? '' );
+				if ( $this->usable_image_url( $url ) ) {
+					return $url;
+				}
+			}
+		}
+		return '';
+	}
+
+	private function usable_image_url( string $url ): bool {
+		$url = trim( html_entity_decode( $url ) );
+		if ( ! preg_match( '#^https?://#i', $url ) ) {
+			return false;
+		}
+
+		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+		if ( $path === '' || $path === '/' ) {
+			return false;
+		}
+
+		if ( preg_match( '/(logo|icon|sprite|avatar|gravatar|placeholder|default[-_]|blank|spacer|favicon)/i', $url ) ) {
+			return false;
+		}
+
+		return (bool) preg_match( '#\.(jpe?g|png|gif|webp|avif)(?:$|[?&])#i', $path )
+			|| str_contains( $path, '/wp-content/uploads/' )
+			|| str_contains( $path, '/img-srv/' );
 	}
 }

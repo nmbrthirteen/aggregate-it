@@ -27,7 +27,7 @@ $tabs        = [
 
 $status_label = static function ( object $row, array $flags ): array {
 	if ( $row->state === 'dead_letter' ) {
-		return [ __( 'Failed', 'aggregate-it' ), 'ai-state--dead_letter' ];
+		return [ __( 'Failed', 'aggregate-it' ), 'post-state' ];
 	}
 	if ( $row->state === 'published' ) {
 		if ( ! empty( $flags['suppressed'] ) ) {
@@ -36,11 +36,11 @@ $status_label = static function ( object $row, array $flags ): array {
 				'no-novelty'       => __( 'Skipped — duplicate', 'aggregate-it' ),
 				'no-keyword-match' => __( 'Skipped — no keyword match', 'aggregate-it' ),
 			];
-			return [ $reason[ $flags['suppressed'] ] ?? __( 'Skipped', 'aggregate-it' ), '' ];
+			return [ $reason[ $flags['suppressed'] ] ?? __( 'Skipped', 'aggregate-it' ), 'post-state' ];
 		}
-		return ! empty( $flags['updated_post'] ) ? [ __( 'Added to a story', 'aggregate-it' ), 'ai-state--published' ] : [ __( 'Published', 'aggregate-it' ), 'ai-state--published' ];
+		return ! empty( $flags['updated_post'] ) ? [ __( 'Added to a story', 'aggregate-it' ), 'post-state' ] : [ __( 'Published', 'aggregate-it' ), 'post-state' ];
 	}
-	return [ __( 'Being processed', 'aggregate-it' ), '' ];
+	return [ __( 'Being processed', 'aggregate-it' ), 'post-state' ];
 };
 
 $action_link = static function ( string $action, int $id ) {
@@ -90,7 +90,6 @@ $notices = [
 		<?php endforeach; ?>
 	</ul>
 
-	<div class="ai-panel" style="clear:both;">
 	<form method="post" action="<?php echo $post_action; ?>" id="aggregate-it-articles" onsubmit="return aiBulkConfirm(this);">
 		<input type="hidden" name="action" value="aggregate_it_bulk_articles">
 		<?php wp_nonce_field( 'aggregate_it_bulk_articles' ); ?>
@@ -141,13 +140,13 @@ $notices = [
 							<?php else : ?>
 								<?php echo esc_html( $title ); ?>
 							<?php endif; ?>
-							<div class="ai-muted">#<?php echo (int) $row->id; ?></div>
+							<div class="description">#<?php echo (int) $row->id; ?></div>
 						</td>
 						<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
-						<td><span class="ai-state <?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
+						<td><span class="<?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
 							<?php if ( $row->state === 'dead_letter' ) : ?>
 								<?php if ( $row->last_error ) : ?>
-									<div class="ai-muted"><?php echo esc_html( $row->last_error ); ?></div>
+									<div class="description"><?php echo esc_html( $row->last_error ); ?></div>
 								<?php endif; ?>
 								<div><a class="button button-small" href="<?php echo $action_link( 'aggregate_it_retry_article', (int) $row->id ); ?>"><?php esc_html_e( 'Retry', 'aggregate-it' ); ?></a></div>
 							<?php endif; ?>
@@ -179,13 +178,12 @@ $notices = [
 			<?php if ( $paged > 1 ) : ?>
 				<a class="button" href="<?php echo esc_url( add_query_arg( 'paged', $paged - 1, $base ) ); ?>">&laquo; <?php esc_html_e( 'Newer', 'aggregate-it' ); ?></a>
 			<?php endif; ?>
-			<span class="ai-muted"><?php echo esc_html( sprintf( /* translators: 1: current page, 2: total pages */ __( 'Page %1$d of %2$d', 'aggregate-it' ), $paged, $last_page ) ); ?></span>
+			<span class="description"><?php echo esc_html( sprintf( /* translators: 1: current page, 2: total pages */ __( 'Page %1$d of %2$d', 'aggregate-it' ), $paged, $last_page ) ); ?></span>
 			<?php if ( $paged < $last_page ) : ?>
 				<a class="button" href="<?php echo esc_url( add_query_arg( 'paged', $paged + 1, $base ) ); ?>"><?php esc_html_e( 'Older', 'aggregate-it' ); ?> &raquo;</a>
 			<?php endif; ?>
 		</p>
 	<?php endif; ?>
-	</div>
 </div>
 <script>
 ( function () {

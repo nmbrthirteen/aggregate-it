@@ -41,7 +41,7 @@ final class ExtractStage implements Stage {
 		// Prefer the publisher's share image (og:image) over the feed enclosure — the
 		// enclosure is often a generic or sub-topic image, not the article's hero.
 		$enclosure = (string) ( $item->flags['image'] ?? '' );
-		$share     = $this->settings->image_source() === 'share' ? $this->extractor->share_image( $item->url ) : '';
+		$share     = $this->settings->image_source() === 'share' ? ( (string) ( $result['image'] ?? '' ) ?: $this->extractor->share_image( $item->url ) ) : '';
 		$image     = $share ?: ( $enclosure ?: (string) ( $result['image'] ?? '' ) );
 
 		if ( $image !== '' ) {

@@ -32,7 +32,8 @@
 		if ( ! el ) {
 			return;
 		}
-		el.textContent = msg || '';
+		var body = el.querySelector( 'p' ) || el;
+		body.textContent = msg || '';
 		el.style.display = msg ? 'block' : 'none';
 	}
 
@@ -151,7 +152,7 @@
 			tr.appendChild( cell( r.url, true ) );
 			var st = cell( '' );
 			var badge = document.createElement( 'span' );
-			badge.className = 'ai-state ai-state--' + r.state;
+			badge.className = 'post-state';
 			badge.textContent = r.state.replace( /_/g, ' ' );
 			st.appendChild( badge );
 			tr.appendChild( st );
