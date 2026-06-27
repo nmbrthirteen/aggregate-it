@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * @var Settings             $settings
  * @var string|false         $flash
+ * @var string               $flash_type
  * @var string               $blacklist
  * @var array<int,array>     $events
  * @var array<string,string> $info
@@ -27,7 +28,7 @@ foreach ( $info as $label => $value ) {
 	</div>
 
 	<?php if ( $flash ) : ?>
-		<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $flash ); ?></p></div>
+		<div class="notice notice-<?php echo $flash_type === 'error' ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html( $flash ); ?></p></div>
 	<?php endif; ?>
 
 	<div class="ai-grid ai-cols-2">

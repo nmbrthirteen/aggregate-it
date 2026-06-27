@@ -562,6 +562,11 @@ final class Admin {
 		if ( $flash ) {
 			delete_transient( 'aggregate_it_flash' );
 		}
+		$flash_type = 'success';
+		if ( is_array( $flash ) ) {
+			$flash_type = sanitize_key( (string) ( $flash['type'] ?? 'success' ) );
+			$flash      = (string) ( $flash['message'] ?? '' );
+		}
 		$blacklist = $settings->blacklist_raw();
 		$events    = EventLog::all();
 		$info      = $this->system_info();
@@ -628,14 +633,20 @@ final class Admin {
 	public function handle_import_config(): void {
 		$this->guard( 'aggregate_it_import_config' );
 
-		$raw = '';
-		if ( ! empty( $_FILES['config']['tmp_name'] ) && is_uploaded_file( $_FILES['config']['tmp_name'] ) ) {
-			$raw = (string) file_get_contents( $_FILES['config']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		$upload = $_FILES['config'] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		if ( ! is_array( $upload ) ) {
+			$this->flash( __( 'Choose a JSON file to import.', 'aggregate-it' ), 'error' );
+			$this->redirect( self::SLUG . '-tools', '' );
+		}
+
+		$raw = $this->read_import_upload( $upload );
+		if ( $raw === null ) {
+			$this->redirect( self::SLUG . '-tools', '' );
 		}
 
 		$data = json_decode( $raw, true );
 		if ( ! is_array( $data ) ) {
-			$this->flash( __( 'That file is not valid JSON.', 'aggregate-it' ) );
+			$this->flash( __( 'That file is not valid JSON.', 'aggregate-it' ), 'error' );
 			$this->redirect( self::SLUG . '-tools', '' );
 		}
 
@@ -645,8 +656,12 @@ final class Admin {
 			$this->flash( $this->import_wprss_config( $data ) );
 		} else {
 			$added = $this->add_feed_urls( $this->collect_feed_urls( $data ) );
-			/* translators: %d: number of feeds added */
-			$this->flash( sprintf( _n( 'Imported %d feed from that file.', 'Imported %d feeds from that file.', $added, 'aggregate-it' ), $added ) );
+			if ( $added > 0 ) {
+				/* translators: %d: number of feeds added */
+				$this->flash( sprintf( _n( 'Imported %d feed from that file.', 'Imported %d feeds from that file.', $added, 'aggregate-it' ), $added ) );
+			} else {
+				$this->flash( __( 'The JSON file was valid, but no feed URLs were found to import.', 'aggregate-it' ), 'error' );
+			}
 		}
 
 		$this->redirect( self::SLUG . '-tools', '' );
@@ -679,8 +694,52 @@ final class Admin {
 		$this->redirect( self::SLUG . '-tools', '' );
 	}
 
-	private function flash( string $message ): void {
-		set_transient( 'aggregate_it_flash', $message, 30 );
+	private function flash( string $message, string $type = 'success' ): void {
+		set_transient(
+			'aggregate_it_flash',
+			[
+				'message' => $message,
+				'type'    => $type,
+			],
+			30
+		);
+	}
+
+	/**
+	 * @param array<string,mixed> $upload
+	 */
+	private function read_import_upload( array $upload ): ?string {
+		$error = (int) ( $upload['error'] ?? UPLOAD_ERR_NO_FILE );
+		if ( $error !== UPLOAD_ERR_OK ) {
+			$this->flash( $this->upload_error_message( $error ), 'error' );
+			return null;
+		}
+
+		$tmp_name = (string) ( $upload['tmp_name'] ?? '' );
+		if ( $tmp_name === '' || ! is_uploaded_file( $tmp_name ) ) {
+			$this->flash( __( 'The uploaded file could not be read. Please choose the JSON file again and retry.', 'aggregate-it' ), 'error' );
+			return null;
+		}
+
+		$raw = file_get_contents( $tmp_name ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( $raw === false || trim( $raw ) === '' ) {
+			$this->flash( __( 'That file is empty.', 'aggregate-it' ), 'error' );
+			return null;
+		}
+
+		return (string) $raw;
+	}
+
+	private function upload_error_message( int $error ): string {
+		return match ( $error ) {
+			UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => __( 'That file is too large for this server to upload.', 'aggregate-it' ),
+			UPLOAD_ERR_PARTIAL => __( 'The file upload did not finish. Please try again.', 'aggregate-it' ),
+			UPLOAD_ERR_NO_FILE => __( 'Choose a JSON file to import.', 'aggregate-it' ),
+			UPLOAD_ERR_NO_TMP_DIR => __( 'The server is missing a temporary upload folder.', 'aggregate-it' ),
+			UPLOAD_ERR_CANT_WRITE => __( 'The server could not write the uploaded file.', 'aggregate-it' ),
+			UPLOAD_ERR_EXTENSION => __( 'A PHP extension stopped the file upload.', 'aggregate-it' ),
+			default => __( 'The file could not be uploaded. Please try again.', 'aggregate-it' ),
+		};
 	}
 
 	/** @return array<string,mixed> settings safe to export — secrets are never written out */
