@@ -24,6 +24,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_delete_source', [ $this, 'handle_delete_source' ] );
 		add_action( 'admin_post_aggregate_it_import_now', [ $this, 'handle_import_now' ] );
 		add_action( 'admin_post_aggregate_it_import_opml', [ $this, 'handle_import_opml' ] );
+		add_action( 'admin_post_aggregate_it_bulk_sources', [ $this, 'handle_bulk_sources' ] );
 		add_action( 'admin_post_aggregate_it_save_rule', [ $this, 'handle_save_rule' ] );
 		add_action( 'admin_post_aggregate_it_save_fields', [ $this, 'handle_save_fields' ] );
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
@@ -392,6 +393,57 @@ final class Admin {
 
 		$this->plugin->sources()->delete( $id );
 		$this->redirect( self::SLUG . '-sources', 'deleted' );
+	}
+
+	public function handle_bulk_sources(): void {
+		$this->guard( 'aggregate_it_bulk_sources' );
+
+		$ids    = array_values( array_filter( array_map( 'intval', (array) ( $_POST['source_ids'] ?? [] ) ) ) );
+		$action = sanitize_key( wp_unslash( $_POST['bulk_action'] ?? '' ) );
+		if ( ! $ids || $action === '' ) {
+			$this->redirect( self::SLUG . '-sources', 'bulk_none' );
+		}
+
+		$repo    = $this->plugin->sources();
+		$changed = 0;
+		foreach ( $ids as $id ) {
+			$source = $repo->get( $id );
+			if ( ! $source ) {
+				continue;
+			}
+
+			switch ( $action ) {
+				case 'activate':
+					$repo->update( $id, [ 'status' => 'active' ] );
+					$changed++;
+					break;
+				case 'pause':
+					$repo->update( $id, [ 'status' => 'paused' ] );
+					$changed++;
+					break;
+				case 'delete':
+					$repo->delete( $id );
+					$changed++;
+					break;
+				case 'auto_categories':
+					$repo->update( $id, [ 'settings' => array_merge( $source->settings, [ 'categories' => $this->infer_categories_from_feed_url( $source->url ) ] ) ] );
+					$changed++;
+					break;
+				case 'set_category':
+					$category = (int) ( $_POST['bulk_category'] ?? 0 );
+					if ( $category > 0 ) {
+						$repo->update( $id, [ 'settings' => array_merge( $source->settings, [ 'categories' => [ $category ] ] ) ] );
+						$changed++;
+					}
+					break;
+				case 'clear_categories':
+					$repo->update( $id, [ 'settings' => array_merge( $source->settings, [ 'categories' => [] ] ) ] );
+					$changed++;
+					break;
+			}
+		}
+
+		$this->redirect( self::SLUG . '-sources', $changed > 0 ? 'bulk_done' : 'bulk_none' );
 	}
 
 	public function handle_import_now(): void {
@@ -849,17 +901,20 @@ final class Admin {
 			}
 
 			$url = '';
+			$meta_values = [];
 			foreach ( $wp->postmeta as $meta ) {
+				$key = (string) $meta->meta_key;
+				$meta_values[ $key ] = (string) $meta->meta_value;
 				if ( (string) $meta->meta_key === 'wprss_url' ) {
 					$url = (string) $meta->meta_value;
-					break;
 				}
 			}
 
 			if ( $url !== '' ) {
 				$sources[] = [
-					'url'   => $url,
-					'title' => (string) $item->title,
+					'url'        => $url,
+					'title'      => (string) $item->title,
+					'categories' => $this->category_ids_from_exported_terms( $meta_values ),
 				];
 			}
 		}
@@ -910,7 +965,13 @@ final class Admin {
 		);
 	}
 
-	/** @param array<int,array{url:string,title:string}> $sources */
+	/**
+	 * @param array<int,array{
+	 *     url:string,
+	 *     title:string,
+	 *     categories?:int[]
+	 * }> $sources
+	 */
 	private function add_feed_sources( array $sources ): int {
 		$repo  = $this->plugin->sources();
 		$added = 0;
@@ -919,10 +980,80 @@ final class Admin {
 			if ( $clean === '' || $repo->exists_url( $clean ) ) {
 				continue;
 			}
-			$repo->create( $clean, sanitize_text_field( $source['title'] ), $this->default_source_settings( $clean ) );
+			$settings = $this->default_source_settings( $clean );
+			if ( ! empty( $source['categories'] ) ) {
+				$settings['categories'] = array_values( array_filter( array_map( 'intval', (array) $source['categories'] ) ) );
+			}
+			$repo->create( $clean, sanitize_text_field( $source['title'] ), $settings );
 			$added++;
 		}
 		return $added;
+	}
+
+	/**
+	 * @param array<string,string> $meta_values
+	 * @return int[]
+	 */
+	private function category_ids_from_exported_terms( array $meta_values ): array {
+		$slugs = [];
+		foreach ( [ 'wprss_ftp_post_terms', 'wprss_ftp_taxonomies' ] as $key ) {
+			if ( empty( $meta_values[ $key ] ) ) {
+				continue;
+			}
+			$value = maybe_unserialize( $meta_values[ $key ] );
+			$this->collect_exported_category_slugs( $value, $slugs );
+		}
+
+		return $this->category_ids_from_slugs( $slugs );
+	}
+
+	/**
+	 * @param mixed    $value
+	 * @param string[] $slugs
+	 */
+	private function collect_exported_category_slugs( $value, array &$slugs ): void {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+
+		if ( isset( $value['taxonomy'] ) && (string) $value['taxonomy'] !== 'category' ) {
+			return;
+		}
+		if ( isset( $value['terms'] ) ) {
+			foreach ( (array) $value['terms'] as $term ) {
+				if ( is_string( $term ) && $term !== '' ) {
+					$slugs[] = $term;
+				}
+			}
+			return;
+		}
+
+		foreach ( $value as $child ) {
+			if ( is_string( $child ) && $child !== '' && $child !== 'category' ) {
+				$slugs[] = $child;
+				continue;
+			}
+			$this->collect_exported_category_slugs( $child, $slugs );
+		}
+	}
+
+	/**
+	 * @param string[] $slugs
+	 * @return int[]
+	 */
+	private function category_ids_from_slugs( array $slugs ): array {
+		if ( ! in_array( 'category', get_object_taxonomies( $this->plugin->settings()->target_post_type() ), true ) ) {
+			return [];
+		}
+
+		$ids = [];
+		foreach ( array_unique( array_filter( array_map( 'sanitize_title', $slugs ) ) ) as $slug ) {
+			$term = get_category_by_slug( $slug );
+			if ( $term ) {
+				$ids[] = (int) $term->term_id;
+			}
+		}
+		return array_values( array_unique( array_filter( $ids ) ) );
 	}
 
 	/** @return array<string,mixed> */

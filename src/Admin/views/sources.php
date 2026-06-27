@@ -20,6 +20,8 @@ $messages = [
 	'invalid'  => __( 'Please enter a valid feed address.', 'aggregate-it' ),
 	'opml_added' => __( 'Feeds imported.', 'aggregate-it' ),
 	'opml_none'  => __( 'No new feeds found in that OPML.', 'aggregate-it' ),
+	'bulk_done' => __( 'Selected feeds updated.', 'aggregate-it' ),
+	'bulk_none' => __( 'Choose feeds and a bulk action first.', 'aggregate-it' ),
 ];
 ?>
 <div class="wrap aggregate-it">
@@ -170,9 +172,34 @@ $messages = [
 	</details>
 
 	<div class="ai-panel">
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="ai-bulk-sources">
+	<input type="hidden" name="action" value="aggregate_it_bulk_sources">
+	<?php wp_nonce_field( 'aggregate_it_bulk_sources' ); ?>
+	<div class="ai-inline" style="margin-bottom: 12px;">
+		<label for="ai-source-bulk-action" class="screen-reader-text"><?php esc_html_e( 'Bulk action', 'aggregate-it' ); ?></label>
+		<select name="bulk_action" id="ai-source-bulk-action">
+			<option value=""><?php esc_html_e( 'Bulk actions', 'aggregate-it' ); ?></option>
+			<option value="activate"><?php esc_html_e( 'Activate', 'aggregate-it' ); ?></option>
+			<option value="pause"><?php esc_html_e( 'Pause', 'aggregate-it' ); ?></option>
+			<option value="auto_categories"><?php esc_html_e( 'Auto-match categories', 'aggregate-it' ); ?></option>
+			<option value="set_category"><?php esc_html_e( 'Set category', 'aggregate-it' ); ?></option>
+			<option value="clear_categories"><?php esc_html_e( 'Clear categories', 'aggregate-it' ); ?></option>
+			<option value="delete"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></option>
+		</select>
+		<?php $bulk_cats = get_categories( [ 'hide_empty' => false, 'number' => 200 ] ); ?>
+		<label for="ai-bulk-category" class="screen-reader-text"><?php esc_html_e( 'Category', 'aggregate-it' ); ?></label>
+		<select name="bulk_category" id="ai-bulk-category">
+			<option value="0"><?php esc_html_e( 'Choose category', 'aggregate-it' ); ?></option>
+			<?php foreach ( $bulk_cats as $cat ) : ?>
+				<option value="<?php echo (int) $cat->term_id; ?>"><?php echo esc_html( $cat->name ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<button type="submit" class="button"><?php esc_html_e( 'Apply', 'aggregate-it' ); ?></button>
+	</div>
 	<table class="widefat striped">
 		<thead>
 			<tr>
+				<td class="manage-column column-cb check-column"><input type="checkbox" id="ai-source-select-all"></td>
 				<th><?php esc_html_e( 'Title', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Feed address', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
@@ -183,7 +210,7 @@ $messages = [
 		</thead>
 		<tbody>
 			<?php if ( ! $sources ) : ?>
-				<tr><td colspan="6" class="ai-empty"><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></td></tr>
+				<tr><td colspan="7" class="ai-empty"><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $sources as $source ) : ?>
 				<?php
@@ -196,6 +223,7 @@ $messages = [
 				$edit_url   = admin_url( 'admin.php?page=aggregate-it-sources&edit=' . $source->id );
 				?>
 				<tr>
+					<th scope="row" class="check-column"><input type="checkbox" name="source_ids[]" value="<?php echo (int) $source->id; ?>"></th>
 					<td><?php echo esc_html( $source->title ?: '—' ); ?></td>
 					<td class="ai-trunc"><?php echo esc_html( $source->url ); ?></td>
 					<td><span class="ai-state ai-state--<?php echo esc_attr( $source->status ); ?>"><?php echo esc_html( $source->status ); ?></span></td>
@@ -210,5 +238,27 @@ $messages = [
 			<?php endforeach; ?>
 		</tbody>
 	</table>
+	</form>
+	<script>
+	( function () {
+		var form = document.getElementById( 'ai-bulk-sources' );
+		var all = document.getElementById( 'ai-source-select-all' );
+		if ( all && form ) {
+			all.addEventListener( 'change', function () {
+				form.querySelectorAll( 'input[name="source_ids[]"]' ).forEach( function ( input ) {
+					input.checked = all.checked;
+				} );
+			} );
+		}
+		if ( form ) {
+			form.addEventListener( 'submit', function ( event ) {
+				var action = document.getElementById( 'ai-source-bulk-action' );
+				if ( action && action.value === 'delete' && ! confirm( '<?php echo esc_js( __( 'Delete selected feeds?', 'aggregate-it' ) ); ?>' ) ) {
+					event.preventDefault();
+				}
+			} );
+		}
+	} )();
+	</script>
 	</div>
 </div>
