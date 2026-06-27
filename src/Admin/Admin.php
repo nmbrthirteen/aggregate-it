@@ -354,6 +354,9 @@ final class Admin {
 		if ( $url === '' ) {
 			$this->redirect( self::SLUG . '-sources', 'invalid' );
 		}
+		if ( ! $categories ) {
+			$categories = $this->infer_categories_from_feed_url( $url );
+		}
 
 		$settings = [
 			'interval_minutes' => $interval,
@@ -418,7 +421,7 @@ final class Admin {
 					continue;
 				}
 				$title = sanitize_text_field( (string) ( $outline['title'] ?? $outline['text'] ?? '' ) );
-				$repo->create( $url, $title, [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+				$repo->create( $url, $title, $this->default_source_settings( $url ) );
 				$added++;
 			}
 		}
@@ -586,7 +589,7 @@ final class Admin {
 			if ( $url === '' || $repo->exists_url( $url ) ) {
 				continue;
 			}
-			$repo->create( $url, '', [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+			$repo->create( $url, '', $this->default_source_settings( $url ) );
 			$added++;
 		}
 
@@ -916,10 +919,90 @@ final class Admin {
 			if ( $clean === '' || $repo->exists_url( $clean ) ) {
 				continue;
 			}
-			$repo->create( $clean, sanitize_text_field( $source['title'] ), [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+			$repo->create( $clean, sanitize_text_field( $source['title'] ), $this->default_source_settings( $clean ) );
 			$added++;
 		}
 		return $added;
+	}
+
+	/** @return array<string,mixed> */
+	private function default_source_settings( string $url ): array {
+		return [
+			'interval_minutes' => $this->plugin->settings()->import_interval_minutes(),
+			'categories'       => $this->infer_categories_from_feed_url( $url ),
+		];
+	}
+
+	/** @return int[] existing category IDs inferred from a feed URL path */
+	private function infer_categories_from_feed_url( string $url ): array {
+		if ( ! in_array( 'category', get_object_taxonomies( $this->plugin->settings()->target_post_type() ), true ) ) {
+			return [];
+		}
+
+		$terms = get_categories( [ 'hide_empty' => false, 'number' => 0 ] );
+		if ( ! $terms ) {
+			return [];
+		}
+
+		$term_map = [];
+		foreach ( $terms as $term ) {
+			$term_map[ sanitize_title( (string) $term->slug ) ] = (int) $term->term_id;
+			$term_map[ sanitize_title( (string) $term->name ) ] = (int) $term->term_id;
+		}
+
+		foreach ( $this->category_candidates_from_url( $url ) as $candidate ) {
+			$slug = sanitize_title( $candidate );
+			if ( isset( $term_map[ $slug ] ) ) {
+				return [ $term_map[ $slug ] ];
+			}
+
+			foreach ( $term_map as $term_slug => $term_id ) {
+				if ( str_contains( $slug, $term_slug ) || str_contains( $term_slug, $slug ) ) {
+					return [ $term_id ];
+				}
+			}
+		}
+
+		return [];
+	}
+
+	/** @return string[] */
+	private function category_candidates_from_url( string $url ): array {
+		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+		if ( $path === '' ) {
+			return [];
+		}
+
+		$skip     = [ 'feed', 'rss', 'atom', 'xml', 'topic', 'topics', 'category', 'categories', 'tag', 'tags' ];
+		$segments = array_values(
+			array_filter(
+				array_map(
+					static function ( string $segment ): string {
+						$segment = strtolower( rawurldecode( trim( $segment ) ) );
+						return preg_replace( '#\.(rss|atom|xml)$#', '', $segment ) ?: '';
+					},
+					explode( '/', trim( $path, '/' ) )
+				),
+				static fn ( string $segment ): bool => $segment !== ''
+			)
+		);
+
+		$prioritized = [];
+		foreach ( $segments as $index => $segment ) {
+			if ( in_array( $segment, [ 'topic', 'topics', 'category', 'categories' ], true ) ) {
+				$prioritized = array_merge( $prioritized, array_slice( $segments, $index + 1 ) );
+			}
+		}
+
+		$candidates = array_merge( $prioritized, $segments );
+		return array_values(
+			array_unique(
+				array_filter(
+					$candidates,
+					static fn ( string $segment ): bool => ! in_array( $segment, $skip, true )
+				)
+			)
+		);
 	}
 
 	/** @return array<string,string> */
