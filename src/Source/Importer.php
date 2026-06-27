@@ -306,12 +306,14 @@ final class Importer {
 			return false;
 		}
 
-		if ( preg_match( '/(logo|icon|sprite|avatar|gravatar|placeholder|default[-_]|blank|spacer|favicon)/i', $url ) ) {
+		// Match the filename only, not the whole URL — a host substring like "silicon"
+		// (siliconangle.com) would otherwise drop every image from that feed.
+		if ( preg_match( '/(^|[-_.])(logo|icon|sprite|avatar|gravatar|placeholder|default|blank|spacer|favicon)([-_.]|$)/i', basename( $path ) ) ) {
 			return false;
 		}
 
-		return (bool) preg_match( '#\.(jpe?g|png|gif|webp|avif)(?:$|[?&])#i', $path )
-			|| str_contains( $path, '/wp-content/uploads/' )
-			|| str_contains( $path, '/img-srv/' );
+		// Accept extensionless CDN/proxy URLs too; the real type is verified by its MIME at
+		// sideload time. Only reject obvious non-image enclosures (audio/video/docs).
+		return ! (bool) preg_match( '#\.(mp3|mp4|m4a|m4v|mov|avi|mkv|wav|ogg|oga|webm|pdf|zip|gz)$#i', $path );
 	}
 }

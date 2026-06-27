@@ -40,6 +40,16 @@ final class ContentExtractorTest extends TestCase {
 		$this->assertSame( '', $this->best->invoke( $this->extractor, '<p>no images here</p>' ) );
 	}
 
+	public function test_keeps_og_image_on_host_with_icon_substring(): void {
+		$html = '<meta property="og:image" content="https://siliconangle.com/2024/hero.jpg">';
+		$this->assertSame( 'https://siliconangle.com/2024/hero.jpg', $this->best->invoke( $this->extractor, $html ) );
+	}
+
+	public function test_keeps_extensionless_og_image(): void {
+		$html = '<meta property="og:image" content="https://cdn.example.com/image/abc123">';
+		$this->assertSame( 'https://cdn.example.com/image/abc123', $this->best->invoke( $this->extractor, $html ) );
+	}
+
 	public function test_readability_keeps_article_drops_chrome(): void {
 		$html = '<html><body><nav>Home About</nav><header>Site</header>'
 			. '<article><h2>Big News</h2><p>First paragraph with real content.</p>'

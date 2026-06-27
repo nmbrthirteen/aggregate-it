@@ -105,7 +105,10 @@ final class ContentExtractor {
 		if ( strpos( $url, 'data:' ) === 0 ) {
 			return true;
 		}
-		return (bool) preg_match( '/(logo|icon|sprite|avatar|gravatar|placeholder|default[-_]|blank|spacer|favicon)/i', $url );
+		// Match the filename only — matching the whole URL false-positives on hosts/paths
+		// like siliconangle.com ("icon"), dropping every valid image from that source.
+		$name = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		return (bool) preg_match( '/(^|[-_.])(logo|icon|sprite|avatar|gravatar|placeholder|default|blank|spacer|favicon)([-_.]|$)/i', $name );
 	}
 
 	private function readability( string $html ): string {
