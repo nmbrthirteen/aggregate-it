@@ -71,15 +71,15 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 
 	<div class="notice notice-info">
 		<p>
-			<?php esc_html_e( 'Linked Pages creates public pages for people, companies, products, places, or other entities mentioned in imported articles. Turn on a target type, process articles, then preview the pages in the output list below.', 'aggregate-it' ); ?>
+			<?php esc_html_e( 'Choose where Aggregate It should put linked entity pages. When a destination is on, imported articles can create new pages there, link article mentions to matching pages, and add each article to the page’s news list. Existing pages are not rewritten in bulk.', 'aggregate-it' ); ?>
 		</p>
 	</div>
 
 	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Choose where linked pages are created', 'aggregate-it' ); ?></span></h2>
+		<h2 class="hndle"><span><?php esc_html_e( 'Page destinations', 'aggregate-it' ); ?></span></h2>
 		<div class="inside">
 		<p class="description">
-			<?php esc_html_e( 'Use real public content types such as Company, Person, Directory, Event, Product, or Page. Builder templates and block libraries are hidden by default because they are not useful output destinations.', 'aggregate-it' ); ?>
+			<?php esc_html_e( 'Turn on the page type that should receive generated entity pages. Builder templates and block libraries are hidden by default.', 'aggregate-it' ); ?>
 			<?php if ( $show_all ) : ?>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Hide internal types', 'aggregate-it' ); ?></a>
 			<?php else : ?>
@@ -88,10 +88,10 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		</p>
 		<table class="widefat striped">
 			<thead><tr>
-				<th><?php esc_html_e( 'Output type', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Existing pages', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'AI-filled fields', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Page type', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
+				<th><?php esc_html_e( 'When on', 'aggregate-it' ); ?></th>
 				<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
 			</tr></thead>
 			<tbody>
@@ -127,27 +127,15 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 						<td>
 							<?php if ( $on ) : ?>
 								<span class="post-state"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
-								<p class="description"><?php esc_html_e( 'New article mentions can create or update pages here.', 'aggregate-it' ); ?></p>
 							<?php else : ?>
 								<span class="post-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
-								<p class="description"><?php esc_html_e( 'Aggregate It will not create pages in this type.', 'aggregate-it' ); ?></p>
 							<?php endif; ?>
 						</td>
 						<td>
 							<?php if ( $on ) : ?>
-								<?php
-								$ridx       = (int) $by_target[ $slug ]['index'];
-								$fields_csv = implode( ', ', (array) ( $all[ $ridx ]['fields'] ?? [] ) );
-								?>
-								<form method="post" action="<?php echo $post_action; ?>" class="ai-inline">
-									<input type="hidden" name="action" value="aggregate_it_save_fields">
-									<input type="hidden" name="index" value="<?php echo $ridx; ?>">
-									<?php wp_nonce_field( 'aggregate_it_save_fields' ); ?>
-									<input type="text" name="fields" value="<?php echo esc_attr( $fields_csv ); ?>" class="regular-text" aria-label="<?php esc_attr_e( 'Fields the AI fills in', 'aggregate-it' ); ?>" placeholder="<?php esc_attr_e( 'e.g. Founded, Industry, Website', 'aggregate-it' ); ?>">
-									<button class="button button-small"><?php esc_html_e( 'Save', 'aggregate-it' ); ?></button>
-								</form>
+								<?php esc_html_e( 'Creates missing pages, links article mentions, and adds articles to each matching page’s news list. If a generated page only has a title, Aggregate It may add a short description.', 'aggregate-it' ); ?>
 							<?php else : ?>
-								<span class="description">—</span>
+								<span class="description"><?php esc_html_e( 'Ignored.', 'aggregate-it' ); ?></span>
 							<?php endif; ?>
 						</td>
 						<td>
@@ -161,25 +149,11 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 				<?php endforeach; ?>
 			</tbody>
 		</table>
-
-		<h3><?php esc_html_e( 'Add a new content type', 'aggregate-it' ); ?></h3>
-		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
-			<input type="hidden" name="action" value="aggregate_it_save_rule">
-			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
-			<input name="type_name" type="text" class="regular-text" required
-				aria-label="<?php esc_attr_e( 'New content type name', 'aggregate-it' ); ?>"
-				placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
-			<datalist id="ai-type-suggestions">
-				<option value="Company"></option><option value="Person"></option>
-				<option value="Product"></option><option value="Place"></option><option value="Brand"></option>
-			</datalist>
-			<button class="button button-primary"><?php esc_html_e( 'Add & turn on', 'aggregate-it' ); ?></button>
-		</form>
 		</div>
 	</div>
 
 	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Preview generated output', 'aggregate-it' ); ?></span></h2>
+		<h2 class="hndle"><span><?php esc_html_e( 'Preview linked pages', 'aggregate-it' ); ?></span></h2>
 		<div class="inside">
 		<?php
 		$entities = $cpts ? get_posts(
@@ -187,8 +161,9 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		) : [];
 		?>
 		<?php if ( ! $entities ) : ?>
-			<p class="description"><?php esc_html_e( 'Nothing to preview yet. Turn on a target type, add feeds, and process articles. Generated pages will appear here with View and Edit links.', 'aggregate-it' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Nothing to preview yet. Turn on a page destination, process articles, and linked pages will appear here.', 'aggregate-it' ); ?></p>
 		<?php else : ?>
+			<p class="description"><?php esc_html_e( 'Recent pages in destinations that are turned on. Use View page to see what visitors see.', 'aggregate-it' ); ?></p>
 			<table class="widefat striped">
 				<thead><tr>
 					<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
@@ -218,8 +193,24 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 	</div>
 
 	<details class="postbox">
-		<summary><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
+		<summary><?php esc_html_e( 'Advanced', 'aggregate-it' ); ?></summary>
 		<div class="inside">
+		<h3><?php esc_html_e( 'Create a new output type', 'aggregate-it' ); ?></h3>
+		<p class="description"><?php esc_html_e( 'Use this only if your site does not already have a suitable public post type for entity pages.', 'aggregate-it' ); ?></p>
+		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
+			<input type="hidden" name="action" value="aggregate_it_save_rule">
+			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
+			<input name="type_name" type="text" class="regular-text" required
+				aria-label="<?php esc_attr_e( 'New output type name', 'aggregate-it' ); ?>"
+				placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
+			<datalist id="ai-type-suggestions">
+				<option value="Company"></option><option value="Person"></option>
+				<option value="Product"></option><option value="Place"></option><option value="Brand"></option>
+			</datalist>
+			<button class="button button-primary"><?php esc_html_e( 'Create and turn on', 'aggregate-it' ); ?></button>
+		</form>
+
+		<h3><?php esc_html_e( 'Merge duplicate pages', 'aggregate-it' ); ?></h3>
 		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 			<input type="hidden" name="action" value="aggregate_it_merge_entities">
 			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
