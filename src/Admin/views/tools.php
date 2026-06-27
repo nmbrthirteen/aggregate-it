@@ -73,8 +73,8 @@ foreach ( $info as $label => $value ) {
 					<input type="hidden" name="action" value="aggregate_it_import_config">
 					<?php wp_nonce_field( 'aggregate_it_import_config' ); ?>
 					<p>
-						<label for="ai-config" class="ai-muted"><?php esc_html_e( 'Restore an Aggregate It backup, or import settings and feeds from another RSS aggregator export (JSON).', 'aggregate-it' ); ?></label>
-						<input type="file" id="ai-config" name="config" accept=".json,application/json" required>
+						<label for="ai-config" class="ai-muted"><?php esc_html_e( 'Restore an Aggregate It backup, or import settings and feeds from another RSS aggregator export (JSON or WordPress XML).', 'aggregate-it' ); ?></label>
+						<input type="file" id="ai-config" name="config" accept=".json,.xml,application/json,application/xml,text/xml" required>
 					</p>
 					<p><button type="submit" class="button"><?php esc_html_e( 'Import file', 'aggregate-it' ); ?></button></p>
 				</form>

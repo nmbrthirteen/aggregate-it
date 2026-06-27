@@ -635,7 +635,7 @@ final class Admin {
 
 		$upload = $_FILES['config'] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		if ( ! is_array( $upload ) ) {
-			$this->flash( __( 'Choose a JSON file to import.', 'aggregate-it' ), 'error' );
+			$this->flash( __( 'Choose a JSON or XML file to import.', 'aggregate-it' ), 'error' );
 			$this->redirect( self::SLUG . '-tools', '' );
 		}
 
@@ -644,9 +644,14 @@ final class Admin {
 			$this->redirect( self::SLUG . '-tools', '' );
 		}
 
+		if ( str_starts_with( ltrim( $raw ), '<' ) ) {
+			$this->flash( $this->import_wxr_config( $raw ) );
+			$this->redirect( self::SLUG . '-tools', '' );
+		}
+
 		$data = json_decode( $raw, true );
 		if ( ! is_array( $data ) ) {
-			$this->flash( __( 'That file is not valid JSON.', 'aggregate-it' ), 'error' );
+			$this->flash( __( 'That file is not valid JSON or WordPress XML.', 'aggregate-it' ), 'error' );
 			$this->redirect( self::SLUG . '-tools', '' );
 		}
 
@@ -734,7 +739,7 @@ final class Admin {
 		return match ( $error ) {
 			UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => __( 'That file is too large for this server to upload.', 'aggregate-it' ),
 			UPLOAD_ERR_PARTIAL => __( 'The file upload did not finish. Please try again.', 'aggregate-it' ),
-			UPLOAD_ERR_NO_FILE => __( 'Choose a JSON file to import.', 'aggregate-it' ),
+			UPLOAD_ERR_NO_FILE => __( 'Choose a JSON or XML file to import.', 'aggregate-it' ),
 			UPLOAD_ERR_NO_TMP_DIR => __( 'The server is missing a temporary upload folder.', 'aggregate-it' ),
 			UPLOAD_ERR_CANT_WRITE => __( 'The server could not write the uploaded file.', 'aggregate-it' ),
 			UPLOAD_ERR_EXTENSION => __( 'A PHP extension stopped the file upload.', 'aggregate-it' ),
@@ -806,12 +811,63 @@ final class Admin {
 
 		$added = $this->add_feed_urls( $this->collect_feed_urls( $data ) );
 
+		if ( $added === 0 ) {
+			/* translators: %d: number of settings mapped */
+			return sprintf(
+				__( 'Imported from WP RSS Aggregator: %d setting(s) mapped. No feed sources were found in that file; WP RSS Aggregator source exports are separate from its settings export.', 'aggregate-it' ),
+				count( $map )
+			);
+		}
+
 		/* translators: 1: number of settings mapped, 2: number of feeds added */
 		return sprintf(
 			__( 'Imported from WP RSS Aggregator: %1$d setting(s) mapped, %2$d feed(s) added.', 'aggregate-it' ),
 			count( $map ),
 			$added
 		);
+	}
+
+	private function import_wxr_config( string $raw ): string {
+		$prev = libxml_use_internal_errors( true );
+		$xml  = simplexml_load_string( $raw );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev );
+
+		if ( $xml === false || ! isset( $xml->channel->item ) ) {
+			$this->flash( __( 'That file is not valid WordPress XML.', 'aggregate-it' ), 'error' );
+			$this->redirect( self::SLUG . '-tools', '' );
+		}
+
+		$sources = [];
+		foreach ( $xml->channel->item as $item ) {
+			$wp = $item->children( 'http://wordpress.org/export/1.2/' );
+			if ( (string) $wp->post_type !== 'wprss_feed' ) {
+				continue;
+			}
+
+			$url = '';
+			foreach ( $wp->postmeta as $meta ) {
+				if ( (string) $meta->meta_key === 'wprss_url' ) {
+					$url = (string) $meta->meta_value;
+					break;
+				}
+			}
+
+			if ( $url !== '' ) {
+				$sources[] = [
+					'url'   => $url,
+					'title' => (string) $item->title,
+				];
+			}
+		}
+
+		$added = $this->add_feed_sources( $sources );
+		if ( $added === 0 ) {
+			return __( 'The WordPress XML file was valid, but no new WP RSS Aggregator feed sources were found to import.', 'aggregate-it' );
+		}
+
+		/* translators: %d: number of feeds added */
+		return sprintf( _n( 'Imported %d WP RSS Aggregator feed from WordPress XML.', 'Imported %d WP RSS Aggregator feeds from WordPress XML.', $added, 'aggregate-it' ), $added );
 	}
 
 	/**
@@ -840,14 +896,27 @@ final class Admin {
 
 	/** @param string[] $urls */
 	private function add_feed_urls( array $urls ): int {
+		return $this->add_feed_sources(
+			array_map(
+				static fn ( string $url ) => [
+					'url'   => $url,
+					'title' => '',
+				],
+				$urls
+			)
+		);
+	}
+
+	/** @param array<int,array{url:string,title:string}> $sources */
+	private function add_feed_sources( array $sources ): int {
 		$repo  = $this->plugin->sources();
 		$added = 0;
-		foreach ( $urls as $url ) {
-			$clean = esc_url_raw( $url );
+		foreach ( $sources as $source ) {
+			$clean = esc_url_raw( $source['url'] );
 			if ( $clean === '' || $repo->exists_url( $clean ) ) {
 				continue;
 			}
-			$repo->create( $clean, '', [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+			$repo->create( $clean, sanitize_text_field( $source['title'] ), [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
 			$added++;
 		}
 		return $added;
