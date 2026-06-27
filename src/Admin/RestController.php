@@ -52,6 +52,16 @@ final class RestController {
 
 		register_rest_route(
 			self::NS,
+			'/test',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ $this, 'test' ],
+				'permission_callback' => [ $this, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			self::NS,
 			'/seed',
 			[
 				'methods'             => 'POST',
@@ -88,9 +98,28 @@ final class RestController {
 		return new WP_REST_Response( [ 'ok' => true ], 200 );
 	}
 
+	public function test(): WP_REST_Response {
+		try {
+			$provider = $this->plugin->providers()->get();
+			if ( $this->plugin->settings()->provider_key() !== 'mock' && $provider->key() === 'mock' ) {
+				return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'No API key saved for the selected service.', 'aggregate-it' ) ], 200 );
+			}
+			$schema   = [
+				'type'       => 'object',
+				'properties' => [ 'ok' => [ 'type' => 'boolean' ] ],
+				'required'   => [ 'ok' ],
+			];
+			$provider->structured( 'Reply with the JSON object {"ok": true} and nothing else.', $schema, [ 'max_tokens' => 64 ] );
+
+			return new WP_REST_Response( [ 'ok' => true, 'provider' => $provider->key() ], 200 );
+		} catch ( \Throwable $e ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => $e->getMessage() ], 200 );
+		}
+	}
+
 	/** Dev convenience: enqueue demo items so the pipeline + dashboard have data. */
 	public function seed( WP_REST_Request $request ): WP_REST_Response {
-		if ( ! apply_filters( 'aggregate_it_enable_seed', defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
+		if ( ! $this->plugin->seed_enabled() ) {
 			return new WP_REST_Response( [ 'ok' => false, 'reason' => 'seeding disabled' ], 403 );
 		}
 

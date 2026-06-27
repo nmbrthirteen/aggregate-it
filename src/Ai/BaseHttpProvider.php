@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
  */
 abstract class BaseHttpProvider implements AiProvider {
 
+	use HashEmbedding;
+
 	public function __construct( protected Settings $settings ) {}
 
 	/** Instruction appended so JSON-mode models return the exact keys we parse. */
@@ -43,18 +45,6 @@ abstract class BaseHttpProvider implements AiProvider {
 		}
 
 		throw new \RuntimeException( 'Provider returned non-JSON structured output.' );
-	}
-
-	/** @return array{vector:float[],tokens:int,cost_usd:float} */
-	protected function hash_embedding( string $text ): array {
-		$dims   = 256;
-		$vector = array_fill( 0, $dims, 0.0 );
-		foreach ( preg_split( '/\W+/', strtolower( $text ) ) ?: [] as $token ) {
-			if ( $token !== '' ) {
-				$vector[ abs( crc32( $token ) ) % $dims ] += 1.0;
-			}
-		}
-		return [ 'vector' => $vector, 'tokens' => 0, 'cost_usd' => 0.0 ];
 	}
 
 	protected function cost( array $pricing, string $model, string $default, int $in, int $out ): float {

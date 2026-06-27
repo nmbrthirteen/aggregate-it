@@ -8,13 +8,20 @@
 		return;
 	}
 
+	var POLL_MS = 10000;
+	var inFlight = false;
+	var timer = null;
+	var stopped = false;
+
 	function api( path, method ) {
 		return fetch( cfg.root + path, {
 			method: method || 'GET',
 			headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' }
 		} ).then( function ( r ) {
 			if ( ! r.ok ) {
-				throw new Error( 'HTTP ' + r.status );
+				var e = new Error( 'HTTP ' + r.status );
+				e.status = r.status;
+				throw e;
 			}
 			return r.json();
 		} );
@@ -22,8 +29,23 @@
 
 	function status( msg ) {
 		var el = document.getElementById( 'ai-status' );
+		if ( ! el ) {
+			return;
+		}
 		el.textContent = msg || '';
 		el.style.display = msg ? 'block' : 'none';
+	}
+
+	function busy( el, on ) {
+		if ( ! el ) {
+			return;
+		}
+		el.disabled = on;
+		if ( on ) {
+			el.setAttribute( 'aria-busy', 'true' );
+		} else {
+			el.removeAttribute( 'aria-busy' );
+		}
 	}
 
 	function shortDate( iso ) {
@@ -41,6 +63,15 @@
 		}
 	}
 
+	function describe( id, title, text ) {
+		var el = document.getElementById( id );
+		if ( ! el ) {
+			return;
+		}
+		el.setAttribute( 'role', 'img' );
+		el.setAttribute( 'aria-label', title + ': ' + text );
+	}
+
 	function render( data ) {
 		var c = data.cards;
 
@@ -53,35 +84,51 @@
 		setCard( 'spend_today', money( c.spend_today ) + ' / ' + money( c.spend_cap ) );
 		setCard( 'spend_month', money( c.spend_month ) );
 
+		var deadEl = app.querySelector( '[data-card="dead_letter"]' );
+		if ( deadEl ) {
+			deadEl.setAttribute( 'data-tone', Number( c.dead_letter ) > 0 ? 'error' : '' );
+		}
+
 		var providerPill = document.getElementById( 'ai-provider-pill' );
-		providerPill.textContent = 'Using: ' + ( cfg.provider || 'mock' );
+		if ( providerPill ) {
+			providerPill.textContent = 'Using: ' + ( cfg.provider || 'mock' );
+		}
 
 		toggle( 'ai-paused-pill', c.paused );
 		toggle( 'ai-resume', c.paused );
 
-		var states = data.states.filter( function ( s ) { return s.count > 0; } );
-		charts.doughnut( document.getElementById( 'ai-chart-states' ),
-			data.states.map( function ( s ) { return { label: s.label, count: s.count }; } ) );
-		renderLegend( states.length ? states : data.states );
+		var slices = data.states.map( function ( s, i ) {
+			return { state: s.state, label: s.label, count: s.count, color: charts.stateColor( s.state, i ) };
+		} );
+		var nonZero = slices.filter( function ( s ) { return s.count > 0; } );
+
+		charts.doughnut( document.getElementById( 'ai-chart-states' ), slices );
+		renderLegend( nonZero.length ? nonZero : slices );
+		describe( 'ai-chart-states', 'Article status', slices.map( function ( s ) { return s.label + ' ' + s.count; } ).join( ', ' ) );
 
 		charts.line( document.getElementById( 'ai-chart-throughput' ),
 			data.throughput.map( function ( d ) { return { label: shortDate( d.date ), value: d.count }; } ) );
+		describe( 'ai-chart-throughput', 'Posts published per day', data.throughput.map( function ( d ) { return shortDate( d.date ) + ' ' + d.count; } ).join( ', ' ) );
 
 		charts.bars( document.getElementById( 'ai-chart-cost' ),
-			data.cost.map( function ( d ) { return { label: shortDate( d.date ), value: d.cost }; } ), { color: '#14b8a6' } );
+			data.cost.map( function ( d ) { return { label: shortDate( d.date ), value: d.cost }; } ) );
+		describe( 'ai-chart-cost', 'Cost per day', data.cost.map( function ( d ) { return shortDate( d.date ) + ' ' + money( d.cost ); } ).join( ', ' ) );
 
 		renderRecent( data.recent );
 		renderEvents( data.events );
 	}
 
-	function renderLegend( states ) {
+	function renderLegend( slices ) {
 		var ul = document.getElementById( 'ai-legend-states' );
+		if ( ! ul ) {
+			return;
+		}
 		ul.innerHTML = '';
-		states.forEach( function ( s, i ) {
+		slices.forEach( function ( s ) {
 			var li = document.createElement( 'li' );
 			var dot = document.createElement( 'span' );
 			dot.className = 'ai-dot';
-			dot.style.background = charts.color( i );
+			dot.style.background = s.color;
 			li.appendChild( dot );
 			li.appendChild( document.createTextNode( s.label + ' (' + s.count + ')' ) );
 			ul.appendChild( li );
@@ -90,9 +137,12 @@
 
 	function renderRecent( rows ) {
 		var tbody = document.getElementById( 'ai-recent' );
+		if ( ! tbody ) {
+			return;
+		}
 		tbody.innerHTML = '';
 		if ( ! rows.length ) {
-			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No articles yet — try “Add sample articles”.</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No articles yet — add a feed to get started.</td></tr>';
 			return;
 		}
 		rows.forEach( function ( r ) {
@@ -121,6 +171,9 @@
 
 	function renderEvents( events ) {
 		var ul = document.getElementById( 'ai-events' );
+		if ( ! ul ) {
+			return;
+		}
 		ul.innerHTML = '';
 		if ( ! events.length ) {
 			ul.innerHTML = '<li class="ai-empty">Nothing has happened yet.</li>';
@@ -129,15 +182,12 @@
 		events.forEach( function ( e ) {
 			var li = document.createElement( 'li' );
 			li.className = 'ai-event ai-event--' + e.level;
-			li.innerHTML = '<time>' + e.time + '</time> ' + escapeHtml( e.message );
+			var time = document.createElement( 'time' );
+			time.textContent = e.time;
+			li.appendChild( time );
+			li.appendChild( document.createTextNode( ' ' + e.message ) );
 			ul.appendChild( li );
 		} );
-	}
-
-	function escapeHtml( s ) {
-		var d = document.createElement( 'div' );
-		d.textContent = s;
-		return d.innerHTML;
 	}
 
 	function toggle( id, on ) {
@@ -148,45 +198,80 @@
 	}
 
 	function refresh() {
-		return api( 'stats' ).then( render ).catch( function () {
-			status( cfg.i18n.failed );
+		if ( inFlight ) {
+			return Promise.resolve();
+		}
+		inFlight = true;
+		return api( 'stats' ).then( function ( data ) {
+			render( data );
+			status( '' );
+		} ).catch( function ( err ) {
+			if ( err && ( err.status === 401 || err.status === 403 ) ) {
+				stopped = true;
+				status( cfg.i18n.expired );
+			} else {
+				status( cfg.i18n.failed );
+			}
+		} ).then( function () {
+			inFlight = false;
 		} );
 	}
 
-	function bind( id, handler ) {
-		var el = document.getElementById( id );
-		if ( el ) {
-			el.addEventListener( 'click', handler );
+	function schedule() {
+		if ( timer ) {
+			clearTimeout( timer );
 		}
+		if ( stopped ) {
+			return;
+		}
+		timer = setTimeout( tick, POLL_MS );
 	}
 
-	bind( 'ai-refresh', function () {
-		status( cfg.i18n.refreshing );
-		refresh().then( function () { status( '' ); } );
+	function tick() {
+		if ( document.hidden ) {
+			schedule();
+			return;
+		}
+		refresh().then( schedule );
+	}
+
+	function action( id, path, working, done ) {
+		var el = document.getElementById( id );
+		if ( ! el ) {
+			return;
+		}
+		el.addEventListener( 'click', function () {
+			busy( el, true );
+			status( working );
+			api( path, 'POST' )
+				.then( function () { return refresh(); } )
+				.then( function () { status( done || '' ); } )
+				.catch( function () { status( cfg.i18n.failed ); } )
+				.then( function () { busy( el, false ); } );
+		} );
+	}
+
+	var refreshBtn = document.getElementById( 'ai-refresh' );
+	if ( refreshBtn ) {
+		refreshBtn.addEventListener( 'click', function () {
+			busy( refreshBtn, true );
+			status( cfg.i18n.refreshing );
+			refresh().then( function () {
+				busy( refreshBtn, false );
+				schedule();
+			} );
+		} );
+	}
+
+	action( 'ai-seed', 'seed', cfg.i18n.running, cfg.i18n.seeded );
+	action( 'ai-run', 'run', cfg.i18n.running, cfg.i18n.started );
+	action( 'ai-resume', 'resume', cfg.i18n.running, cfg.i18n.resumed );
+
+	document.addEventListener( 'visibilitychange', function () {
+		if ( ! document.hidden && ! stopped ) {
+			tick();
+		}
 	} );
 
-	bind( 'ai-seed', function () {
-		status( cfg.i18n.running );
-		api( 'seed', 'POST' ).then( function () {
-			status( cfg.i18n.seeded );
-			setTimeout( refresh, 800 );
-		} ).catch( function () { status( cfg.i18n.failed ); } );
-	} );
-
-	bind( 'ai-run', function () {
-		status( cfg.i18n.running );
-		api( 'run', 'POST' ).then( function () {
-			setTimeout( function () { refresh().then( function () { status( '' ); } ); }, 800 );
-		} ).catch( function () { status( cfg.i18n.failed ); } );
-	} );
-
-	bind( 'ai-resume', function () {
-		api( 'resume', 'POST' ).then( function () {
-			status( cfg.i18n.resumed );
-			refresh();
-		} ).catch( function () { status( cfg.i18n.failed ); } );
-	} );
-
-	refresh();
-	setInterval( refresh, 10000 );
+	refresh().then( schedule );
 } )();

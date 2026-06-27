@@ -35,6 +35,10 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Updated.', 'aggregate-it' ); ?></p></div>
 	<?php elseif ( $notice === 'deleted' ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Auto-linking turned off.', 'aggregate-it' ); ?></p></div>
+	<?php elseif ( $notice === 'merged' ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Pages merged. The source page was moved to Trash.', 'aggregate-it' ); ?></p></div>
+	<?php elseif ( $notice === 'merge_invalid' ) : ?>
+		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Enter two different page IDs that are both auto-linked pages.', 'aggregate-it' ); ?></p></div>
 	<?php elseif ( $notice === 'invalid' ) : ?>
 		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
@@ -75,7 +79,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 									<input type="hidden" name="action" value="aggregate_it_save_fields">
 									<input type="hidden" name="index" value="<?php echo $ridx; ?>">
 									<?php wp_nonce_field( 'aggregate_it_save_fields' ); ?>
-									<input type="text" name="fields" value="<?php echo esc_attr( $fields_csv ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Founded, Industry, Website', 'aggregate-it' ); ?>">
+									<input type="text" name="fields" value="<?php echo esc_attr( $fields_csv ); ?>" class="regular-text" aria-label="<?php esc_attr_e( 'Fields the AI fills in', 'aggregate-it' ); ?>" placeholder="<?php esc_attr_e( 'e.g. Founded, Industry, Website', 'aggregate-it' ); ?>">
 									<button class="button button-small"><?php esc_html_e( 'Save', 'aggregate-it' ); ?></button>
 								</form>
 							<?php else : ?>
@@ -110,6 +114,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 			<input type="hidden" name="action" value="aggregate_it_save_rule">
 			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
 			<input name="type_name" type="text" class="regular-text" required
+				aria-label="<?php esc_attr_e( 'New content type name', 'aggregate-it' ); ?>"
 				placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
 			<datalist id="ai-type-suggestions">
 				<option value="Company"></option><option value="Person"></option>
@@ -149,7 +154,7 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 	</div>
 
 	<details class="ai-panel ai-narrow">
-		<summary style="cursor:pointer;font-weight:600;"><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
+		<summary><?php esc_html_e( 'Merge duplicate pages (advanced)', 'aggregate-it' ); ?></summary>
 		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 			<input type="hidden" name="action" value="aggregate_it_merge_entities">
 			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>

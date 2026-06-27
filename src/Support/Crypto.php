@@ -29,14 +29,35 @@ final class Crypto {
 		if ( strlen( $raw ) <= $ivlen ) {
 			return '';
 		}
-		$iv        = substr( $raw, 0, $ivlen );
-		$cipher    = substr( $raw, $ivlen );
-		$plaintext = openssl_decrypt( $cipher, self::METHOD, self::key(), OPENSSL_RAW_DATA, $iv );
-		return $plaintext === false ? '' : $plaintext;
+		$iv     = substr( $raw, 0, $ivlen );
+		$cipher = substr( $raw, $ivlen );
+
+		foreach ( self::keys() as $key ) {
+			$plaintext = openssl_decrypt( $cipher, self::METHOD, $key, OPENSSL_RAW_DATA, $iv );
+			if ( $plaintext !== false ) {
+				return $plaintext;
+			}
+		}
+		return '';
 	}
 
 	private static function key(): string {
-		$salt = defined( 'AUTH_KEY' ) ? AUTH_KEY : __DIR__;
+		if ( defined( 'AUTH_KEY' ) && AUTH_KEY !== '' ) {
+			$salt = AUTH_KEY;
+		} elseif ( function_exists( 'wp_salt' ) ) {
+			$salt = wp_salt( 'secure_auth' );
+		} else {
+			$salt = __DIR__;
+		}
 		return hash( 'sha256', $salt, true );
+	}
+
+	/** @return string[] */
+	private static function keys(): array {
+		return [
+			self::key(),
+			hash( 'sha256', __DIR__, true ),
+			hash( 'sha256', '', true ),
+		];
 	}
 }

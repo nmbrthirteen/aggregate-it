@@ -143,13 +143,30 @@ $messages = [
 	</div>
 
 	<details class="ai-panel ai-narrow">
-		<summary style="cursor:pointer;font-weight:600;"><?php esc_html_e( 'Import many feeds at once (OPML)', 'aggregate-it' ); ?></summary>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:12px;">
+		<summary><?php esc_html_e( 'Import many feeds at once (OPML)', 'aggregate-it' ); ?></summary>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="aggregate_it_import_opml">
 			<?php wp_nonce_field( 'aggregate_it_import_opml' ); ?>
-			<textarea name="opml" rows="6" class="large-text code" placeholder="<?php esc_attr_e( 'Paste your OPML export here', 'aggregate-it' ); ?>"></textarea>
+			<p><input type="file" id="ai-opml-file" accept=".opml,.xml,text/xml"></p>
+			<textarea name="opml" id="ai-opml" rows="6" class="large-text code"
+				aria-label="<?php esc_attr_e( 'OPML to import', 'aggregate-it' ); ?>"
+				placeholder="<?php esc_attr_e( 'Choose a file above, or paste your OPML export here', 'aggregate-it' ); ?>"></textarea>
 			<p><button type="submit" class="button"><?php esc_html_e( 'Import feeds', 'aggregate-it' ); ?></button></p>
 		</form>
+		<script>
+		( function () {
+			var input = document.getElementById( 'ai-opml-file' );
+			var area = document.getElementById( 'ai-opml' );
+			if ( ! input || ! area ) { return; }
+			input.addEventListener( 'change', function () {
+				var file = input.files && input.files[0];
+				if ( ! file ) { return; }
+				var reader = new FileReader();
+				reader.onload = function () { area.value = String( reader.result || '' ); };
+				reader.readAsText( file );
+			} );
+		} )();
+		</script>
 	</details>
 
 	<div class="ai-panel">
@@ -166,13 +183,13 @@ $messages = [
 		</thead>
 		<tbody>
 			<?php if ( ! $sources ) : ?>
-				<tr><td colspan="6"><em><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></em></td></tr>
+				<tr><td colspan="6" class="ai-empty"><?php esc_html_e( 'No feeds yet. Add one above to get started.', 'aggregate-it' ); ?></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $sources as $source ) : ?>
 				<?php
 				$health = $source->health;
 				$health_text = ! empty( $health['last_error'] )
-					? esc_html__( 'Problem: ', 'aggregate-it' ) . esc_html( $health['last_error'] )
+					? esc_html( sprintf( /* translators: %s: error message */ __( 'Problem: %s', 'aggregate-it' ), $health['last_error'] ) )
 					: ( isset( $health['last_imported'] ) ? sprintf( /* translators: %d: article count */ esc_html__( '%d new articles last time', 'aggregate-it' ), (int) $health['last_imported'] ) : '—' );
 				$import_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_import_now&id=' . $source->id ), 'aggregate_it_import_now_' . $source->id );
 				$delete_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_delete_source&id=' . $source->id ), 'aggregate_it_delete_source_' . $source->id );

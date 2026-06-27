@@ -17,6 +17,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class AnthropicProvider implements AiProvider {
 
+	use HashEmbedding;
+
 	private const MESSAGES_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 	private const VERSION           = '2023-06-01';
 	private const VOYAGE_ENDPOINT   = 'https://api.voyageai.com/v1/embeddings';
@@ -174,17 +176,5 @@ final class AnthropicProvider implements AiProvider {
 	private function cost( string $model, int $in, int $out ): float {
 		[ $in_price, $out_price ] = self::PRICING[ $model ] ?? self::PRICING['claude-haiku-4-5'];
 		return ( $in / 1_000_000 ) * $in_price + ( $out / 1_000_000 ) * $out_price;
-	}
-
-	/** @return array{vector:float[],tokens:int,cost_usd:float} */
-	private function hash_embedding( string $text ): array {
-		$dims   = 256;
-		$vector = array_fill( 0, $dims, 0.0 );
-		foreach ( preg_split( '/\W+/', strtolower( $text ) ) ?: [] as $token ) {
-			if ( $token !== '' ) {
-				$vector[ abs( crc32( $token ) ) % $dims ] += 1.0;
-			}
-		}
-		return [ 'vector' => $vector, 'tokens' => 0, 'cost_usd' => 0.0 ];
 	}
 }

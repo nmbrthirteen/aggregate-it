@@ -149,7 +149,7 @@ final class EntityRepository {
 			foreach ( (array) get_post_meta( $source, '_ai_aliases', true ) as $alias ) {
 				$this->add_alias( $target, (string) $alias );
 			}
-			wp_delete_post( $source, true );
+			wp_trash_post( $source );
 		}
 	}
 

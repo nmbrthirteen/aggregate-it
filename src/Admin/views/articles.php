@@ -111,7 +111,7 @@ $notices = [
 		<table class="widefat striped">
 			<thead>
 				<tr>
-					<td class="manage-column check-column"><input type="checkbox" id="ai-cb-all"></td>
+					<td class="manage-column check-column"><input type="checkbox" id="ai-cb-all" aria-label="<?php esc_attr_e( 'Select all articles', 'aggregate-it' ); ?>"></td>
 					<th><?php esc_html_e( 'Article', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'From feed', 'aggregate-it' ); ?></th>
 					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
@@ -122,19 +122,19 @@ $notices = [
 			</thead>
 			<tbody>
 				<?php if ( ! $rows ) : ?>
-					<tr><td colspan="7"><em><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></em></td></tr>
+					<tr><td colspan="7" class="ai-empty"><?php esc_html_e( 'Nothing imported yet. Add a feed and it will fill up here.', 'aggregate-it' ); ?></td></tr>
 				<?php endif; ?>
 				<?php foreach ( $rows as $row ) : ?>
 					<?php
 					$flags = (array) Json::decode( $row->flags ?? null, [] );
 					$title = (string) ( $flags['title'] ?? '' );
-					$title = $title !== '' ? $title : '(' . esc_html__( 'untitled', 'aggregate-it' ) . ')';
+					$title = $title !== '' ? $title : __( '(untitled)', 'aggregate-it' );
 					[ $label, $class ] = $status_label( $row, $flags );
 					$post_id = (int) ( $row->post_id ?? 0 );
 					$has_post = $post_id && get_post( $post_id );
 					?>
 					<tr>
-						<th scope="row" class="check-column"><input type="checkbox" name="ids[]" value="<?php echo (int) $row->id; ?>"></th>
+						<th scope="row" class="check-column"><input type="checkbox" name="ids[]" value="<?php echo (int) $row->id; ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: article title */ __( 'Select %s', 'aggregate-it' ), $title ) ); ?>"></th>
 						<td>
 							<?php if ( $row->url ) : ?>
 								<a href="<?php echo esc_url( $row->url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $title ); ?></a>
@@ -163,7 +163,7 @@ $notices = [
 						<td><?php echo esc_html( $row->created_at ); ?></td>
 						<td class="ai-row-actions ai-inline">
 							<?php if ( $has_post ) : ?>
-								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_rewrite_article', (int) $row->id ); ?>"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></a>
+								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_rewrite_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Rewrite this article with AI now? This makes a paid API call.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></a>
 								<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_refresh_image', (int) $row->id ); ?>"><?php esc_html_e( 'Refresh image', 'aggregate-it' ); ?></a>
 							<?php endif; ?>
 							<a class="button button-small" href="<?php echo $action_link( 'aggregate_it_delete_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a>
@@ -198,7 +198,12 @@ $notices = [
 	}
 	window.aiBulkConfirm = function ( f ) {
 		if ( f.bulk_action.value === '-1' ) { return false; }
+		if ( ! f.querySelectorAll( 'input[name="ids[]"]:checked' ).length ) {
+			window.alert( '<?php echo esc_js( __( 'Select at least one article first.', 'aggregate-it' ) ); ?>' );
+			return false;
+		}
 		if ( f.bulk_action.value === 'delete' ) { return confirm( '<?php echo esc_js( __( 'Delete the selected articles? Their posts move to Trash.', 'aggregate-it' ) ); ?>' ); }
+		if ( f.bulk_action.value === 'rewrite' ) { return confirm( '<?php echo esc_js( __( 'Rewrite the selected articles with AI? This makes a paid API call for each one.', 'aggregate-it' ) ); ?>' ); }
 		return true;
 	};
 } )();

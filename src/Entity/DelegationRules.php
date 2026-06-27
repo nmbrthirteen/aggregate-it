@@ -56,6 +56,26 @@ final class DelegationRules {
 		update_option( self::OPTION, array_values( $rules ) );
 	}
 
+	/** @param array<int,array<string,mixed>> $rules */
+	public function replace( array $rules ): void {
+		$clean = [];
+		foreach ( $rules as $rule ) {
+			$entity = sanitize_key( (string) ( $rule['entity_type'] ?? '' ) );
+			$target = sanitize_key( (string) ( $rule['target_cpt'] ?? '' ) );
+			if ( $entity === '' || $target === '' ) {
+				continue;
+			}
+			$clean[] = [
+				'entity_type' => $entity,
+				'target_cpt'  => $target,
+				'schema_type' => sanitize_text_field( (string) ( $rule['schema_type'] ?? 'Thing' ) ),
+				'fields'      => array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $rule['fields'] ?? [] ) ) ) ),
+				'enabled'     => ! empty( $rule['enabled'] ),
+			];
+		}
+		update_option( self::OPTION, $clean );
+	}
+
 	/** @param string[] $fields plain field labels the AI should fill (e.g. Founded, Website) */
 	public function set_fields( int $index, array $fields ): void {
 		$rules = $this->all();

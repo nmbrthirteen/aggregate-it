@@ -111,9 +111,10 @@ final class Importer {
 	 * @param array<int,array{guid:string,url:string,title:string,content:string}> $entries
 	 */
 	private function ingest( Source $source, array $entries ): int {
-		$include  = $source->include_keywords();
-		$exclude  = $source->exclude_keywords();
-		$imported = 0;
+		$include   = $source->include_keywords();
+		$exclude   = $source->exclude_keywords();
+		$blacklist = $this->settings->blacklist();
+		$imported  = 0;
 
 		foreach ( $entries as $entry ) {
 			if ( $imported >= self::MAX_PER_FEED ) {
@@ -126,6 +127,9 @@ final class Importer {
 				continue;
 			}
 			if ( ! $this->keywords_allow( $entry, $include, $exclude ) ) {
+				continue;
+			}
+			if ( $this->blacklisted( $entry, $blacklist ) ) {
 				continue;
 			}
 
@@ -226,6 +230,23 @@ final class Importer {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * @param array{title:string,content:string,url:string} $entry
+	 * @param string[]                                       $terms
+	 */
+	private function blacklisted( array $entry, array $terms ): bool {
+		if ( ! $terms ) {
+			return false;
+		}
+		$haystack = strtolower( wp_strip_all_tags( $entry['title'] . ' ' . $entry['content'] . ' ' . $entry['url'] ) );
+		foreach ( $terms as $term ) {
+			if ( $term !== '' && strpos( $haystack, $term ) !== false ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private function item_image( \SimplePie_Item $item ): string {

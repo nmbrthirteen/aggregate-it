@@ -2,12 +2,9 @@
 
 namespace AggregateIt\Admin;
 
-use AggregateIt\Ai\Rewriter;
 use AggregateIt\Plugin;
-use AggregateIt\Publish\ImageImporter;
-use AggregateIt\Publish\Reprocessor;
-use AggregateIt\Seo\SchemaGraph;
-use AggregateIt\Seo\Seo;
+use AggregateIt\Settings;
+use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,6 +36,12 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_refresh_image', [ $this, 'handle_refresh_image' ] );
 		add_action( 'admin_post_aggregate_it_rewrite_article', [ $this, 'handle_rewrite_article' ] );
 		add_action( 'admin_post_aggregate_it_bulk_articles', [ $this, 'handle_bulk_articles' ] );
+		add_action( 'admin_post_aggregate_it_bulk_add_sources', [ $this, 'handle_bulk_add_sources' ] );
+		add_action( 'admin_post_aggregate_it_save_blacklist', [ $this, 'handle_save_blacklist' ] );
+		add_action( 'admin_post_aggregate_it_export_config', [ $this, 'handle_export_config' ] );
+		add_action( 'admin_post_aggregate_it_import_config', [ $this, 'handle_import_config' ] );
+		add_action( 'admin_post_aggregate_it_clear_logs', [ $this, 'handle_clear_logs' ] );
+		add_action( 'admin_post_aggregate_it_reset', [ $this, 'handle_reset' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
 	}
 
@@ -121,6 +124,15 @@ final class Admin {
 			self::SLUG . '-settings',
 			[ $this, 'render_settings' ]
 		);
+
+		$this->hooks[] = add_submenu_page(
+			self::SLUG,
+			__( 'Tools', 'aggregate-it' ),
+			__( 'Tools', 'aggregate-it' ),
+			'manage_options',
+			self::SLUG . '-tools',
+			[ $this, 'render_tools' ]
+		);
 	}
 
 	public function assets( string $hook ): void {
@@ -139,12 +151,18 @@ final class Admin {
 				'root'     => esc_url_raw( rest_url( 'aggregate-it/v1/' ) ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'provider' => $this->plugin->settings()->provider_key(),
+				'canSeed'  => $this->plugin->seed_enabled(),
 				'i18n'     => [
 					'refreshing' => __( 'Refreshing…', 'aggregate-it' ),
 					'seeded'     => __( 'Sample articles added.', 'aggregate-it' ),
 					'running'    => __( 'Working on it…', 'aggregate-it' ),
+					'started'    => __( 'Started — new posts will appear shortly.', 'aggregate-it' ),
 					'resumed'    => __( 'Back up and running.', 'aggregate-it' ),
 					'failed'     => __( 'Something went wrong. Please try again.', 'aggregate-it' ),
+					'expired'    => __( 'Your session expired. Reload the page to continue.', 'aggregate-it' ),
+					'testing'    => __( 'Testing the connection…', 'aggregate-it' ),
+					'testOk'     => __( 'Connection works.', 'aggregate-it' ),
+					'testFail'   => __( 'Connection failed:', 'aggregate-it' ),
 				],
 			]
 		);
@@ -160,6 +178,7 @@ final class Admin {
 			'types'    => (bool) $this->plugin->rules()->post_types(),
 		];
 		$show_setup = ! get_option( 'aggregate_it_setup_dismissed' ) && ( ! $setup['provider'] || ! $setup['feeds'] );
+		$can_seed   = $this->plugin->seed_enabled();
 
 		require AGGREGATE_IT_PATH . 'src/Admin/views/dashboard.php';
 	}
@@ -241,7 +260,7 @@ final class Admin {
 		if ( $item && ! empty( $item->post_id ) && $item->url ) {
 			$image = $this->plugin->extractor()->share_image( (string) $item->url );
 			$alt   = get_the_title( (int) $item->post_id );
-			( new ImageImporter( $this->plugin->settings() ) )->maybe_import( (int) $item->post_id, $image, $alt, true );
+			$this->plugin->imageImporter()->maybe_import( (int) $item->post_id, $image, $alt, true );
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'image_refreshed' );
@@ -253,9 +272,7 @@ final class Admin {
 
 		$item = $this->plugin->items()->find( $id );
 		if ( $item && ! empty( $item->post_id ) ) {
-			$rewriter = new Rewriter( $this->plugin->providers(), $this->plugin->settings() );
-			$seo      = new Seo( $this->plugin->settings(), new SchemaGraph() );
-			( new Reprocessor( $rewriter, $seo ) )->reprocess( (int) $item->post_id );
+			$this->plugin->reprocessor()->reprocess( (int) $item->post_id );
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'rewritten' );
@@ -272,9 +289,7 @@ final class Admin {
 		}
 
 		$items  = $this->plugin->items();
-		$reproc = $action === 'rewrite'
-			? new Reprocessor( new Rewriter( $this->plugin->providers(), $this->plugin->settings() ), new Seo( $this->plugin->settings(), new SchemaGraph() ) )
-			: null;
+		$reproc = $action === 'rewrite' ? $this->plugin->reprocessor() : null;
 
 		foreach ( $ids as $id ) {
 			$item = $items->find( $id );
@@ -477,11 +492,17 @@ final class Admin {
 		$source = (int) ( $_POST['source_id'] ?? 0 );
 		$target = (int) ( $_POST['target_id'] ?? 0 );
 
-		if ( $source && $target && $source !== $target ) {
-			$this->plugin->entities()->merge( $source, $target );
+		if ( ! $source || ! $target || $source === $target || ! $this->is_entity_post( $source ) || ! $this->is_entity_post( $target ) ) {
+			$this->redirect( self::SLUG . '-entities', 'merge_invalid' );
 		}
 
+		$this->plugin->entities()->merge( $source, $target );
 		$this->redirect( self::SLUG . '-entities', 'merged' );
+	}
+
+	private function is_entity_post( int $id ): bool {
+		$post = $id ? get_post( $id ) : null;
+		return $post && in_array( $post->post_type, $this->plugin->rules()->post_types(), true );
 	}
 
 	public function render_settings(): void {
@@ -533,6 +554,270 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-settings', 'saved' );
+	}
+
+	public function render_tools(): void {
+		$settings = $this->plugin->settings();
+		$flash    = get_transient( 'aggregate_it_flash' );
+		if ( $flash ) {
+			delete_transient( 'aggregate_it_flash' );
+		}
+		$blacklist = $settings->blacklist_raw();
+		$events    = EventLog::all();
+		$info      = $this->system_info();
+		require AGGREGATE_IT_PATH . 'src/Admin/views/tools.php';
+	}
+
+	public function handle_bulk_add_sources(): void {
+		$this->guard( 'aggregate_it_bulk_add_sources' );
+
+		$raw   = (string) wp_unslash( $_POST['urls'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$lines = preg_split( '/\r\n|\r|\n/', $raw ) ?: [];
+		$repo  = $this->plugin->sources();
+		$added = 0;
+
+		foreach ( $lines as $line ) {
+			$url = esc_url_raw( trim( $line ) );
+			if ( $url === '' || $repo->exists_url( $url ) ) {
+				continue;
+			}
+			$repo->create( $url, '', [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+			$added++;
+		}
+
+		/* translators: %d: number of feeds added */
+		$this->flash( sprintf( _n( '%d feed added.', '%d feeds added.', $added, 'aggregate-it' ), $added ) );
+		$this->redirect( self::SLUG . '-tools', '' );
+	}
+
+	public function handle_save_blacklist(): void {
+		$this->guard( 'aggregate_it_save_blacklist' );
+
+		$this->plugin->settings()->set( 'blacklist', sanitize_textarea_field( wp_unslash( $_POST['blacklist'] ?? '' ) ) );
+		$this->flash( __( 'Blacklist saved.', 'aggregate-it' ) );
+		$this->redirect( self::SLUG . '-tools', '' );
+	}
+
+	public function handle_export_config(): void {
+		$this->guard( 'aggregate_it_export_config' );
+
+		$data = [
+			'aggregate_it_export' => AGGREGATE_IT_VERSION,
+			'exported_at'         => gmdate( 'c' ),
+			'settings'            => $this->exportable_settings(),
+			'blacklist'           => $this->plugin->settings()->blacklist(),
+			'delegation_rules'    => $this->plugin->rules()->all(),
+			'sources'             => array_map(
+				static fn ( $s ) => [
+					'url'      => $s->url,
+					'title'    => $s->title,
+					'status'   => $s->status,
+					'settings' => $s->settings,
+				],
+				$this->plugin->sources()->all()
+			),
+		];
+
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="aggregate-it-config-' . gmdate( 'Y-m-d' ) . '.json"' );
+		echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ); // phpcs:ignore WordPress.Security.EscapeOutput
+		exit;
+	}
+
+	public function handle_import_config(): void {
+		$this->guard( 'aggregate_it_import_config' );
+
+		$raw = '';
+		if ( ! empty( $_FILES['config']['tmp_name'] ) && is_uploaded_file( $_FILES['config']['tmp_name'] ) ) {
+			$raw = (string) file_get_contents( $_FILES['config']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		}
+
+		$data = json_decode( $raw, true );
+		if ( ! is_array( $data ) ) {
+			$this->flash( __( 'That file is not valid JSON.', 'aggregate-it' ) );
+			$this->redirect( self::SLUG . '-tools', '' );
+		}
+
+		if ( isset( $data['aggregate_it_export'] ) ) {
+			$this->flash( $this->import_native_config( $data ) );
+		} elseif ( isset( $data['wprss_settings_general'] ) || isset( $data['wprss_settings_ftp'] ) ) {
+			$this->flash( $this->import_wprss_config( $data ) );
+		} else {
+			$added = $this->add_feed_urls( $this->collect_feed_urls( $data ) );
+			/* translators: %d: number of feeds added */
+			$this->flash( sprintf( _n( 'Imported %d feed from that file.', 'Imported %d feeds from that file.', $added, 'aggregate-it' ), $added ) );
+		}
+
+		$this->redirect( self::SLUG . '-tools', '' );
+	}
+
+	public function handle_clear_logs(): void {
+		$this->guard( 'aggregate_it_clear_logs' );
+		EventLog::clear();
+		$this->flash( __( 'Activity log cleared.', 'aggregate-it' ) );
+		$this->redirect( self::SLUG . '-tools', '' );
+	}
+
+	public function handle_reset(): void {
+		$this->guard( 'aggregate_it_reset' );
+
+		switch ( sanitize_key( wp_unslash( $_POST['reset'] ?? '' ) ) ) {
+			case 'settings':
+				Settings::reset();
+				$this->flash( __( 'Settings reset to defaults.', 'aggregate-it' ) );
+				break;
+			case 'queue':
+				$cleared = $this->plugin->items()->clear_all();
+				/* translators: %d: number of queued items removed */
+				$this->flash( sprintf( _n( 'Removed %d item from the queue.', 'Removed %d items from the queue.', $cleared, 'aggregate-it' ), $cleared ) );
+				break;
+			default:
+				$this->flash( __( 'Nothing was reset.', 'aggregate-it' ) );
+		}
+
+		$this->redirect( self::SLUG . '-tools', '' );
+	}
+
+	private function flash( string $message ): void {
+		set_transient( 'aggregate_it_flash', $message, 30 );
+	}
+
+	/** @return array<string,mixed> settings safe to export — secrets are never written out */
+	private function exportable_settings(): array {
+		$all = $this->plugin->settings()->all();
+		unset( $all['api_key'], $all['voyage_api_key'] );
+		return $all;
+	}
+
+	/** @param array<string,mixed> $data */
+	private function import_native_config( array $data ): string {
+		if ( isset( $data['settings'] ) && is_array( $data['settings'] ) ) {
+			$settings = $data['settings'];
+			unset( $settings['api_key'], $settings['voyage_api_key'] );
+			$this->plugin->settings()->update( $settings );
+		}
+		if ( array_key_exists( 'blacklist', $data ) ) {
+			$list = is_array( $data['blacklist'] ) ? implode( "\n", $data['blacklist'] ) : (string) $data['blacklist'];
+			$this->plugin->settings()->set( 'blacklist', sanitize_textarea_field( $list ) );
+		}
+		if ( isset( $data['delegation_rules'] ) && is_array( $data['delegation_rules'] ) ) {
+			$this->plugin->rules()->replace( $data['delegation_rules'] );
+			flush_rewrite_rules();
+		}
+
+		$added = 0;
+		foreach ( (array) ( $data['sources'] ?? [] ) as $source ) {
+			$url = esc_url_raw( (string) ( $source['url'] ?? '' ) );
+			if ( $url === '' || $this->plugin->sources()->exists_url( $url ) ) {
+				continue;
+			}
+			$this->plugin->sources()->create( $url, sanitize_text_field( (string) ( $source['title'] ?? '' ) ), (array) ( $source['settings'] ?? [] ) );
+			$added++;
+		}
+
+		/* translators: %d: number of feeds added */
+		return __( 'Configuration restored.', 'aggregate-it' ) . ' ' . sprintf( _n( '%d feed added.', '%d feeds added.', $added, 'aggregate-it' ), $added );
+	}
+
+	/** @param array<string,mixed> $data */
+	private function import_wprss_config( array $data ): string {
+		$ftp = (array) ( $data['wprss_settings_ftp'] ?? [] );
+		$gen = (array) ( $data['wprss_settings_general'] ?? [] );
+		$map = [];
+
+		if ( ! empty( $ftp['post_type'] ) ) {
+			$map['target_post_type'] = sanitize_key( (string) $ftp['post_type'] );
+		}
+		if ( ! empty( $ftp['post_status'] ) && in_array( $ftp['post_status'], [ 'publish', 'draft', 'pending' ], true ) ) {
+			$map['publish_status'] = (string) $ftp['post_status'];
+		}
+		if ( isset( $ftp['save_images_locally'] ) ) {
+			$map['image_mode'] = ( 'true' === $ftp['save_images_locally'] || true === $ftp['save_images_locally'] ) ? 'import' : 'off';
+		}
+		$cron = (string) ( $gen['cron_interval'] ?? '' );
+		$minutes = [ 'hourly' => 60, 'twicedaily' => 720, 'daily' => 1440 ][ $cron ] ?? 0;
+		if ( $minutes ) {
+			$map['import_interval_minutes'] = $minutes;
+		}
+
+		if ( $map ) {
+			$this->plugin->settings()->update( $map );
+		}
+
+		$added = $this->add_feed_urls( $this->collect_feed_urls( $data ) );
+
+		/* translators: 1: number of settings mapped, 2: number of feeds added */
+		return sprintf(
+			__( 'Imported from WP RSS Aggregator: %1$d setting(s) mapped, %2$d feed(s) added.', 'aggregate-it' ),
+			count( $map ),
+			$added
+		);
+	}
+
+	/**
+	 * @param mixed $data
+	 * @return string[]
+	 */
+	private function collect_feed_urls( $data ): array {
+		$urls = [];
+		array_walk_recursive(
+			$data,
+			static function ( $value ) use ( &$urls ) {
+				if ( ! is_string( $value ) || ! preg_match( '#^https?://#i', $value ) ) {
+					return;
+				}
+				$path  = (string) wp_parse_url( $value, PHP_URL_PATH );
+				$query = (string) wp_parse_url( $value, PHP_URL_QUERY );
+				if ( preg_match( '#\.(rss|atom|xml)$#i', $path )
+					|| preg_match( '#(^|/)(feed|rss|atom)(/|$)#i', $path )
+					|| preg_match( '#(^|&)feed=#i', $query ) ) {
+					$urls[] = $value;
+				}
+			}
+		);
+		return array_values( array_unique( $urls ) );
+	}
+
+	/** @param string[] $urls */
+	private function add_feed_urls( array $urls ): int {
+		$repo  = $this->plugin->sources();
+		$added = 0;
+		foreach ( $urls as $url ) {
+			$clean = esc_url_raw( $url );
+			if ( $clean === '' || $repo->exists_url( $clean ) ) {
+				continue;
+			}
+			$repo->create( $clean, '', [ 'interval_minutes' => $this->plugin->settings()->import_interval_minutes() ] );
+			$added++;
+		}
+		return $added;
+	}
+
+	/** @return array<string,string> */
+	private function system_info(): array {
+		$s       = $this->plugin->settings();
+		$counts  = $this->plugin->items()->state_counts();
+		$sources = $this->plugin->sources()->all();
+		$active  = array_filter( $sources, static fn ( $src ) => $src->status === 'active' );
+		$import  = wp_next_scheduled( 'aggregate_it_import' );
+		$process = wp_next_scheduled( 'aggregate_it_process_queue' );
+
+		return [
+			__( 'Plugin version', 'aggregate-it' )  => AGGREGATE_IT_VERSION,
+			__( 'WordPress', 'aggregate-it' )        => get_bloginfo( 'version' ),
+			__( 'PHP', 'aggregate-it' )              => PHP_VERSION,
+			__( 'AI service', 'aggregate-it' )       => $s->provider_key(),
+			__( 'Model', 'aggregate-it' )            => $s->ai_model() ?: __( '(default)', 'aggregate-it' ),
+			__( 'API key set', 'aggregate-it' )      => $s->api_key() !== '' ? __( 'yes', 'aggregate-it' ) : __( 'no', 'aggregate-it' ),
+			__( 'Encryption (OpenSSL)', 'aggregate-it' ) => function_exists( 'openssl_encrypt' ) ? __( 'yes', 'aggregate-it' ) : __( 'no', 'aggregate-it' ),
+			__( 'Feeds (active / total)', 'aggregate-it' ) => count( $active ) . ' / ' . count( $sources ),
+			__( 'In the queue', 'aggregate-it' )     => (string) ( array_sum( $counts ) - ( $counts['published'] ?? 0 ) - ( $counts['dead_letter'] ?? 0 ) ),
+			__( 'Failed', 'aggregate-it' )           => (string) ( $counts['dead_letter'] ?? 0 ),
+			__( 'Next feed check', 'aggregate-it' )  => $import ? gmdate( 'Y-m-d H:i', $import ) . ' UTC' : __( 'not scheduled', 'aggregate-it' ),
+			__( 'Next processing run', 'aggregate-it' ) => $process ? gmdate( 'Y-m-d H:i', $process ) . ' UTC' : __( 'not scheduled', 'aggregate-it' ),
+			__( 'Memory limit', 'aggregate-it' )     => (string) ini_get( 'memory_limit' ),
+		];
 	}
 
 	private function guard( string $action ): void {

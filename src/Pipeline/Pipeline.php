@@ -30,7 +30,6 @@ final class Pipeline {
 			Schema::STATE_EXTRACTED,
 			Schema::STATE_EMBEDDED,
 			Schema::STATE_CLUSTERED,
-			Schema::STATE_REWRITTEN,
 			Schema::STATE_ENTITY_LINKED,
 			Schema::STATE_PUBLISHED,
 		];

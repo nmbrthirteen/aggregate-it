@@ -30,6 +30,7 @@ use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Publish\ImageImporter;
 use AggregateIt\Publish\PostFactory;
 use AggregateIt\Publish\RelatedArticles;
+use AggregateIt\Publish\Reprocessor;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Queue\QueueWorker;
 use AggregateIt\Seo\IndexNow;
@@ -88,17 +89,17 @@ final class Plugin {
 		$facts        = new FactsGuard();
 		$cluster_repo = new ClusterRepository();
 		$clusterer    = new Clusterer( $vectors, $cluster_repo, $facts, $this->settings );
-		$rewriter     = new Rewriter( $this->providers, $this->settings );
+		$rewriter     = $this->rewriter();
 		$keywords     = new KeywordStrategy( $this->settings );
 		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
 		$related      = new RelatedArticles( $vectors, $cluster_repo, $this->settings );
-		$seo          = new Seo( $this->settings, new SchemaGraph() );
+		$seo          = $this->seo();
 
 		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items, $this->settings ) );
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(
-			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, new ImageImporter( $this->settings ), $related, $seo, $vectors, $this->items, $this->cost, $this->settings )
+			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings )
 		);
 		$this->pipeline->register(
 			new EntityStage(
@@ -182,5 +183,25 @@ final class Plugin {
 
 	public function stats(): Stats {
 		return new Stats( $this->items, $this->cost, $this->cap, $this->settings );
+	}
+
+	public function rewriter(): Rewriter {
+		return new Rewriter( $this->providers, $this->settings );
+	}
+
+	public function seo(): Seo {
+		return new Seo( $this->settings, new SchemaGraph() );
+	}
+
+	public function reprocessor(): Reprocessor {
+		return new Reprocessor( $this->rewriter(), $this->seo() );
+	}
+
+	public function imageImporter(): ImageImporter {
+		return new ImageImporter( $this->settings );
+	}
+
+	public function seed_enabled(): bool {
+		return (bool) apply_filters( 'aggregate_it_enable_seed', defined( 'WP_DEBUG' ) && WP_DEBUG );
 	}
 }

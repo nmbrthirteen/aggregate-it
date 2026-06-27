@@ -133,6 +133,17 @@ final class Settings {
 		return array_values( array_filter( array_map( 'trim', (array) $list ) ) );
 	}
 
+	/** @return string[] lowercased terms an imported item is skipped for if it matches any */
+	public function blacklist(): array {
+		$terms = preg_split( '/\r\n|\r|\n/', $this->blacklist_raw() ) ?: [];
+		return array_values( array_filter( array_map( static fn ( $t ) => strtolower( trim( (string) $t ) ), $terms ) ) );
+	}
+
+	public function blacklist_raw(): string {
+		$list = $this->get( 'blacklist', '' );
+		return is_array( $list ) ? implode( "\n", $list ) : (string) $list;
+	}
+
 	public function author_id(): int {
 		$id = (int) $this->get( 'author_id', 0 );
 		return $id > 0 ? $id : 1;
@@ -166,5 +177,9 @@ final class Settings {
 
 	public function feed_dead_after(): int {
 		return max( 1, (int) $this->get( 'feed_dead_after', 5 ) );
+	}
+
+	public static function reset(): void {
+		delete_option( self::OPTION );
 	}
 }

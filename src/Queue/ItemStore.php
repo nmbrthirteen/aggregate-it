@@ -196,6 +196,12 @@ final class ItemStore {
 		);
 	}
 
+	public function clear_all(): int {
+		global $wpdb;
+		$table = $this->table();
+		return (int) $wpdb->query( "DELETE FROM {$table}" );
+	}
+
 	public function requeue( int $id ): void {
 		$this->update(
 			$id,

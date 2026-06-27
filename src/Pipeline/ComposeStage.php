@@ -64,6 +64,12 @@ final class ComposeStage implements PaidStage {
 	}
 
 	private function create( Item $item ): string {
+		if ( $item->post_id ) {
+			$item->flags['post_id'] = (int) $item->post_id;
+			EventLog::info( sprintf( 'Post #%d already published; resuming without re-creating.', (int) $item->post_id ) );
+			return Schema::STATE_ENTITY_LINKED;
+		}
+
 		$content = (string) $item->raw_content;
 		$title   = (string) ( $item->flags['title'] ?? '' );
 
@@ -78,15 +84,30 @@ final class ComposeStage implements PaidStage {
 		}
 		$keyword = $decision['keyword'];
 
-		$cluster_id = $this->clusters->create( $keyword, $this->facts->salient( $content ), $this->settings->cluster_window_days() );
-		$vector     = $this->vectors->get( 'item', $item->id );
-		$this->vectors->put( 'cluster', $cluster_id, $vector );
-		$this->items->set_cluster( $item->id, $cluster_id );
-		$item->cluster_id = $cluster_id;
+		$vector = $this->vectors->get( 'item', $item->id );
+
+		$cluster_id = null;
+		if ( $item->cluster_id !== null ) {
+			$existing = $this->clusters->get( (int) $item->cluster_id );
+			if ( $existing && empty( $existing->canonical_post_id ) ) {
+				$cluster_id = (int) $item->cluster_id;
+			}
+		}
+		if ( $cluster_id === null ) {
+			$cluster_id = $this->clusters->create( $keyword, $this->facts->salient( $content ), $this->settings->cluster_window_days() );
+			$this->vectors->put( 'cluster', $cluster_id, $vector );
+			$this->items->set_cluster( $item->id, $cluster_id );
+			$item->cluster_id = $cluster_id;
+		}
 
 		$item->flags['entities'] = (array) ( $structured['entities'] ?? [] );
 
 		$post_id = $this->posts->create( $cluster_id, $item, $structured, $keyword, [ $item->url ] );
+
+		$this->clusters->set_canonical_post( $cluster_id, $post_id );
+		$this->items->set_post( $item->id, $post_id );
+		$item->post_id          = $post_id;
+		$item->flags['post_id'] = $post_id;
 
 		$invented = $this->facts->invented( $content, (string) ( $structured['rewritten_body'] ?? '' ) );
 		if ( $invented ) {
@@ -105,10 +126,6 @@ final class ComposeStage implements PaidStage {
 				'focus_keyword' => $keyword,
 			]
 		);
-
-		$this->clusters->set_canonical_post( $cluster_id, $post_id );
-		$this->items->set_post( $item->id, $post_id );
-		$item->flags['post_id'] = $post_id;
 
 		$this->related->build( $post_id, $cluster_id, $vector );
 

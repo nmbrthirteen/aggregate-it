@@ -61,6 +61,11 @@ $has_key = $settings->api_key() !== '';
 				<td>
 					<input name="api_key" id="api_key" type="password" class="regular-text" autocomplete="new-password"
 						placeholder="<?php echo $has_key ? esc_attr__( '•••••••• (saved)', 'aggregate-it' ) : ''; ?>">
+						<p>
+							<button type="button" class="button" id="ai-test-key"><?php esc_html_e( 'Test connection', 'aggregate-it' ); ?></button>
+							<span id="ai-test-result" class="ai-muted"></span>
+						</p>
+						<p class="description"><?php esc_html_e( 'Save your settings first, then test.', 'aggregate-it' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -213,4 +218,49 @@ $has_key = $settings->api_key() !== '';
 
 		<?php submit_button(); ?>
 	</form>
+	<script>
+	( function () {
+		var cfg = window.AggregateItAdmin || {};
+		var provider = document.getElementById( 'provider' );
+		var voyage = document.getElementById( 'voyage_api_key' );
+		var voyageRow = voyage ? voyage.closest( 'tr' ) : null;
+		var imageMode = document.getElementById( 'image_mode' );
+		var imageSource = document.getElementById( 'image_source' );
+
+		function sync() {
+			if ( voyageRow && provider ) {
+				voyageRow.style.display = provider.value === 'anthropic' ? '' : 'none';
+			}
+			if ( imageSource && imageMode ) {
+				imageSource.style.display = imageMode.value === 'off' ? 'none' : '';
+			}
+		}
+		if ( provider ) { provider.addEventListener( 'change', sync ); }
+		if ( imageMode ) { imageMode.addEventListener( 'change', sync ); }
+		sync();
+
+		var test = document.getElementById( 'ai-test-key' );
+		var result = document.getElementById( 'ai-test-result' );
+		if ( test && result ) {
+			test.addEventListener( 'click', function () {
+				cfg = window.AggregateItAdmin || cfg;
+				if ( ! cfg.root ) { return; }
+				test.disabled = true;
+				test.setAttribute( 'aria-busy', 'true' );
+				result.textContent = cfg.i18n.testing;
+				fetch( cfg.root + 'test', {
+					method: 'POST',
+					headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' }
+				} ).then( function ( r ) { return r.json(); } ).then( function ( d ) {
+					result.textContent = ( d && d.ok ) ? cfg.i18n.testOk : ( cfg.i18n.testFail + ' ' + ( ( d && d.error ) ? d.error : '' ) );
+				} ).catch( function () {
+					result.textContent = cfg.i18n.testFail;
+				} ).then( function () {
+					test.disabled = false;
+					test.removeAttribute( 'aria-busy' );
+				} );
+			} );
+		}
+	} )();
+	</script>
 </div>

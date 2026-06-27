@@ -16,10 +16,12 @@ defined( 'ABSPATH' ) || exit;
 		<h1><?php echo esc_html( $brand ); ?></h1>
 		<div class="ai-actions">
 			<span class="ai-pill" id="ai-provider-pill"></span>
-			<span class="ai-pill ai-pill--warn ai-hidden" id="ai-paused-pill">
+			<span class="ai-pill ai-pill--warn ai-hidden" id="ai-paused-pill" role="status">
 				<?php esc_html_e( 'Daily cost limit reached — paused', 'aggregate-it' ); ?>
 			</span>
-			<button class="button" id="ai-seed" type="button"><?php esc_html_e( 'Add sample articles', 'aggregate-it' ); ?></button>
+			<?php if ( ! empty( $can_seed ) ) : ?>
+				<button class="button" id="ai-seed" type="button"><?php esc_html_e( 'Add sample articles', 'aggregate-it' ); ?></button>
+			<?php endif; ?>
 			<button class="button" id="ai-run" type="button"><?php esc_html_e( 'Run now', 'aggregate-it' ); ?></button>
 			<button class="button ai-hidden" id="ai-resume" type="button"><?php esc_html_e( 'Resume', 'aggregate-it' ); ?></button>
 			<button class="button button-primary" id="ai-refresh" type="button"><?php esc_html_e( 'Refresh', 'aggregate-it' ); ?></button>
