@@ -171,6 +171,10 @@ final class Settings {
 		return (bool) $this->get( 'related_articles', true );
 	}
 
+	public function ai_categorize(): bool {
+		return (bool) $this->get( 'ai_categorize', true );
+	}
+
 	public function disclosure(): string {
 		return trim( (string) $this->get( 'disclosure', '' ) );
 	}

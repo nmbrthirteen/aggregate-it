@@ -158,6 +158,10 @@ $has_key = $settings->api_key() !== '';
 				<th><?php esc_html_e( 'Related articles', 'aggregate-it' ); ?></th>
 				<td><label><input name="related_articles" type="checkbox" <?php checked( $settings->related_articles() ); ?>> <?php esc_html_e( 'Automatically link each article to your other articles on similar topics', 'aggregate-it' ); ?></label></td>
 			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Auto categories', 'aggregate-it' ); ?></th>
+				<td><label><input name="ai_categorize" type="checkbox" <?php checked( $settings->ai_categorize() ); ?>> <?php esc_html_e( 'Let the AI pick each article\'s category by its topic (reuses your existing categories, creates one only when none fits). When off, posts use the feed\'s category.', 'aggregate-it' ); ?></label></td>
+			</tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></h2>

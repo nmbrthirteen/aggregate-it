@@ -21,6 +21,7 @@ $GLOBALS['__http']         = null; // ['code'=>int,'body'=>string] or WP_Error
 $GLOBALS['__hooks']        = [ 'action' => 0, 'filter' => 0 ];
 $GLOBALS['__posts_meta']   = [];   // post_id => [key => value]
 $GLOBALS['__norm_posts']   = [];   // for entity repo: id => norm name
+$GLOBALS['__terms']        = [ 'category' => [] ]; // taxonomy => [ {term_id,name,slug} ]
 
 // Autoload plugin classes (composer if present, else a simple PSR-4 fallback).
 if ( is_readable( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
@@ -255,6 +256,41 @@ if ( ! function_exists( 'update_post_meta' ) ) {
 if ( ! function_exists( 'get_posts' ) ) {
 	function get_posts( $args = [] ) {
 		return array_keys( $GLOBALS['__norm_posts'] );
+	}
+}
+
+// Taxonomy / terms
+if ( ! function_exists( 'get_object_taxonomies' ) ) {
+	function get_object_taxonomies( $type ) {
+		return [ 'category', 'post_tag' ];
+	}
+}
+if ( ! function_exists( 'get_categories' ) ) {
+	function get_categories( $args = [] ) {
+		return $GLOBALS['__terms']['category'] ?? [];
+	}
+}
+if ( ! function_exists( 'get_term_by' ) ) {
+	function get_term_by( $field, $value, $taxonomy = 'category' ) {
+		foreach ( $GLOBALS['__terms'][ $taxonomy ] ?? [] as $term ) {
+			$candidate = $field === 'slug' ? $term->slug : $term->name;
+			if ( strcasecmp( (string) $candidate, (string) $value ) === 0 ) {
+				return $term;
+			}
+		}
+		return false;
+	}
+}
+if ( ! function_exists( 'wp_insert_term' ) ) {
+	function wp_insert_term( $name, $taxonomy = 'category', $args = [] ) {
+		$id = count( $GLOBALS['__terms'][ $taxonomy ] ?? [] ) + 1;
+		$GLOBALS['__terms'][ $taxonomy ][] = (object) [ 'term_id' => $id, 'name' => $name, 'slug' => sanitize_title( $name ) ];
+		return [ 'term_id' => $id ];
+	}
+}
+if ( ! function_exists( 'wp_set_post_terms' ) ) {
+	function wp_set_post_terms( $post_id, $terms, $taxonomy = 'post_tag', $append = false ) {
+		return (array) $terms;
 	}
 }
 if ( ! class_exists( 'WP_Query' ) ) {

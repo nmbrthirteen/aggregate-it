@@ -27,6 +27,7 @@ use AggregateIt\Pipeline\EmbedStage;
 use AggregateIt\Pipeline\EntityStage;
 use AggregateIt\Pipeline\ExtractStage;
 use AggregateIt\Pipeline\Pipeline;
+use AggregateIt\Publish\CategoryResolver;
 use AggregateIt\Publish\ImageImporter;
 use AggregateIt\Publish\PostFactory;
 use AggregateIt\Publish\RelatedArticles;
@@ -91,7 +92,8 @@ final class Plugin {
 		$clusterer    = new Clusterer( $vectors, $cluster_repo, $facts, $this->settings );
 		$rewriter     = $this->rewriter();
 		$keywords     = new KeywordStrategy( $this->settings );
-		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources );
+		$categories   = new CategoryResolver( $this->settings );
+		$post_factory = new PostFactory( $this->settings, new SlugGenerator(), $this->sources, $categories );
 		$related      = new RelatedArticles( $vectors, $cluster_repo, $this->settings );
 		$seo          = $this->seo();
 
@@ -99,7 +101,7 @@ final class Plugin {
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(
-			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings )
+			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings, $categories )
 		);
 		$this->pipeline->register(
 			new EntityStage(

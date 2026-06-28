@@ -14,10 +14,11 @@ final class EntityLinker {
 	/**
 	 * @param array<int,array{id:int,name:string,url:string}> $entities
 	 */
-	public function link( int $post_id, array $entities, int $cap ): void {
+	/** @return int number of first-mention links inserted into the post body */
+	public function link( int $post_id, array $entities, int $cap ): int {
 		$post = get_post( $post_id );
 		if ( ! $post ) {
-			return;
+			return 0;
 		}
 
 		$content  = $post->post_content;
@@ -48,6 +49,8 @@ final class EntityLinker {
 		if ( $content !== $post->post_content ) {
 			wp_update_post( [ 'ID' => $post_id, 'post_content' => $content ] );
 		}
+
+		return $linked;
 	}
 
 	private function link_first_mention( string $content, string $name, string $url ): string {

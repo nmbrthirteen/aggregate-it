@@ -39,6 +39,7 @@ final class MockProvider implements AiProvider {
 				'meta_description' => substr( trim( $body ), 0, 155 ),
 				'slug'             => sanitize_title( $title ),
 				'primary_keyword'  => $keyword,
+				'category'         => '',
 				'entities'         => [],
 				'facts'            => [],
 			],

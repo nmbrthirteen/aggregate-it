@@ -584,6 +584,7 @@ final class Admin {
 				'indexnow_enabled'       => isset( $_POST['indexnow_enabled'] ),
 				'wikipedia_research'     => isset( $_POST['wikipedia_research'] ),
 				'related_articles'       => isset( $_POST['related_articles'] ),
+				'ai_categorize'          => isset( $_POST['ai_categorize'] ),
 				'strategic_mode'         => isset( $_POST['strategic_mode'] ),
 				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),
 				'cluster_window_days'    => max( 1, (int) ( $_POST['cluster_window_days'] ?? 7 ) ),

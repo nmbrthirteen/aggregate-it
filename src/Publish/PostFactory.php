@@ -14,7 +14,8 @@ final class PostFactory {
 	public function __construct(
 		private Settings $settings,
 		private SlugGenerator $slugs,
-		private SourceRepository $sources
+		private SourceRepository $sources,
+		private CategoryResolver $categories
 	) {}
 
 	/**
@@ -52,27 +53,36 @@ final class PostFactory {
 		update_post_meta( $post_id, '_ai_schema_type', $item->flags['schema_type'] ?? 'Article' );
 		update_post_meta( $post_id, '_ai_prompt_version', AGGREGATE_IT_VERSION );
 
-		$this->assign_terms( (int) $post_id, $item->source_id );
+		$this->assign_terms( (int) $post_id, $item->source_id, (string) ( $structured['category'] ?? '' ) );
 
 		return (int) $post_id;
 	}
 
-	/** Apply the feed's chosen categories and tags to the post. */
-	private function assign_terms( int $post_id, int $source_id ): void {
+	/**
+	 * Categorize by the AI's per-article topic (created on first use), falling back to the
+	 * feed's configured categories when the AI gives nothing. Tags come from the feed.
+	 */
+	private function assign_terms( int $post_id, int $source_id, string $ai_category ): void {
 		$source = $source_id ? $this->sources->get( $source_id ) : null;
-		if ( ! $source ) {
-			return;
+		$taxes  = get_object_taxonomies( $this->settings->target_post_type() );
+
+		if ( in_array( 'category', $taxes, true ) ) {
+			$ids = [];
+			if ( $this->settings->ai_categorize() && $ai_category !== '' ) {
+				$term_id = $this->categories->resolve( $ai_category );
+				if ( $term_id ) {
+					$ids[] = $term_id;
+				}
+			}
+			if ( ! $ids && $source ) {
+				$ids = $source->categories();
+			}
+			if ( $ids ) {
+				wp_set_post_terms( $post_id, $ids, 'category', false );
+			}
 		}
 
-		$post_type = $this->settings->target_post_type();
-		$taxes     = get_object_taxonomies( $post_type );
-
-		$categories = $source->categories();
-		if ( $categories && in_array( 'category', $taxes, true ) ) {
-			wp_set_post_terms( $post_id, $categories, 'category', false );
-		}
-
-		$tags = $source->tags();
+		$tags = $source ? $source->tags() : [];
 		if ( $tags && in_array( 'post_tag', $taxes, true ) ) {
 			wp_set_post_terms( $post_id, $tags, 'post_tag', false );
 		}

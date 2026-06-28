@@ -58,4 +58,18 @@ final class RewriterPromptTest extends TestCase {
 		$m->setAccessible( true );
 		$this->assertStringContainsString( 'electric vehicles', $m->invoke( $rw, 'T', 'B', 'electric vehicles' ) );
 	}
+
+	public function test_category_rule_prefers_existing_names(): void {
+		$GLOBALS['__options']['aggregate_it_settings'] = [];
+		$s  = new Settings();
+		$rw = new Rewriter( new ProviderFactory( $s ), $s );
+		$m  = new \ReflectionMethod( $rw, 'prompt' );
+		$m->setAccessible( true );
+		$prompt = $m->invoke( $rw, 'T', 'B', null, null, [ 'Technology', 'Sports' ] );
+		$this->assertStringContainsString( 'Technology, Sports', $prompt );
+	}
+
+	public function test_category_rule_present_without_existing(): void {
+		$this->assertStringContainsString( '"category"', $this->prompt( [] ) );
+	}
 }

@@ -8,6 +8,7 @@ use AggregateIt\Cluster\ClusterRepository;
 use AggregateIt\Cost\CostMeter;
 use AggregateIt\Database\Schema;
 use AggregateIt\Keyword\KeywordStrategy;
+use AggregateIt\Publish\CategoryResolver;
 use AggregateIt\Publish\ImageImporter;
 use AggregateIt\Publish\PostFactory;
 use AggregateIt\Publish\RelatedArticles;
@@ -39,7 +40,8 @@ final class ComposeStage implements PaidStage {
 		private VectorStore $vectors,
 		private ItemStore $items,
 		private CostMeter $cost,
-		private Settings $settings
+		private Settings $settings,
+		private CategoryResolver $categories
 	) {}
 
 	public function handles(): string {
@@ -73,7 +75,8 @@ final class ComposeStage implements PaidStage {
 		$content = (string) $item->raw_content;
 		$title   = (string) ( $item->flags['title'] ?? '' );
 
-		$rewrite    = $this->rewriter->rewrite( $title, $content, null, $this->length( $item ) );
+		$existing   = $this->settings->ai_categorize() ? $this->categories->existing_names() : [];
+		$rewrite    = $this->rewriter->rewrite( $title, $content, null, $this->length( $item ), $existing );
 		$structured = $rewrite['result'];
 		$this->cost->record( Schema::STATE_CLUSTERED, $rewrite['tokens'], $rewrite['cost_usd'], $item->id );
 

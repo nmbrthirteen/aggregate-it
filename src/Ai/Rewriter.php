@@ -19,12 +19,14 @@ final class Rewriter {
 	/**
 	 * @return array{result:array<string,mixed>,tokens:int,cost_usd:float}
 	 */
-	public function rewrite( string $title, string $content, ?string $target_keyword = null, ?string $length = null ): array {
-		$prompt = $this->prompt( $title, $content, $target_keyword, $length );
+	/** @param string[] $categories existing category names to prefer when classifying */
+	public function rewrite( string $title, string $content, ?string $target_keyword = null, ?string $length = null, array $categories = [] ): array {
+		$prompt = $this->prompt( $title, $content, $target_keyword, $length, $categories );
 		return $this->providers->get()->structured( $prompt, $this->schema() );
 	}
 
-	private function prompt( string $title, string $content, ?string $target_keyword, ?string $length = null ): string {
+	/** @param string[] $categories */
+	private function prompt( string $title, string $content, ?string $target_keyword, ?string $length = null, array $categories = [] ): string {
 		$rules = [
 			'Rewrite the article below into original prose that reads as if a real human journalist wrote it from scratch.',
 			'PRESERVE every fact verbatim: names, numbers, dates, quotes, and claims. Never invent, alter, or DROP a fact. Fact-keeping is the top priority and overrides brevity.',
@@ -39,6 +41,15 @@ final class Rewriter {
 
 		if ( $target_keyword ) {
 			$rules[] = sprintf( 'Target keyword "%s": include it naturally in the title and first paragraph. Never keyword-stuff.', $target_keyword );
+		}
+
+		if ( $categories ) {
+			$rules[] = sprintf(
+				'Set "category" to the single section this article best belongs in. Strongly prefer one of the site\'s existing categories when one reasonably fits: %s. Only invent a new category (1-3 words, Title Case) when none fits. Avoid generic labels like "News", "Blog", or "General".',
+				implode( ', ', $categories )
+			);
+		} else {
+			$rules[] = 'Set "category" to the single broad section this article best belongs in (1-3 words, Title Case), e.g. Technology, Business, Politics, Sports, Health, Science, Entertainment. Avoid generic labels like "News", "Blog", or "General".';
 		}
 
 		$lengths = [
@@ -70,13 +81,14 @@ final class Rewriter {
 		$schema = [
 			'type'                 => 'object',
 			'additionalProperties' => false,
-			'required'             => [ 'rewritten_body', 'seo_title', 'meta_description', 'slug', 'primary_keyword' ],
+			'required'             => [ 'rewritten_body', 'seo_title', 'meta_description', 'slug', 'primary_keyword', 'category' ],
 			'properties'           => [
 				'rewritten_body'   => [ 'type' => 'string' ],
 				'seo_title'        => [ 'type' => 'string', 'maxLength' => 70 ],
 				'meta_description' => [ 'type' => 'string', 'maxLength' => 160 ],
 				'slug'             => [ 'type' => 'string' ],
 				'primary_keyword'  => [ 'type' => 'string' ],
+				'category'         => [ 'type' => 'string' ],
 				'entities'         => [
 					'type'  => 'array',
 					'items' => [

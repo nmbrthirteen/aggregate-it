@@ -9,6 +9,7 @@ use AggregateIt\Entity\EntityRepository;
 use AggregateIt\Entity\EntityResearcher;
 use AggregateIt\Entity\EntityResolver;
 use AggregateIt\Entity\Name;
+use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -46,6 +47,7 @@ final class EntityStage implements Stage {
 		}
 
 		$resolved = [];
+		$created  = [];
 		$seen     = [];
 		$content  = (string) $item->raw_content;
 
@@ -73,6 +75,7 @@ final class EntityStage implements Stage {
 			if ( $decision['action'] === 'create' ) {
 				$entity_id = $this->repo->create( $rule['target_cpt'], $name, $this->researcher->research( $rule, $name, $type, $content, $item->url, $desc ) );
 				$this->repo->set_fields( $entity_id, $this->researcher->fields( $rule, $name, $type, $content ) );
+				$created[] = $name;
 			} else {
 				$entity_id = (int) $decision['entity_id'];
 				// Delegate the news into an existing hub: fill it in if it's still a stub.
@@ -92,8 +95,13 @@ final class EntityStage implements Stage {
 		}
 
 		if ( $resolved ) {
-			$cap = (int) ( $resolved[0]['cap'] ?? 5 );
-			$this->linker->link( $post_id, $resolved, $cap );
+			$cap    = (int) ( $resolved[0]['cap'] ?? 5 );
+			$linked = $this->linker->link( $post_id, $resolved, $cap );
+
+			if ( $created ) {
+				EventLog::info( sprintf( 'Post #%d: created %d linked page(s): %s.', $post_id, count( $created ), implode( ', ', $created ) ) );
+			}
+			EventLog::info( sprintf( 'Post #%d: linked %d mention(s) to %d page(s).', $post_id, $linked, count( $resolved ) ) );
 		}
 
 		do_action( 'aggregate_it_publish_ping', $post_id );
