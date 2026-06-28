@@ -576,6 +576,7 @@ final class Admin {
 				'publish_status'         => sanitize_key( wp_unslash( $_POST['publish_status'] ?? 'publish' ) ),
 				'writing_instructions'   => sanitize_textarea_field( wp_unslash( $_POST['writing_instructions'] ?? '' ) ),
 				'article_length'         => sanitize_key( wp_unslash( $_POST['article_length'] ?? 'auto' ) ),
+				'import_max_age_hours'   => max( 0, (int) ( $_POST['import_max_age_hours'] ?? 48 ) ),
 				'retention_days'         => max( 0, (int) ( $_POST['retention_days'] ?? 90 ) ),
 				'author_id'              => max( 0, (int) ( $_POST['author_id'] ?? 0 ) ),
 				'daily_spend_cap_usd'    => max( 0, (float) ( $_POST['daily_spend_cap_usd'] ?? 5 ) ),
@@ -744,6 +745,16 @@ final class Admin {
 				$cleared = $this->plugin->items()->clear_all();
 				/* translators: %d: number of queued items removed */
 				$this->flash( sprintf( _n( 'Removed %d item from the queue.', 'Removed %d items from the queue.', $cleared, 'aggregate-it' ), $cleared ) );
+				break;
+			case 'stale':
+				$hours = $this->plugin->settings()->import_max_age_hours();
+				if ( $hours <= 0 ) {
+					$this->flash( __( 'No freshness window is set, so nothing was dropped.', 'aggregate-it' ), 'error' );
+					break;
+				}
+				$dropped = $this->plugin->items()->purge_stale_queued( time() - $hours * HOUR_IN_SECONDS );
+				/* translators: %d: number of stale items dropped */
+				$this->flash( sprintf( _n( 'Dropped %d stale item from the queue.', 'Dropped %d stale items from the queue.', $dropped, 'aggregate-it' ), $dropped ) );
 				break;
 			default:
 				$this->flash( __( 'Nothing was reset.', 'aggregate-it' ) );

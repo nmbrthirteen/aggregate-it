@@ -196,6 +196,44 @@ final class ItemStore {
 		);
 	}
 
+	/**
+	 * Delete not-yet-published items whose article is older than $cutoff_ts. Uses the
+	 * stored publish date, falling back to the import time for older rows that predate it.
+	 */
+	public function purge_stale_queued( int $cutoff_ts ): int {
+		global $wpdb;
+		$table = $this->table();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, flags, created_at FROM {$table} WHERE state NOT IN ( %s, %s )",
+				Schema::STATE_PUBLISHED,
+				Schema::STATE_DEAD_LETTER
+			)
+		);
+
+		$stale = [];
+		foreach ( (array) $rows as $row ) {
+			$flags = (array) Json::decode( $row->flags ?? null, [] );
+			$when  = (int) ( $flags['published_at'] ?? 0 );
+			if ( $when <= 0 ) {
+				$when = (int) strtotime( (string) $row->created_at );
+			}
+			if ( $when > 0 && $when < $cutoff_ts ) {
+				$stale[] = (int) $row->id;
+			}
+		}
+
+		if ( ! $stale ) {
+			return 0;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $stale ), '%d' ) );
+		return (int) $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$table} WHERE id IN ( {$placeholders} )", $stale )
+		);
+	}
+
 	public function clear_all(): int {
 		global $wpdb;
 		$table = $this->table();

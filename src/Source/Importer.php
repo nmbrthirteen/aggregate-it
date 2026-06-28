@@ -108,12 +108,14 @@ final class Importer {
 	}
 
 	/**
-	 * @param array<int,array{guid:string,url:string,title:string,content:string}> $entries
+	 * @param array<int,array{guid:string,url:string,title:string,content:string,image:string,date:int}> $entries
 	 */
 	private function ingest( Source $source, array $entries ): int {
 		$include   = $source->include_keywords();
 		$exclude   = $source->exclude_keywords();
 		$blacklist = $this->settings->blacklist();
+		$max_age   = $this->settings->import_max_age_hours();
+		$cutoff    = $max_age > 0 ? time() - $max_age * HOUR_IN_SECONDS : 0;
 		$imported  = 0;
 
 		foreach ( $entries as $entry ) {
@@ -121,6 +123,10 @@ final class Importer {
 				break;
 			}
 			if ( $entry['guid'] === '' || $this->items->exists_guid( $source->id, $entry['guid'] ) ) {
+				continue;
+			}
+			// Skip stale news; items with no parseable date fall through (can't tell).
+			if ( $cutoff > 0 && $entry['date'] > 0 && $entry['date'] < $cutoff ) {
 				continue;
 			}
 			if ( $this->items->exists_hash( hash( 'sha256', $entry['content'] ) ) ) {
@@ -141,6 +147,7 @@ final class Importer {
 				[
 					'title'                 => $entry['title'],
 					'image'                 => $entry['image'],
+					'published_at'          => $entry['date'],
 					'article_length'        => $source->article_length(),
 					'full_content_threshold' => $source->full_content_threshold(),
 				]
@@ -151,7 +158,7 @@ final class Importer {
 	}
 
 	/**
-	 * @return array<int,array{guid:string,url:string,title:string,content:string}>
+	 * @return array<int,array{guid:string,url:string,title:string,content:string,image:string,date:int}>
 	 */
 	private function parse( string $url ): array {
 		if ( ! function_exists( 'fetch_feed' ) ) {
@@ -171,6 +178,7 @@ final class Importer {
 				'title'   => (string) $item->get_title(),
 				'content' => (string) ( $item->get_content() ?: $item->get_description() ),
 				'image'   => $this->item_image( $item ),
+				'date'    => (int) ( $item->get_date( 'U' ) ?: 0 ),
 			];
 		}
 		return $entries;
@@ -179,7 +187,7 @@ final class Importer {
 	/**
 	 * Minimal JSON Feed (jsonfeed.org) fallback for sources that aren't RSS/Atom.
 	 *
-	 * @return array<int,array{guid:string,url:string,title:string,content:string}>
+	 * @return array<int,array{guid:string,url:string,title:string,content:string,image:string,date:int}>
 	 */
 	private function parse_json_feed( string $url ): array {
 		$response = wp_remote_get( $url, [ 'timeout' => 15, 'user-agent' => 'AggregateIt/0.1' ] );
@@ -200,6 +208,7 @@ final class Importer {
 				'title'   => (string) ( $item['title'] ?? '' ),
 				'content' => (string) ( $item['content_html'] ?? $item['content_text'] ?? $item['summary'] ?? '' ),
 				'image'   => (string) ( $item['image'] ?? '' ),
+				'date'    => isset( $item['date_published'] ) ? (int) strtotime( (string) $item['date_published'] ) : 0,
 			];
 		}
 		return $entries;

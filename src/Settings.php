@@ -175,6 +175,11 @@ final class Settings {
 		return (bool) $this->get( 'ai_categorize', true );
 	}
 
+	/** Skip feed items older than this many hours. 0 = no age limit. */
+	public function import_max_age_hours(): int {
+		return max( 0, (int) $this->get( 'import_max_age_hours', 48 ) );
+	}
+
 	public function disclosure(): string {
 		return trim( (string) $this->get( 'disclosure', '' ) );
 	}

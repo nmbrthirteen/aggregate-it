@@ -130,6 +130,14 @@ $has_key = $settings->api_key() !== '';
 				</td>
 			</tr>
 			<tr>
+				<th><label for="import_max_age_hours"><?php esc_html_e( 'Only import fresh news', 'aggregate-it' ); ?></label></th>
+				<td>
+					<input name="import_max_age_hours" id="import_max_age_hours" type="number" min="0" step="1" value="<?php echo esc_attr( (string) $settings->import_max_age_hours() ); ?>" class="small-text">
+					<?php esc_html_e( 'hours', 'aggregate-it' ); ?>
+					<p class="description"><?php esc_html_e( 'Skip feed items older than this. 48 = only the last two days. Set to 0 to import everything regardless of age.', 'aggregate-it' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th><label for="author_id"><?php esc_html_e( 'Author', 'aggregate-it' ); ?></label></th>
 				<td><?php wp_dropdown_users( [ 'name' => 'author_id', 'id' => 'author_id', 'selected' => $settings->author_id() ] ); ?></td>
 			</tr>

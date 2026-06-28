@@ -140,6 +140,7 @@ foreach ( $info as $label => $value ) {
 					<label for="ai-reset" class="screen-reader-text"><?php esc_html_e( 'What to reset', 'aggregate-it' ); ?></label>
 					<select name="reset" id="ai-reset">
 						<option value="settings"><?php esc_html_e( 'Reset settings to defaults', 'aggregate-it' ); ?></option>
+						<option value="stale"><?php esc_html_e( 'Drop stale queued items (older than the freshness window)', 'aggregate-it' ); ?></option>
 						<option value="queue"><?php esc_html_e( 'Clear the work queue', 'aggregate-it' ); ?></option>
 					</select>
 					<button type="submit" class="button" onclick="return confirm('<?php echo esc_js( __( 'This cannot be undone. Continue?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Reset', 'aggregate-it' ); ?></button>
