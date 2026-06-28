@@ -197,8 +197,10 @@ final class ItemStore {
 	}
 
 	/**
-	 * Delete not-yet-published items whose article is older than $cutoff_ts. Uses the
-	 * stored publish date, falling back to the import time for older rows that predate it.
+	 * Delete not-yet-published items that are stale: those whose stored publish date is
+	 * older than $cutoff_ts, plus legacy rows imported before publish-date tracking existed
+	 * (no `published_at` key) — that's the backlog this is meant to clear. Items imported
+	 * since, with an unknown date (published_at = 0), are kept since freshness can't be told.
 	 */
 	public function purge_stale_queued( int $cutoff_ts ): int {
 		global $wpdb;
@@ -206,7 +208,7 @@ final class ItemStore {
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, flags, created_at FROM {$table} WHERE state NOT IN ( %s, %s )",
+				"SELECT id, flags FROM {$table} WHERE state NOT IN ( %s, %s )",
 				Schema::STATE_PUBLISHED,
 				Schema::STATE_DEAD_LETTER
 			)
@@ -215,10 +217,11 @@ final class ItemStore {
 		$stale = [];
 		foreach ( (array) $rows as $row ) {
 			$flags = (array) Json::decode( $row->flags ?? null, [] );
-			$when  = (int) ( $flags['published_at'] ?? 0 );
-			if ( $when <= 0 ) {
-				$when = (int) strtotime( (string) $row->created_at );
+			if ( ! array_key_exists( 'published_at', $flags ) ) {
+				$stale[] = (int) $row->id;
+				continue;
 			}
+			$when = (int) $flags['published_at'];
 			if ( $when > 0 && $when < $cutoff_ts ) {
 				$stale[] = (int) $row->id;
 			}
