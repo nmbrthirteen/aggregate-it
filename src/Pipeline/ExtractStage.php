@@ -30,6 +30,14 @@ final class ExtractStage implements Stage {
 	}
 
 	public function process( Item $item ): string {
+		// Scraped/passthrough items carry their final content already; skip readability + the
+		// publisher-image fetch and let them flow straight to the mapped publish step.
+		if ( ! empty( $item->flags['passthrough'] ) ) {
+			$item->flags['content_length'] = mb_strlen( (string) $item->raw_content );
+			$item->flags['thin']           = false;
+			return Schema::STATE_EXTRACTED;
+		}
+
 		$threshold = (int) ( $item->flags['full_content_threshold'] ?? 1200 );
 		$result    = $this->extractor->extract( $item->url, (string) $item->raw_content, $threshold );
 

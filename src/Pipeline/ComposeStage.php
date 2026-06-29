@@ -51,6 +51,36 @@ final class ComposeStage implements PaidStage {
 		return Schema::STATE_CLUSTERED;
 	}
 
+	private function publish_mapped( Item $item ): string {
+		if ( $item->post_id ) {
+			$item->flags['post_id'] = (int) $item->post_id;
+			$this->images->maybe_import( (int) $item->post_id, (string) ( $item->flags['image'] ?? '' ), get_the_title( (int) $item->post_id ) );
+			return Schema::STATE_ENTITY_LINKED;
+		}
+
+		$post_id = $this->posts->create_mapped( $item );
+		$this->items->set_post( $item->id, $post_id );
+		$item->post_id          = $post_id;
+		$item->flags['post_id'] = $post_id;
+
+		$this->images->maybe_import( $post_id, (string) ( $item->flags['image'] ?? '' ), get_the_title( $post_id ) );
+
+		ActivityLog::record(
+			'info',
+			sprintf( 'Imported #%d as %s post #%d.', $item->id, get_post_type( $post_id ) ?: 'custom', $post_id ),
+			[
+				'item_id'    => $item->id,
+				'source_id'  => $item->source_id,
+				'post_id'    => $post_id,
+				'type'       => Schema::STATE_CLUSTERED,
+				'from_state' => Schema::STATE_CLUSTERED,
+				'to_state'   => Schema::STATE_ENTITY_LINKED,
+			]
+		);
+
+		return Schema::STATE_ENTITY_LINKED;
+	}
+
 	private function suppressed( Item $item, string $reason, string $message ): void {
 		ActivityLog::record(
 			'info',
@@ -73,6 +103,10 @@ final class ComposeStage implements PaidStage {
 	}
 
 	public function process( Item $item ): string {
+		if ( ! empty( $item->flags['passthrough'] ) ) {
+			return $this->publish_mapped( $item );
+		}
+
 		if ( ! empty( $item->flags['thin'] ) ) {
 			$item->flags['suppressed'] = 'thin';
 			$this->suppressed( $item, 'thin', sprintf( 'Article #%d not published: too little content to rewrite (%d chars).', $item->id, (int) ( $item->flags['content_length'] ?? 0 ) ) );

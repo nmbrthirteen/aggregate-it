@@ -2,8 +2,11 @@
 
 namespace AggregateIt\Admin;
 
+use AggregateIt\Cost\CostMeter;
 use AggregateIt\Cost\SpendCap;
 use AggregateIt\Plugin;
+use AggregateIt\Source\HttpFetcher;
+use AggregateIt\Source\Scrape\SelectorAssistant;
 use AggregateIt\Support\ActivityLog;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -37,6 +40,16 @@ final class RestController {
 			[
 				'methods'             => 'GET',
 				'callback'            => [ $this, 'activity' ],
+				'permission_callback' => [ $this, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			self::NS,
+			'/suggest-selectors',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ $this, 'suggest_selectors' ],
 				'permission_callback' => [ $this, 'can_manage' ],
 			]
 		);
@@ -118,6 +131,32 @@ final class RestController {
 			],
 			200
 		);
+	}
+
+	public function suggest_selectors( WP_REST_Request $request ): WP_REST_Response {
+		$url = esc_url_raw( (string) $request->get_param( 'url' ) );
+		if ( $url === '' ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Enter the page URL first.', 'aggregate-it' ) ], 200 );
+		}
+
+		$provider = $this->plugin->providers()->get();
+		if ( $this->plugin->settings()->provider_key() !== 'mock' && $provider->key() === 'mock' ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Add an AI API key in Settings first.', 'aggregate-it' ) ], 200 );
+		}
+
+		try {
+			$html = ( new HttpFetcher() )->fetch( $url );
+			if ( ! is_string( $html ) || $html === '' ) {
+				return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Could not fetch that page.', 'aggregate-it' ) ], 200 );
+			}
+
+			$result = ( new SelectorAssistant( $provider ) )->suggest( $html );
+			( new CostMeter() )->record( 'scrape', $result['tokens'], $result['cost_usd'], null );
+
+			return new WP_REST_Response( [ 'ok' => true, 'suggestion' => $result['suggestion'] ], 200 );
+		} catch ( \Throwable $e ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => $e->getMessage() ], 200 );
+		}
 	}
 
 	public function run(): WP_REST_Response {

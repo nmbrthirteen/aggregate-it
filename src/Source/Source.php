@@ -34,6 +34,33 @@ final class Source {
 		return max( 1, (int) ( $this->settings['interval_minutes'] ?? $default ) );
 	}
 
+	/** rss (feed/JSON) or scrape (generalized HTML scraper). Defaults to rss for back-compat. */
+	public function source_type(): string {
+		$type = (string) ( $this->settings['source_type'] ?? 'rss' );
+		return in_array( $type, [ 'rss', 'scrape' ], true ) ? $type : 'rss';
+	}
+
+	/** @return array<string,mixed> discovery + extraction + mapping config for a scrape source */
+	public function scrape_config(): array {
+		return (array) ( $this->settings['scrape'] ?? [] );
+	}
+
+	/** Per-source target post type, or '' to fall back to the global setting. */
+	public function post_type_connection(): string {
+		return sanitize_key( (string) ( $this->settings['post_type'] ?? '' ) );
+	}
+
+	/** rewrite (AI) or passthrough (map scraped fields verbatim). */
+	public function processing_mode(): string {
+		$mode = (string) ( $this->settings['processing'] ?? 'rewrite' );
+		return in_array( $mode, [ 'rewrite', 'passthrough' ], true ) ? $mode : 'rewrite';
+	}
+
+	/** @return array<string,array{dest:string}> extracted field name => destination mapping */
+	public function field_map(): array {
+		return (array) ( $this->settings['scrape']['mapping']['fields'] ?? [] );
+	}
+
 	public function full_content_threshold(): int {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}

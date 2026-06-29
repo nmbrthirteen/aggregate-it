@@ -119,13 +119,14 @@ final class Plugin {
 		$related->register();
 		( new IndexNow( $this->settings ) )->register();
 		( new EntityRegistrar( $this->rules ) )->register();
+		( new \AggregateIt\Source\ScraperPostTypes() )->register();
 		( new HubRenderer( $this->rules, $this->settings ) )->register();
 
 		if ( $this->settings->wikipedia_research() ) {
 			add_filter( 'aggregate_it_research_provider', static fn () => new \AggregateIt\Research\WikipediaProvider() );
 		}
 
-		( new Importer( $this->sources, $this->items, $this->settings ) )->register();
+		( new Importer( $this->sources, $this->items, $this->settings, new \AggregateIt\Source\Parser\ScraperParser( new HttpFetcher() ) ) )->register();
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
 		( new RestController( $this ) )->register();

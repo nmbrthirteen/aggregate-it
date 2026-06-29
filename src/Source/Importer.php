@@ -4,6 +4,7 @@ namespace AggregateIt\Source;
 
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Settings;
+use AggregateIt\Source\Parser\ScraperParser;
 use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
@@ -22,7 +23,8 @@ final class Importer {
 	public function __construct(
 		private SourceRepository $sources,
 		private ItemStore $items,
-		private Settings $settings
+		private Settings $settings,
+		private ScraperParser $scraper
 	) {}
 
 	public function register(): void {
@@ -68,7 +70,7 @@ final class Importer {
 	public function import( Source $source ): int {
 		$imported = 0;
 		try {
-			$entries  = $this->parse( $source->url );
+			$entries  = $source->source_type() === 'scrape' ? $this->scraper->parse( $source ) : $this->parse( $source->url );
 			$imported = $this->ingest( $source, $entries );
 
 			$this->sources->mark_checked(
@@ -116,6 +118,7 @@ final class Importer {
 		$blacklist = $this->settings->blacklist();
 		$max_age   = $this->settings->import_max_age_hours();
 		$cutoff    = $max_age > 0 ? time() - $max_age * HOUR_IN_SECONDS : 0;
+		$is_scrape = $source->source_type() === 'scrape';
 		$imported  = 0;
 
 		foreach ( $entries as $entry ) {
@@ -129,7 +132,9 @@ final class Importer {
 			if ( $cutoff > 0 && $entry['date'] > 0 && $entry['date'] < $cutoff ) {
 				continue;
 			}
-			if ( $this->items->exists_hash( hash( 'sha256', $entry['content'] ) ) ) {
+			// Scrape items dedupe on guid (the detail URL); their content is often empty or
+			// identical across rows, so a content-hash check would wrongly drop distinct items.
+			if ( ! $is_scrape && $this->items->exists_hash( hash( 'sha256', $entry['content'] ) ) ) {
 				continue;
 			}
 			if ( ! $this->keywords_allow( $entry, $include, $exclude ) ) {
@@ -139,19 +144,21 @@ final class Importer {
 				continue;
 			}
 
-			$this->items->enqueue(
-				$source->id,
-				$entry['guid'],
-				$entry['url'],
-				$entry['content'],
-				[
-					'title'                 => $entry['title'],
-					'image'                 => $entry['image'],
-					'published_at'          => $entry['date'],
-					'article_length'        => $source->article_length(),
-					'full_content_threshold' => $source->full_content_threshold(),
-				]
-			);
+			$flags = [
+				'title'                 => $entry['title'],
+				'image'                 => $entry['image'],
+				'published_at'          => $entry['date'],
+				'article_length'        => $source->article_length(),
+				'full_content_threshold' => $source->full_content_threshold(),
+			];
+			if ( $is_scrape ) {
+				$flags['fields'] = (array) ( $entry['fields'] ?? [] );
+				if ( $source->processing_mode() === 'passthrough' ) {
+					$flags['passthrough'] = true;
+				}
+			}
+
+			$this->items->enqueue( $source->id, $entry['guid'], $entry['url'], $entry['content'], $flags );
 			$imported++;
 		}
 		return $imported;
