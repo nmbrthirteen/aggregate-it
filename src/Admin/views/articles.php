@@ -12,6 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * @var int                 $paged
  * @var int                 $per_page
  * @var string              $status
+ * @var string              $search
+ * @var string              $flash_message
  * @var array<string,int>   $counts
  * @var array<int,string>   $feeds
  */
@@ -52,6 +54,9 @@ $base      = admin_url( 'admin.php?page=aggregate-it-articles' );
 if ( $status !== '' ) {
 	$base = add_query_arg( 'status', $status, $base );
 }
+if ( $search !== '' ) {
+	$base = add_query_arg( 's', $search, $base );
+}
 $notice  = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 $notices = [
 	'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
@@ -76,9 +81,29 @@ $notices = [
 		<?php endif; ?>
 	</div>
 
-	<?php if ( isset( $notices[ $notice ] ) ) : ?>
+	<?php if ( $flash_message !== '' ) : ?>
+		<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $flash_message ); ?></p></div>
+	<?php elseif ( isset( $notices[ $notice ] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
 	<?php endif; ?>
+
+	<form method="get" class="ai-search" style="margin:12px 0;">
+		<input type="hidden" name="page" value="aggregate-it-articles">
+		<?php if ( $status !== '' ) : ?>
+			<input type="hidden" name="status" value="<?php echo esc_attr( $status ); ?>">
+		<?php endif; ?>
+		<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search title or URL…', 'aggregate-it' ); ?>" class="regular-text">
+		<button type="submit" class="button"><?php esc_html_e( 'Search', 'aggregate-it' ); ?></button>
+		<?php if ( $search !== '' ) : ?>
+			<a class="button-link" href="<?php echo esc_url( $status !== '' ? add_query_arg( 'status', $status, admin_url( 'admin.php?page=aggregate-it-articles' ) ) : admin_url( 'admin.php?page=aggregate-it-articles' ) ); ?>"><?php esc_html_e( 'Clear', 'aggregate-it' ); ?></a>
+			<span class="description">
+				<?php
+				/* translators: 1: result count, 2: search term */
+				echo esc_html( sprintf( _n( '%1$d result for “%2$s”', '%1$d results for “%2$s”', $total, 'aggregate-it' ), $total, $search ) );
+				?>
+			</span>
+		<?php endif; ?>
+	</form>
 
 	<ul class="subsubsub">
 		<?php foreach ( $tabs as $key => $label ) : ?>
@@ -102,6 +127,7 @@ $notices = [
 					<option value="publish"><?php esc_html_e( 'Publish', 'aggregate-it' ); ?></option>
 					<option value="draft"><?php esc_html_e( 'Move to draft', 'aggregate-it' ); ?></option>
 					<option value="rewrite"><?php esc_html_e( 'Rewrite', 'aggregate-it' ); ?></option>
+					<option value="refresh_image"><?php esc_html_e( 'Refresh featured image', 'aggregate-it' ); ?></option>
 					<option value="delete"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></option>
 				</select>
 				<button type="submit" class="button"><?php esc_html_e( 'Apply', 'aggregate-it' ); ?></button>

@@ -192,11 +192,18 @@ final class Admin {
 		$per_page = 30;
 		$paged    = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
 		$status   = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		$search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		$items = $this->plugin->items();
-		$rows  = $items->list_detailed( $status ?: null, $per_page, ( $paged - 1 ) * $per_page );
-		$total = $items->count_filtered( $status ?: null );
+		$rows  = $items->list_detailed( $status ?: null, $per_page, ( $paged - 1 ) * $per_page, $search );
+		$total = $items->count_filtered( $status ?: null, $search );
+
+		$flash = get_transient( 'aggregate_it_flash' );
+		if ( $flash ) {
+			delete_transient( 'aggregate_it_flash' );
+		}
+		$flash_message = is_array( $flash ) ? (string) ( $flash['message'] ?? '' ) : (string) $flash;
 
 		$counts = [
 			''           => $items->count_filtered( null ),
@@ -286,12 +293,14 @@ final class Admin {
 		$action = sanitize_key( wp_unslash( $_POST['bulk_action'] ?? '' ) );
 		$ids    = array_slice( array_values( array_filter( array_map( 'intval', (array) ( $_POST['ids'] ?? [] ) ) ) ), 0, 30 );
 
-		if ( ! $ids || ! in_array( $action, [ 'delete', 'publish', 'draft', 'rewrite' ], true ) ) {
+		if ( ! $ids || ! in_array( $action, [ 'delete', 'publish', 'draft', 'rewrite', 'refresh_image' ], true ) ) {
 			$this->redirect( self::SLUG . '-articles', '' );
 		}
 
-		$items  = $this->plugin->items();
-		$reproc = $action === 'rewrite' ? $this->plugin->reprocessor() : null;
+		$items     = $this->plugin->items();
+		$reproc    = $action === 'rewrite' ? $this->plugin->reprocessor() : null;
+		$refreshed = 0;
+		$busy      = 0;
 
 		foreach ( $ids as $id ) {
 			$item = $items->find( $id );
@@ -301,6 +310,19 @@ final class Admin {
 			$post_id = (int) ( $item->post_id ?? 0 );
 
 			switch ( $action ) {
+				case 'refresh_image':
+					if ( $post_id && $item->url ) {
+						try {
+							$image = $this->plugin->extractor()->share_image( (string) $item->url );
+							$this->plugin->imageImporter()->maybe_import( $post_id, $image, get_the_title( $post_id ), true );
+							if ( $image !== '' ) {
+								$refreshed++;
+							}
+						} catch ( \Throwable $e ) {
+							$busy++; // rate-limited / transient — re-run to retry
+						}
+					}
+					break;
 				case 'delete':
 					if ( $post_id ) {
 						wp_delete_post( $post_id );
@@ -323,6 +345,16 @@ final class Admin {
 					}
 					break;
 			}
+		}
+
+		if ( $action === 'refresh_image' ) {
+			$msg = sprintf( _n( 'Refreshed %d featured image.', 'Refreshed %d featured images.', $refreshed, 'aggregate-it' ), $refreshed );
+			if ( $busy ) {
+				/* translators: %d: number skipped */
+				$msg .= ' ' . sprintf( _n( '%d was skipped because the source was busy — run it again to retry.', '%d were skipped because the source was busy — run it again to retry.', $busy, 'aggregate-it' ), $busy );
+			}
+			$this->flash( $msg );
+			$this->redirect( self::SLUG . '-articles', '' );
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'bulk_done' );

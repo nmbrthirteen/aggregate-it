@@ -320,11 +320,11 @@ final class ItemStore {
 		) ?: [];
 	}
 
-	/** @return object[] full rows for the Articles admin list (optionally filtered) */
-	public function list_detailed( ?string $status, int $limit, int $offset ): array {
+	/** @return object[] full rows for the Articles admin list (optionally filtered + searched) */
+	public function list_detailed( ?string $status, int $limit, int $offset, string $search = '' ): array {
 		global $wpdb;
 		$table = $this->table();
-		[ $where, $params ] = $this->where_for( $status );
+		[ $where, $params ] = $this->where_for( $status, $search );
 		$params[] = $limit;
 		$params[] = $offset;
 
@@ -337,10 +337,10 @@ final class ItemStore {
 		) ?: [];
 	}
 
-	public function count_filtered( ?string $status ): int {
+	public function count_filtered( ?string $status, string $search = '' ): int {
 		global $wpdb;
 		$table = $this->table();
-		[ $where, $params ] = $this->where_for( $status );
+		[ $where, $params ] = $this->where_for( $status, $search );
 
 		if ( ! $params ) {
 			return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE {$where}" ); // phpcs:ignore WordPress.DB.PreparedSQL
@@ -364,21 +364,36 @@ final class ItemStore {
 		);
 	}
 
-	/** @return array{0:string,1:array<int,mixed>} WHERE clause + params for a filter */
-	private function where_for( ?string $status ): array {
+	/** @return array{0:string,1:array<int,mixed>} WHERE clause + params for a filter + search */
+	private function where_for( ?string $status, string $search = '' ): array {
+		global $wpdb;
 		$suppressed = '%"suppressed":%';
 		switch ( $status ) {
 			case 'failed':
-				return [ 'state = %s', [ Schema::STATE_DEAD_LETTER ] ];
+				[ $where, $params ] = [ 'state = %s', [ Schema::STATE_DEAD_LETTER ] ];
+				break;
 			case 'processing':
-				return [ 'state NOT IN ( %s, %s )', [ Schema::STATE_PUBLISHED, Schema::STATE_DEAD_LETTER ] ];
+				[ $where, $params ] = [ 'state NOT IN ( %s, %s )', [ Schema::STATE_PUBLISHED, Schema::STATE_DEAD_LETTER ] ];
+				break;
 			case 'published':
-				return [ 'state = %s AND COALESCE( flags, %s ) NOT LIKE %s', [ Schema::STATE_PUBLISHED, '', $suppressed ] ];
+				[ $where, $params ] = [ 'state = %s AND COALESCE( flags, %s ) NOT LIKE %s', [ Schema::STATE_PUBLISHED, '', $suppressed ] ];
+				break;
 			case 'skipped':
-				return [ 'state = %s AND flags LIKE %s', [ Schema::STATE_PUBLISHED, $suppressed ] ];
+				[ $where, $params ] = [ 'state = %s AND flags LIKE %s', [ Schema::STATE_PUBLISHED, $suppressed ] ];
+				break;
 			default:
-				return [ '1 = 1', [] ];
+				[ $where, $params ] = [ '1 = 1', [] ];
 		}
+
+		if ( $search !== '' ) {
+			// Title lives inside the flags JSON, so search that and the URL.
+			$like     = '%' . $wpdb->esc_like( $search ) . '%';
+			$where   .= ' AND ( url LIKE %s OR flags LIKE %s )';
+			$params[] = $like;
+			$params[] = $like;
+		}
+
+		return [ $where, $params ];
 	}
 
 	private function update( int $id, array $data ): void {
