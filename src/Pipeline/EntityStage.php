@@ -9,7 +9,7 @@ use AggregateIt\Entity\EntityRepository;
 use AggregateIt\Entity\EntityResearcher;
 use AggregateIt\Entity\EntityResolver;
 use AggregateIt\Entity\Name;
-use AggregateIt\Support\EventLog;
+use AggregateIt\Support\ActivityLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -48,6 +48,7 @@ final class EntityStage implements Stage {
 
 		$resolved = [];
 		$created  = [];
+		$skipped  = [];
 		$seen     = [];
 		$content  = (string) $item->raw_content;
 
@@ -64,11 +65,13 @@ final class EntityStage implements Stage {
 
 			$rule = $this->rules->for_type( $type );
 			if ( ! $rule ) {
+				$skipped[] = [ 'name' => $name, 'reason' => $type !== '' ? 'no hub for type ' . $type : 'no type' ];
 				continue;
 			}
 
 			$decision = $this->resolver->resolve( $rule, $name );
 			if ( $decision['action'] === 'skip' ) {
+				$skipped[] = [ 'name' => $name, 'reason' => 'ambiguous match' ];
 				continue;
 			}
 
@@ -98,10 +101,36 @@ final class EntityStage implements Stage {
 			$cap    = (int) ( $resolved[0]['cap'] ?? 5 );
 			$linked = $this->linker->link( $post_id, $resolved, $cap );
 
-			if ( $created ) {
-				EventLog::info( sprintf( 'Post #%d: created %d linked page(s): %s.', $post_id, count( $created ), implode( ', ', $created ) ) );
-			}
-			EventLog::info( sprintf( 'Post #%d: linked %d mention(s) to %d page(s).', $post_id, $linked, count( $resolved ) ) );
+			ActivityLog::record(
+				'info',
+				$created
+					? sprintf( 'Post #%d: linked %d mention(s) to %d topic hub(s), created %d new: %s.', $post_id, $linked, count( $resolved ), count( $created ), implode( ', ', $created ) )
+					: sprintf( 'Post #%d: linked %d mention(s) to %d topic hub(s).', $post_id, $linked, count( $resolved ) ),
+				[
+					'item_id'   => $item->id,
+					'source_id' => $item->source_id,
+					'post_id'   => $post_id,
+					'type'      => Schema::STATE_ENTITY_LINKED,
+					'detail'    => [
+						'linked'  => array_map( static fn ( $r ) => $r['name'], $resolved ),
+						'created' => $created,
+					],
+				]
+			);
+		}
+
+		if ( $skipped ) {
+			ActivityLog::record(
+				'info',
+				sprintf( 'Post #%d: skipped %d topic(s) — %s.', $post_id, count( $skipped ), implode( ', ', array_map( static fn ( $s ) => $s['name'] . ' (' . $s['reason'] . ')', $skipped ) ) ),
+				[
+					'item_id'   => $item->id,
+					'source_id' => $item->source_id,
+					'post_id'   => $post_id,
+					'type'      => Schema::STATE_ENTITY_LINKED,
+					'detail'    => [ 'skipped' => $skipped ],
+				]
+			);
 		}
 
 		do_action( 'aggregate_it_publish_ping', $post_id );

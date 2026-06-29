@@ -111,8 +111,8 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
-			__( 'Linked Pages', 'aggregate-it' ),
-			__( 'Linked Pages', 'aggregate-it' ),
+			__( 'Topic Hubs', 'aggregate-it' ),
+			__( 'Topic Hubs', 'aggregate-it' ),
 			'manage_options',
 			self::SLUG . '-entities',
 			[ $this, 'render_entities' ]

@@ -50,6 +50,18 @@ final class PostMetaBox {
 			echo '</ul>';
 		}
 
+		$hub_ids = array_values( array_unique( array_filter( array_map( 'intval', (array) get_post_meta( $post->ID, '_ai_entity', false ) ) ) ) );
+		if ( $hub_ids ) {
+			echo '<p><strong>' . esc_html__( 'Topic hubs linked from this article:', 'aggregate-it' ) . '</strong></p><ul>';
+			foreach ( $hub_ids as $hub_id ) {
+				$title = get_the_title( $hub_id );
+				$edit  = get_edit_post_link( $hub_id );
+				$label = $title !== '' ? $title : '#' . $hub_id;
+				echo '<li>' . ( $edit ? '<a href="' . esc_url( $edit ) . '">' . esc_html( $label ) . '</a>' : esc_html( $label ) ) . '</li>';
+			}
+			echo '</ul>';
+		}
+
 		if ( $invented ) {
 			echo '<p><span class="ai-state ai-state--dead_letter">' . esc_html__( 'Possible made-up numbers', 'aggregate-it' ) . '</span> <span class="ai-muted">' . esc_html( implode( ', ', $invented ) ) . '</span></p>';
 		}
