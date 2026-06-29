@@ -27,6 +27,11 @@ final class ClusterStage implements Stage {
 	}
 
 	public function process( Item $item ): string {
+		if ( ! empty( $item->flags['passthrough'] ) ) {
+			$item->flags['cluster_new'] = false;
+			return Schema::STATE_CLUSTERED;
+		}
+
 		$vector  = $this->vectors->get( 'item', $item->id );
 		$matched = $this->clusterer->match( $vector, (string) $item->raw_content );
 

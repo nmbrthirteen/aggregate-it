@@ -88,6 +88,76 @@ final class PostFactory {
 		}
 	}
 
+	/**
+	 * Publish a scraped/passthrough item verbatim: map its fields onto the source's chosen
+	 * post type with no AI rewrite, so structured data (dates, venues) is never invented.
+	 */
+	public function create_mapped( Item $item ): int {
+		$source    = $item->source_id ? $this->sources->get( $item->source_id ) : null;
+		$post_type = $source && $source->post_type_connection() !== '' ? $source->post_type_connection() : $this->settings->target_post_type();
+		$status    = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
+
+		$mapped = FieldMapper::map( $this->mapped_values( $item ), $source ? $source->field_map() : [] );
+
+		$title = (string) ( $mapped['post']['post_title'] ?? ( $item->flags['title'] ?? 'Untitled' ) );
+		$body  = (string) ( $mapped['post']['post_content'] ?? '' );
+
+		$postarr = [
+			'post_type'    => $post_type,
+			'post_status'  => $status,
+			'post_title'   => $title,
+			'post_name'    => $this->slugs->generate( $title, $title ),
+			'post_content' => str_contains( $body, '<' ) ? $body : $this->body( $body ),
+			'post_author'  => $this->settings->author_id(),
+		];
+		if ( ! empty( $mapped['post']['post_excerpt'] ) ) {
+			$postarr['post_excerpt'] = (string) $mapped['post']['post_excerpt'];
+		}
+		if ( ! empty( $mapped['post']['post_date'] ) ) {
+			$postarr['post_date'] = (string) $mapped['post']['post_date'];
+		}
+
+		$post_id = wp_insert_post( $postarr, true );
+		if ( is_wp_error( $post_id ) ) {
+			throw new \RuntimeException( 'wp_insert_post failed: ' . $post_id->get_error_message() );
+		}
+		$post_id = (int) $post_id;
+
+		update_post_meta( $post_id, '_ai_source_urls', array_values( array_filter( [ $item->url ] ) ) );
+		update_post_meta( $post_id, '_ai_scraped', 1 );
+		update_post_meta( $post_id, '_ai_prompt_version', AGGREGATE_IT_VERSION );
+
+		foreach ( $mapped['meta'] as $key => $value ) {
+			update_post_meta( $post_id, sanitize_key( (string) $key ), $value );
+		}
+		foreach ( $mapped['terms'] as $taxonomy => $names ) {
+			if ( taxonomy_exists( (string) $taxonomy ) ) {
+				wp_set_object_terms( $post_id, $names, (string) $taxonomy, false );
+			}
+		}
+
+		return $post_id;
+	}
+
+	/** @return array<string,string> field name => value, assembled from the item flags */
+	private function mapped_values( Item $item ): array {
+		$values = [
+			'title'   => (string) ( $item->flags['title'] ?? '' ),
+			'content' => (string) $item->raw_content,
+			'image'   => (string) ( $item->flags['image'] ?? '' ),
+			'url'     => (string) $item->url,
+		];
+		if ( ! empty( $item->flags['published_at'] ) ) {
+			$values['date'] = gmdate( 'Y-m-d H:i:s', (int) $item->flags['published_at'] );
+		}
+
+		foreach ( (array) ( $item->flags['fields'] ?? [] ) as $name => $value ) {
+			$values[ (string) $name ] = (string) $value;
+		}
+
+		return $values;
+	}
+
 	public function append_update( int $post_id, string $update_body, string $source_url ): void {
 		$post = get_post( $post_id );
 		if ( ! $post ) {

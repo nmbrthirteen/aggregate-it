@@ -26,6 +26,11 @@ final class EmbedStage implements PaidStage {
 	}
 
 	public function process( Item $item ): string {
+		// Passthrough items aren't clustered or AI-rewritten, so skip the paid embedding.
+		if ( ! empty( $item->flags['passthrough'] ) ) {
+			return Schema::STATE_EMBEDDED;
+		}
+
 		$result = $this->providers->get()->embed( (string) $item->raw_content );
 		$this->vectors->put( 'item', $item->id, $result['vector'] );
 		$this->cost->record( Schema::STATE_EXTRACTED, $result['tokens'], $result['cost_usd'], $item->id );

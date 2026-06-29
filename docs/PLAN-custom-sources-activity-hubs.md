@@ -133,6 +133,17 @@ Index on (created_at), (item_id), (source_id), (type).
 
 ## Phase 1 — Custom Website Sources (generalized scraper)
 
+**Engine + pipeline path landed on `feature/custom-website-sources`** (no UI yet):
+`CssToXpath`, `FieldExtractor`, `ScraperParser` (one-fetch list + sitemap discovery →
+normalized entries with a custom `fields` payload), `Source` scrape accessors,
+`FieldMapper` + `PostFactory::create_mapped` (generic field→post-type/meta/taxonomy
+mapping), per-source `processing=passthrough` with skip-guards in Extract/Embed/Cluster
+and a verbatim publish branch in Compose, and Importer dispatch (scrape sources dedupe on
+guid, not content hash). Unit-tested (CssToXpath/ScraperParser/FieldMapper).
+**Still to do (follow-up PRs):** admin UI (source-form branching + field-mapping builder),
+AI-assisted selector generation, generic CPT registration from config, and sitemap detail-
+page extraction in ExtractStage.
+
 The centerpiece. Lets a user point at any HTML site (e.g. igamingcalendar.com),
 extract repeating items, and map fields onto a chosen post type. igaming is
 server-rendered HTML with a sitemap but **no RSS / JSON / JSON-LD** — so an HTML
