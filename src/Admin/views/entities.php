@@ -54,8 +54,12 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 ?>
 <div class="wrap aggregate-it">
 	<div class="ai-head">
-		<h1><?php esc_html_e( 'Linked Pages', 'aggregate-it' ); ?></h1>
+		<h1><?php esc_html_e( 'Topic Hubs', 'aggregate-it' ); ?></h1>
 	</div>
+
+	<p class="description" style="max-width: 720px;">
+		<?php esc_html_e( 'When an article mentions a company, person, or product you track, Aggregate It builds a hub page for that topic, links the first mention in the article to it, and grows an "in the news" timeline on the hub. Choose which topics get a hub below; watch what gets created or linked on the Activity page.', 'aggregate-it' ); ?>
+	</p>
 
 	<?php if ( $notice === 'saved' ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Updated.', 'aggregate-it' ); ?></p></div>

@@ -264,7 +264,18 @@ post type without code.
 
 ---
 
-## Phase 2 — Reimagine "Linked Pages" → legible Topic Hubs
+## Phase 2 — Reimagine "Linked Pages" → legible Topic Hubs — SHIPPED (engine reused)
+
+Landed on `feature/topic-hubs`: renamed "Linked Pages" → **Topic Hubs** (menu, dashboard
+card, page heading) with a plain-language explainer; `EntityStage` now records every
+decision into the Activity log — linked + **created** + the previously-silent **skipped**
+(with reason: ambiguous match / no hub for type) — as structured detail; the post editor
+metabox lists the topic hubs linked from each article. Thresholds were already per-rule
+config (link 92 / ambiguous 75). Follow-up left: a stub-page review queue.
+
+Original design notes below.
+
+### Original plan
 
 Same entity-hub engine (`EntityStage`, `DelegationRules`, `EntityRepository`,
 `HubRenderer`), made legible. The engine is fine; its **invisibility** is the bug.

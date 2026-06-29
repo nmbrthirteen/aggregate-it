@@ -72,7 +72,7 @@ defined( 'ABSPATH' ) || exit;
 			'in_pipeline' => __( 'Being processed', 'aggregate-it' ),
 			'dead_letter' => __( 'Failed', 'aggregate-it' ),
 			'clusters'    => __( 'Stories', 'aggregate-it' ),
-			'entities'    => __( 'Linked pages', 'aggregate-it' ),
+			'entities'    => __( 'Topic hubs', 'aggregate-it' ),
 			'spend_today' => __( 'Cost today', 'aggregate-it' ),
 			'spend_month' => __( 'Cost this month', 'aggregate-it' ),
 		];

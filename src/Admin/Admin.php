@@ -7,7 +7,6 @@ use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Plugin;
 use AggregateIt\Settings;
 use AggregateIt\Support\ActivityLog;
-use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -111,8 +110,8 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
-			__( 'Linked Pages', 'aggregate-it' ),
-			__( 'Linked Pages', 'aggregate-it' ),
+			__( 'Topic Hubs', 'aggregate-it' ),
+			__( 'Topic Hubs', 'aggregate-it' ),
 			'manage_options',
 			self::SLUG . '-entities',
 			[ $this, 'render_entities' ]
@@ -770,7 +769,7 @@ final class Admin {
 			$flash      = (string) ( $flash['message'] ?? '' );
 		}
 		$blacklist = $settings->blacklist_raw();
-		$events    = EventLog::all();
+		$events    = ActivityLog::recent( 200 );
 		$info      = $this->system_info();
 		require AGGREGATE_IT_PATH . 'src/Admin/views/tools.php';
 	}
@@ -876,7 +875,7 @@ final class Admin {
 
 	public function handle_clear_logs(): void {
 		$this->guard( 'aggregate_it_clear_logs' );
-		EventLog::clear();
+		ActivityLog::clear();
 		$this->flash( __( 'Activity log cleared.', 'aggregate-it' ) );
 		$this->redirect( self::SLUG . '-tools', '' );
 	}
