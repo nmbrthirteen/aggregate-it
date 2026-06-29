@@ -6,6 +6,13 @@ defined( 'ABSPATH' ) || exit;
 
 final class Schema {
 
+	/**
+	 * Bumped whenever the table structure changes, independent of the plugin version, so a
+	 * schema migration runs on the next boot even within the same release. Gating on the
+	 * plugin version alone would skip mid-version schema changes.
+	 */
+	public const DB_VERSION = '2';
+
 	/** Pipeline states (the `state` column on ai_items). */
 	public const STATE_FETCHED      = 'fetched';
 	public const STATE_EXTRACTED    = 'extracted';
@@ -113,24 +120,29 @@ final class Schema {
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				item_id bigint(20) unsigned DEFAULT NULL,
 				source_id bigint(20) unsigned DEFAULT NULL,
+				post_id bigint(20) unsigned DEFAULT NULL,
 				stage varchar(20) DEFAULT NULL,
+				from_state varchar(20) DEFAULT NULL,
+				to_state varchar(20) DEFAULT NULL,
 				level varchar(10) NOT NULL DEFAULT 'info',
 				message text DEFAULT NULL,
+				detail longtext DEFAULT NULL,
 				tokens int unsigned NOT NULL DEFAULT 0,
 				cost_usd decimal(10,5) NOT NULL DEFAULT 0,
 				created_at datetime NOT NULL,
 				PRIMARY KEY  (id),
 				KEY item_id (item_id),
 				KEY stage (stage),
+				KEY level (level),
 				KEY created_at (created_at)
 			) {$collate};"
 		);
 
-		update_option( 'aggregate_it_db_version', AGGREGATE_IT_VERSION );
+		update_option( 'aggregate_it_db_version', self::DB_VERSION );
 	}
 
 	public static function maybe_upgrade(): void {
-		if ( get_option( 'aggregate_it_db_version' ) !== AGGREGATE_IT_VERSION ) {
+		if ( get_option( 'aggregate_it_db_version' ) !== self::DB_VERSION ) {
 			self::install();
 		}
 	}

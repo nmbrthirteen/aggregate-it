@@ -16,6 +16,7 @@ use AggregateIt\Publish\RelatedArticles;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Seo\Seo;
 use AggregateIt\Settings;
+use AggregateIt\Support\ActivityLog;
 use AggregateIt\Support\EventLog;
 use AggregateIt\Vector\VectorStore;
 
@@ -50,6 +51,21 @@ final class ComposeStage implements PaidStage {
 		return Schema::STATE_CLUSTERED;
 	}
 
+	private function suppressed( Item $item, string $reason, string $message ): void {
+		ActivityLog::record(
+			'info',
+			$message,
+			[
+				'item_id'    => $item->id,
+				'source_id'  => $item->source_id,
+				'type'       => Schema::STATE_CLUSTERED,
+				'from_state' => Schema::STATE_CLUSTERED,
+				'to_state'   => Schema::STATE_ENTITY_LINKED,
+				'detail'     => [ 'suppressed' => $reason ],
+			]
+		);
+	}
+
 	/** Per-feed article-length override, or null to use the global setting. */
 	private function length( Item $item ): ?string {
 		$len = (string) ( $item->flags['article_length'] ?? '' );
@@ -59,6 +75,7 @@ final class ComposeStage implements PaidStage {
 	public function process( Item $item ): string {
 		if ( ! empty( $item->flags['thin'] ) ) {
 			$item->flags['suppressed'] = 'thin';
+			$this->suppressed( $item, 'thin', sprintf( 'Article #%d not published: too little content to rewrite (%d chars).', $item->id, (int) ( $item->flags['content_length'] ?? 0 ) ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 
@@ -101,6 +118,7 @@ final class ComposeStage implements PaidStage {
 		$decision = $this->keywords->resolve( (string) ( $structured['primary_keyword'] ?? '' ), $content );
 		if ( $decision['skip'] ) {
 			$item->flags['suppressed'] = 'no-keyword-match';
+			$this->suppressed( $item, 'no-keyword-match', sprintf( 'Article #%d not published: its topic did not match your keyword strategy.', $item->id ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 		$keyword = $decision['keyword'];
@@ -161,6 +179,7 @@ final class ComposeStage implements PaidStage {
 
 		if ( ! $novel || ! $cluster || ! $cluster->canonical_post_id ) {
 			$item->flags['suppressed'] = 'no-novelty';
+			$this->suppressed( $item, 'no-novelty', sprintf( 'Article #%d folded into an existing story with no new facts — nothing added.', $item->id ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 

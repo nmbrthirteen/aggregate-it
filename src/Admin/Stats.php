@@ -8,7 +8,7 @@ use AggregateIt\Database\Schema;
 use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Settings;
-use AggregateIt\Support\EventLog;
+use AggregateIt\Support\ActivityLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -51,7 +51,7 @@ final class Stats {
 			'throughput' => $this->items->daily_published( 14 ),
 			'cost'   => $this->cost->daily( 14 ),
 			'recent' => $this->items->recent( 15 ),
-			'events' => array_slice( EventLog::all(), 0, 15 ),
+			'events' => ActivityLog::recent( 15 ),
 		];
 	}
 

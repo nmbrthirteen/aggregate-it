@@ -4,46 +4,30 @@ namespace AggregateIt\Support;
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * Back-compat facade over ActivityLog. Existing call sites log a plain message; richer
+ * call sites (state transitions, before/after detail) use ActivityLog::record directly.
+ */
 final class EventLog {
 
-	private const OPTION = 'aggregate_it_events';
-	private const MAX    = 200;
-
 	public static function error( string $message ): void {
-		self::add( 'error', $message );
+		ActivityLog::record( 'error', $message );
 	}
 
 	public static function warning( string $message ): void {
-		self::add( 'warning', $message );
+		ActivityLog::record( 'warning', $message );
 	}
 
 	public static function info( string $message ): void {
-		self::add( 'info', $message );
+		ActivityLog::record( 'info', $message );
 	}
 
 	/** @return array<int,array{time:string,level:string,message:string}> */
 	public static function all(): array {
-		$events = get_option( self::OPTION, [] );
-		return is_array( $events ) ? $events : [];
+		return ActivityLog::recent( 200 );
 	}
 
 	public static function clear(): void {
-		delete_option( self::OPTION );
-	}
-
-	private static function add( string $level, string $message ): void {
-		$events = self::all();
-		array_unshift(
-			$events,
-			[
-				'time'    => gmdate( 'Y-m-d H:i:s' ),
-				'level'   => $level,
-				'message' => $message,
-			]
-		);
-		if ( count( $events ) > self::MAX ) {
-			$events = array_slice( $events, 0, self::MAX );
-		}
-		update_option( self::OPTION, $events, false );
+		ActivityLog::clear();
 	}
 }

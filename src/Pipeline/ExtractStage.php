@@ -6,6 +6,7 @@ use AggregateIt\Database\Schema;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Settings;
 use AggregateIt\Source\ContentExtractor;
+use AggregateIt\Support\ActivityLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -55,6 +56,34 @@ final class ExtractStage implements Stage {
 		if ( $image !== '' ) {
 			$item->flags['image'] = $image;
 		}
+
+		$feed_len = mb_strlen( (string) $item->raw_content );
+		$new_len  = (int) $item->flags['content_length'];
+		ActivityLog::record(
+			'info',
+			sprintf(
+				'Article #%d extracted: %s, %d → %d chars%s.',
+				$item->id,
+				$result['source'] === 'feed' ? 'used feed content' : 'fetched full page',
+				$feed_len,
+				$new_len,
+				$image !== '' ? ', image found' : ', no image'
+			),
+			[
+				'item_id'    => $item->id,
+				'source_id'  => $item->source_id,
+				'type'       => Schema::STATE_FETCHED,
+				'from_state' => Schema::STATE_FETCHED,
+				'to_state'   => Schema::STATE_EXTRACTED,
+				'detail'     => [
+					'extract_source' => $result['source'],
+					'feed_chars'     => $feed_len,
+					'final_chars'    => $new_len,
+					'thin'           => (bool) $item->flags['thin'],
+					'image'          => $image,
+				],
+			]
+		);
 
 		return Schema::STATE_EXTRACTED;
 	}
