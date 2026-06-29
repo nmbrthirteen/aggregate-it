@@ -141,6 +141,7 @@ foreach ( $info as $label => $value ) {
 					<select name="reset" id="ai-reset">
 						<option value="settings"><?php esc_html_e( 'Reset settings to defaults', 'aggregate-it' ); ?></option>
 						<option value="stale"><?php esc_html_e( 'Drop stale queued items (older than the freshness window)', 'aggregate-it' ); ?></option>
+						<option value="dupes"><?php esc_html_e( 'Trash duplicate posts (keep the original of each story)', 'aggregate-it' ); ?></option>
 						<option value="queue"><?php esc_html_e( 'Clear the work queue', 'aggregate-it' ); ?></option>
 					</select>
 					<button type="submit" class="button" onclick="return confirm('<?php echo esc_js( __( 'This cannot be undone. Continue?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Reset', 'aggregate-it' ); ?></button>

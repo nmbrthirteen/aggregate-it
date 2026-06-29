@@ -11,6 +11,7 @@ use AggregateIt\Ai\FactsGuard;
 use AggregateIt\Ai\Rewriter;
 use AggregateIt\Cluster\ClusterRepository;
 use AggregateIt\Cluster\Clusterer;
+use AggregateIt\Cluster\Deduplicator;
 use AggregateIt\Cost\CostMeter;
 use AggregateIt\Cost\SpendCap;
 use AggregateIt\Entity\DelegationRules;
@@ -201,6 +202,10 @@ final class Plugin {
 
 	public function imageImporter(): ImageImporter {
 		return new ImageImporter( $this->settings );
+	}
+
+	public function deduplicator(): Deduplicator {
+		return new Deduplicator( new ClusterRepository(), new VectorStore(), new FactsGuard(), $this->settings );
 	}
 
 	public function seed_enabled(): bool {

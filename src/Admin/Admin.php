@@ -756,6 +756,11 @@ final class Admin {
 				/* translators: %d: number of stale items dropped */
 				$this->flash( sprintf( _n( 'Dropped %d stale item from the queue.', 'Dropped %d stale items from the queue.', $dropped, 'aggregate-it' ), $dropped ) );
 				break;
+			case 'dupes':
+				$merged = $this->plugin->deduplicator()->run();
+				/* translators: %d: number of duplicate posts trashed */
+				$this->flash( sprintf( _n( 'Trashed %d duplicate post, keeping the original.', 'Trashed %d duplicate posts, keeping the originals.', $merged, 'aggregate-it' ), $merged ) );
+				break;
 			default:
 				$this->flash( __( 'Nothing was reset.', 'aggregate-it' ) );
 		}
