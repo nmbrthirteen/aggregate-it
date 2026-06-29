@@ -50,6 +50,29 @@ final class ContentExtractorTest extends TestCase {
 		$this->assertSame( 'https://cdn.example.com/image/abc123', $this->best->invoke( $this->extractor, $html ) );
 	}
 
+	public function test_trusts_explicit_og_image_even_with_junk_token(): void {
+		$html = '<meta property="og:image" content="https://x.com/2024/icon-hero.jpg">';
+		$this->assertSame( 'https://x.com/2024/icon-hero.jpg', $this->best->invoke( $this->extractor, $html ) );
+	}
+
+	public function test_og_image_with_apostrophe_not_truncated(): void {
+		$html = '<meta property="og:image" content="https://cdn.example.com/o\'brien-feature.jpg">';
+		$this->assertSame( 'https://cdn.example.com/o\'brien-feature.jpg', $this->best->invoke( $this->extractor, $html ) );
+	}
+
+	public function test_share_image_rethrows_transient_only_when_requested(): void {
+		$GLOBALS['__transients'] = [];
+		$GLOBALS['__filters']['aggregate_it_allow_private_hosts'] = static fn ( $v, $h = '' ) => true;
+		$GLOBALS['__http'] = new \WP_Error( 'boom' );
+		$ext = new ContentExtractor( new HttpFetcher() );
+
+		$this->assertSame( '', $ext->share_image( 'https://example.com/x', false ) );
+
+		$GLOBALS['__transients'] = [];
+		$this->expectException( \RuntimeException::class );
+		$ext->share_image( 'https://example.com/x', true );
+	}
+
 	public function test_readability_keeps_article_drops_chrome(): void {
 		$html = '<html><body><nav>Home About</nav><header>Site</header>'
 			. '<article><h2>Big News</h2><p>First paragraph with real content.</p>'

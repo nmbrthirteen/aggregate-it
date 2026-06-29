@@ -39,10 +39,18 @@ final class ExtractStage implements Stage {
 		$item->flags['thin']           = mb_strlen( $result['content'] ) < self::MIN_CONTENT;
 
 		// Prefer the publisher's share image (og:image) over the feed enclosure — the
-		// enclosure is often a generic or sub-topic image, not the article's hero.
+		// enclosure is often a generic or sub-topic image, not the article's hero. A
+		// transient fetch failure is rethrown for the first couple of attempts so the queue
+		// retries (and the rate-limit gap clears) rather than freezing the post image-less.
 		$enclosure = (string) ( $item->flags['image'] ?? '' );
-		$share     = $this->settings->image_source() === 'share' ? ( (string) ( $result['image'] ?? '' ) ?: $this->extractor->share_image( $item->url ) ) : '';
-		$image     = $share ?: ( $enclosure ?: (string) ( $result['image'] ?? '' ) );
+		$share     = '';
+		if ( $this->settings->image_source() === 'share' ) {
+			$share = (string) ( $result['image'] ?? '' );
+			if ( $share === '' && $item->url !== '' ) {
+				$share = $this->extractor->share_image( $item->url, $item->attempts + 1 < 3 );
+			}
+		}
+		$image = $share ?: ( $enclosure ?: (string) ( $result['image'] ?? '' ) );
 
 		if ( $image !== '' ) {
 			$item->flags['image'] = $image;

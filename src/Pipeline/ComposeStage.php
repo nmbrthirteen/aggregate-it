@@ -83,7 +83,10 @@ final class ComposeStage implements PaidStage {
 	private function create( Item $item ): string {
 		if ( $item->post_id ) {
 			$item->flags['post_id'] = (int) $item->post_id;
-			EventLog::info( sprintf( 'Post #%d already published; resuming without re-creating.', (int) $item->post_id ) );
+			// A retry after the post existed but before the image landed would otherwise
+			// strand it image-less forever. Backfill idempotently (no-op if it already has one).
+			$this->images->maybe_import( (int) $item->post_id, (string) ( $item->flags['image'] ?? '' ), get_the_title( (int) $item->post_id ) );
+			EventLog::info( sprintf( 'Post #%d already published; resuming and backfilling its image if missing.', (int) $item->post_id ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 

@@ -8,6 +8,7 @@ use AggregateIt\Pipeline\Item;
 use AggregateIt\Pipeline\PaidStage;
 use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Settings;
+use AggregateIt\Source\RateLimited;
 use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
@@ -141,6 +142,10 @@ final class QueueWorker {
 		try {
 			$next = $stage->process( $item );
 			$this->items->advance( $item->id, $next, $item->flags );
+		} catch ( RateLimited $e ) {
+			// Politeness gap, not a failure — re-queue (no attempt consumed) with jitter so
+			// same-host items spread out past the per-host window instead of re-colliding.
+			$this->items->defer( $item->id, 5 + wp_rand( 0, 10 ) );
 		} catch ( \Throwable $e ) {
 			$this->fail( $item, $attempts, $e );
 		}

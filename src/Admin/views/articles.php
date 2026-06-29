@@ -57,6 +57,7 @@ $notices = [
 	'retried'         => __( 'Sent back to be processed again.', 'aggregate-it' ),
 	'deleted'         => __( 'Article removed.', 'aggregate-it' ),
 	'image_refreshed' => __( 'Image refreshed. Check the post.', 'aggregate-it' ),
+	'image_refresh_failed' => __( 'Could not fetch the image right now (the source was busy). Try again in a few seconds.', 'aggregate-it' ),
 	'rewritten'       => __( 'Rewritten. Check the post.', 'aggregate-it' ),
 	'bulk_done'       => __( 'Done.', 'aggregate-it' ),
 ];

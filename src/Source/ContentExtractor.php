@@ -42,13 +42,18 @@ final class ContentExtractor {
 	 * all cases (feed enclosures are often generic/sub-topic images). Fetches the page
 	 * (cached + polite) and returns the best meta image, or '' on any failure.
 	 */
-	public function share_image( string $url ): string {
+	public function share_image( string $url, bool $rethrow = false ): string {
 		if ( $url === '' ) {
 			return '';
 		}
 		try {
 			$html = $this->fetcher->fetch( $url );
+		} catch ( RateLimited $e ) {
+			throw $e; // always retriable — let the queue defer and re-fetch once the host clears
 		} catch ( \Throwable $e ) {
+			if ( $rethrow ) {
+				throw $e; // transient HTTP/network blip — let the queue retry rather than lose the image
+			}
 			return '';
 		}
 		return is_string( $html ) ? $this->best_meta_image( $html ) : '';
@@ -57,7 +62,9 @@ final class ContentExtractor {
 	private function best_meta_image( string $html ): string {
 		foreach ( [ 'og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src' ] as $key ) {
 			$image = $this->meta_content( $html, $key );
-			if ( $image !== '' && ! $this->is_junk_image( $image ) ) {
+			// Trust the publisher's explicit share tag — it's a deliberate per-article choice.
+			// Only the junk heuristic is reserved for the guessed fallbacks below.
+			if ( $image !== '' && strpos( $image, 'data:' ) !== 0 ) {
 				return $image;
 			}
 		}
@@ -92,11 +99,13 @@ final class ContentExtractor {
 
 	private function meta_content( string $html, string $key ): string {
 		$e = preg_quote( $key, '/' );
-		if ( preg_match( '/<meta[^>]+(?:property|name)=["\']' . $e . '["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m ) ) {
-			return trim( html_entity_decode( $m[1] ) );
+		// Capture the opening quote and match the same one, so a URL containing an apostrophe
+		// (e.g. .../o'brien.jpg) isn't truncated mid-value.
+		if ( preg_match( '/<meta[^>]+(?:property|name)=["\']' . $e . '["\'][^>]+content=(["\'])(.*?)\1/i', $html, $m ) ) {
+			return trim( html_entity_decode( $m[2] ) );
 		}
-		if ( preg_match( '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']' . $e . '["\']/i', $html, $m ) ) {
-			return trim( html_entity_decode( $m[1] ) );
+		if ( preg_match( '/<meta[^>]+content=(["\'])(.*?)\1[^>]*(?:property|name)=["\']' . $e . '["\']/i', $html, $m ) ) {
+			return trim( html_entity_decode( $m[2] ) );
 		}
 		return '';
 	}

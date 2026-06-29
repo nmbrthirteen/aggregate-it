@@ -43,7 +43,7 @@ final class HttpFetcher {
 			$url,
 			[
 				'timeout'     => 15,
-				'redirection' => 3,
+				'redirection' => 5,
 				'user-agent'  => self::UA,
 				'headers'     => [
 					'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -58,7 +58,12 @@ final class HttpFetcher {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
-			set_transient( $cache_key, '', self::CACHE_TTL );
+			// Only negative-cache permanently-gone pages. Caching transient blocks (403/
+			// 429/5xx) would make every retry — and the manual refresh — read an empty body
+			// for an hour, freezing the post without the og:image instead of recovering.
+			if ( in_array( $code, [ 404, 410 ], true ) ) {
+				set_transient( $cache_key, '', self::CACHE_TTL );
+			}
 			throw new \RuntimeException( 'HTTP ' . $code . ' for ' . esc_url_raw( $url ) );
 		}
 
@@ -87,7 +92,7 @@ final class HttpFetcher {
 	private function throttle( string $host ): void {
 		$key = 'aggregate_it_rl_' . md5( $host );
 		if ( get_transient( $key ) !== false ) {
-			throw new \RuntimeException( 'Rate-limited for host ' . $host . '; will retry.' );
+			throw new RateLimited( 'Rate-limited for host ' . $host . '; will retry.' );
 		}
 		set_transient( $key, 1, self::MIN_GAP );
 	}

@@ -187,18 +187,21 @@ if ( ! function_exists( 'current_user_can' ) ) {
 		return true;
 	}
 }
+$GLOBALS['__transients'] = []; // stateful so throttle/cache behaviour is testable (TTL ignored)
 if ( ! function_exists( 'get_transient' ) ) {
 	function get_transient( $k ) {
-		return false;
+		return $GLOBALS['__transients'][ $k ] ?? false;
 	}
 }
 if ( ! function_exists( 'set_transient' ) ) {
-	function set_transient( $k, $v, $t ) {
+	function set_transient( $k, $v, $t = 0 ) {
+		$GLOBALS['__transients'][ $k ] = $v;
 		return true;
 	}
 }
 if ( ! function_exists( 'delete_transient' ) ) {
 	function delete_transient( $k ) {
+		unset( $GLOBALS['__transients'][ $k ] );
 		return true;
 	}
 }

@@ -256,9 +256,13 @@ final class Admin {
 
 		$item = $this->plugin->items()->find( $id );
 		if ( $item && ! empty( $item->post_id ) && $item->url ) {
-			$image = $this->plugin->extractor()->share_image( (string) $item->url );
-			$alt   = get_the_title( (int) $item->post_id );
-			$this->plugin->imageImporter()->maybe_import( (int) $item->post_id, $image, $alt, true );
+			try {
+				$image = $this->plugin->extractor()->share_image( (string) $item->url );
+			} catch ( \Throwable $e ) {
+				$this->redirect( self::SLUG . '-articles', 'image_refresh_failed' );
+				return;
+			}
+			$this->plugin->imageImporter()->maybe_import( (int) $item->post_id, $image, get_the_title( (int) $item->post_id ), true );
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'image_refreshed' );
@@ -871,8 +875,11 @@ final class Admin {
 		if ( ! empty( $ftp['post_status'] ) && in_array( $ftp['post_status'], [ 'publish', 'draft', 'pending' ], true ) ) {
 			$map['publish_status'] = (string) $ftp['post_status'];
 		}
-		if ( isset( $ftp['save_images_locally'] ) ) {
-			$map['image_mode'] = ( 'true' === $ftp['save_images_locally'] || true === $ftp['save_images_locally'] ) ? 'import' : 'off';
+		$save_images = $ftp['save_images_locally'] ?? null;
+		if ( 'true' === $save_images || true === $save_images || '1' === (string) $save_images ) {
+			// Only ever turn import on from an import — never silently disable featured images
+			// (aggregate-it has no hotlink mode, so 'off' means no image at all).
+			$map['image_mode'] = 'import';
 		}
 		$cron = (string) ( $gen['cron_interval'] ?? '' );
 		$minutes = [ 'hourly' => 60, 'twicedaily' => 720, 'daily' => 1440 ][ $cron ] ?? 0;
