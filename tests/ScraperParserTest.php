@@ -68,6 +68,26 @@ final class ScraperParserTest extends TestCase {
 		$this->assertSame( '99887', $entries[0]['guid'] );
 	}
 
+	public function test_extract_detail_reads_whole_page(): void {
+		$html = '<html><body>'
+			. '<h1 class="title">World Lottery Summit</h1>'
+			. '<span class="when">2026-09-15</span>'
+			. '<div class="where">Rome, Italy</div>'
+			. '</body></html>';
+
+		$fields = [
+			'title'    => [ 'selector' => 'h1.title', 'attr' => 'text' ],
+			'date'     => [ 'selector' => '.when', 'attr' => 'text' ],
+			'location' => [ 'selector' => '.where', 'attr' => 'text' ],
+		];
+
+		$entry = \AggregateIt\Source\Parser\ScraperParser::extract_detail( $html, $fields, 'https://x.test/wls.aspx' );
+
+		$this->assertSame( 'World Lottery Summit', $entry['title'] );
+		$this->assertGreaterThan( 0, $entry['date'] );
+		$this->assertSame( 'Rome, Italy', $entry['fields']['location'] );
+	}
+
 	public function test_sitemap_mode_filters_locs(): void {
 		$xml = '<urlset>'
 			. '<url><loc>https://x.test/Event-One_001.aspx</loc></url>'

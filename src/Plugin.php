@@ -98,7 +98,7 @@ final class Plugin {
 		$related      = new RelatedArticles( $vectors, $cluster_repo, $this->settings );
 		$seo          = $this->seo();
 
-		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items, $this->settings ) );
+		$this->pipeline->register( new ExtractStage( $this->extractor, $this->items, $this->settings, new HttpFetcher() ) );
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(

@@ -32,6 +32,7 @@ $sc_item   = (string) ( $scrape['discovery']['item_selector'] ?? '' );
 $sc_filter = (string) ( $scrape['discovery']['url_filter'] ?? '' );
 $sc_ptype  = $editing ? $editing->post_type_connection() : '';
 $sc_proc   = $editing ? $editing->processing_mode() : 'passthrough';
+$sc_robots = $editing ? $editing->respects_robots() : true;
 
 $sc_fields = (array) ( $scrape['extraction']['fields'] ?? [] );
 $sc_map    = (array) ( $scrape['mapping']['fields'] ?? [] );
@@ -151,6 +152,16 @@ $dest_options = [
 					<th><label for="ai-url-filter"><?php esc_html_e( 'Only URLs matching (regex)', 'aggregate-it' ); ?></label></th>
 					<td><input name="url_filter" id="ai-url-filter" type="text" class="regular-text code"
 						value="<?php echo esc_attr( $sc_filter ); ?>" placeholder="_\d+\.aspx$"></td>
+				</tr>
+				<tr class="ai-scrape-row">
+					<th><?php esc_html_e( 'Politeness', 'aggregate-it' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="respect_robots" value="1" <?php checked( $sc_robots ); ?>>
+							<?php esc_html_e( 'Respect robots.txt', 'aggregate-it' ); ?>
+						</label>
+						<p class="description"><?php esc_html_e( 'Only turn this off for sites you own or have permission to scrape — you are responsible for their terms.', 'aggregate-it' ); ?></p>
+					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-list">
 					<th><?php esc_html_e( 'Fields', 'aggregate-it' ); ?></th>

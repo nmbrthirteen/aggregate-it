@@ -156,6 +156,13 @@ final class Importer {
 				if ( $source->processing_mode() === 'passthrough' ) {
 					$flags['passthrough'] = true;
 				}
+				// Sitemap entries are URL-only, so the fields must be read from each detail page
+				// later in ExtractStage (one polite, deferrable fetch per item).
+				$scrape = $source->scrape_config();
+				if ( (string) ( $scrape['discovery']['mode'] ?? 'list' ) === 'sitemap' ) {
+					$flags['detail_fields']  = (array) ( $scrape['extraction']['fields'] ?? [] );
+					$flags['respect_robots'] = $source->respects_robots();
+				}
 			}
 
 			$this->items->enqueue( $source->id, $entry['guid'], $entry['url'], $entry['content'], $flags );
