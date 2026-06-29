@@ -9,10 +9,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * @var DelegationRules $rules
  * @var string[]        $cpts
+ * @var \WP_Post[]      $pending
+ * @var \WP_Post[]      $recent_hubs
+ * @var array{hubs:int,new_week:int,linked_week:int,pending:int} $summary
+ * @var array<int,array<string,mixed>> $activity
  */
 
-$notice   = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-$all      = $rules->all();
+$notice    = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+$all       = $rules->all();
 $by_target = [];
 foreach ( $all as $i => $rule ) {
 	$target = (string) ( $rule['target_cpt'] ?? '' );
@@ -24,18 +28,9 @@ foreach ( $all as $i => $rule ) {
 $post_types = get_post_types( [ 'public' => true ], 'objects' );
 unset( $post_types['attachment'] );
 
-$show_all = isset( $_GET['show_all'] ) && (string) $_GET['show_all'] === '1'; // phpcs:ignore WordPress.Security.NonceVerification
+$show_all         = isset( $_GET['show_all'] ) && (string) $_GET['show_all'] === '1'; // phpcs:ignore WordPress.Security.NonceVerification
 $is_internal_type = static function ( string $slug, \WP_Post_Type $pt ): bool {
-	$internal_patterns = [
-		'/^e-/',
-		'/elementor/',
-		'/template/',
-		'/library/',
-		'/block/',
-		'/penci/',
-		'/revision/',
-	];
-	foreach ( $internal_patterns as $pattern ) {
+	foreach ( [ '/^e-/', '/elementor/', '/template/', '/library/', '/block/', '/penci/', '/revision/' ] as $pattern ) {
 		if ( preg_match( $pattern, $slug ) ) {
 			return true;
 		}
@@ -51,64 +46,175 @@ foreach ( $post_types as $slug => $pt ) {
 }
 
 $post_action = esc_url( admin_url( 'admin-post.php' ) );
+$activity_url = admin_url( 'admin.php?page=aggregate-it-activity&type=' . rawurlencode( \AggregateIt\Database\Schema::STATE_ENTITY_LINKED ) );
+
+$cards = [
+	[ 'n' => $summary['hubs'], 'label' => __( 'Topic hubs', 'aggregate-it' ) ],
+	[ 'n' => $summary['new_week'], 'label' => __( 'New this week', 'aggregate-it' ) ],
+	[ 'n' => $summary['linked_week'], 'label' => __( 'Articles linked this week', 'aggregate-it' ) ],
+	[ 'n' => $summary['pending'], 'label' => __( 'Awaiting review', 'aggregate-it' ) ],
+];
 ?>
 <div class="wrap aggregate-it">
 	<div class="ai-head">
 		<h1><?php esc_html_e( 'Topic Hubs', 'aggregate-it' ); ?></h1>
 	</div>
 
-	<p class="description" style="max-width: 720px;">
-		<?php esc_html_e( 'When an article mentions a company, person, or product you track, Aggregate It builds a hub page for that topic, links the first mention in the article to it, and grows an "in the news" timeline on the hub. Choose which topics get a hub below; watch what gets created or linked on the Activity page.', 'aggregate-it' ); ?>
+	<p class="description" style="max-width: 760px;">
+		<?php esc_html_e( 'Topic hubs are pages Aggregate It builds for the companies, people, and products your articles mention — each one auto-links the first mention in every article and keeps a running "in the news" timeline. Here is what it has been doing.', 'aggregate-it' ); ?>
 	</p>
 
-	<?php if ( $notice === 'saved' ) : ?>
-		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Updated.', 'aggregate-it' ); ?></p></div>
-	<?php elseif ( $notice === 'deleted' ) : ?>
-		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Auto-linking turned off.', 'aggregate-it' ); ?></p></div>
-	<?php elseif ( $notice === 'merged' ) : ?>
-		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Pages merged. The source page was moved to Trash.', 'aggregate-it' ); ?></p></div>
-	<?php elseif ( $notice === 'merge_invalid' ) : ?>
-		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Enter two different page IDs that are both auto-linked pages.', 'aggregate-it' ); ?></p></div>
-	<?php elseif ( $notice === 'invalid' ) : ?>
-		<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Please enter a name.', 'aggregate-it' ); ?></p></div>
+	<?php
+	$messages = [
+		'saved'         => __( 'Updated.', 'aggregate-it' ),
+		'deleted'       => __( 'Turned off.', 'aggregate-it' ),
+		'merged'        => __( 'Pages merged. The source page was moved to Trash.', 'aggregate-it' ),
+		'merge_invalid' => __( 'Enter two different page IDs that are both topic hubs.', 'aggregate-it' ),
+		'approved'      => __( 'Topic hub published.', 'aggregate-it' ),
+		'hub_trashed'   => __( 'Topic hub moved to Trash.', 'aggregate-it' ),
+		'invalid'       => __( 'Please enter a name.', 'aggregate-it' ),
+	];
+	?>
+	<?php if ( isset( $messages[ $notice ] ) ) : ?>
+		<div class="notice notice-<?php echo in_array( $notice, [ 'invalid', 'merge_invalid' ], true ) ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html( $messages[ $notice ] ); ?></p></div>
 	<?php endif; ?>
 
-	<div class="notice notice-info">
-		<p>
-			<?php esc_html_e( 'Choose where Aggregate It should put linked entity pages. When a destination is on, imported articles can create new pages there, link article mentions to matching pages, and add each article to the page’s news list. Existing pages are not rewritten in bulk.', 'aggregate-it' ); ?>
-		</p>
+	<div class="ai-hub-cards">
+		<?php foreach ( $cards as $card ) : ?>
+			<div class="ai-hub-card">
+				<span class="ai-hub-num"><?php echo esc_html( number_format_i18n( (int) $card['n'] ) ); ?></span>
+				<span class="ai-hub-label"><?php echo esc_html( $card['label'] ); ?></span>
+			</div>
+		<?php endforeach; ?>
 	</div>
 
-	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Page destinations', 'aggregate-it' ); ?></span></h2>
+	<?php if ( $pending ) : ?>
+		<div class="postbox ai-hub-pending">
+			<h2 class="hndle"><span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Awaiting your review (%d)', 'aggregate-it' ), count( $pending ) ) ); ?></span></h2>
+			<div class="inside">
+				<p class="description"><?php esc_html_e( 'New hubs are held as drafts until you approve them.', 'aggregate-it' ); ?></p>
+				<table class="widefat striped">
+					<tbody>
+						<?php foreach ( $pending as $hub ) : ?>
+							<?php
+							$approve = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_approve_hub&id=' . $hub->ID ), 'aggregate_it_approve_hub_' . $hub->ID );
+							$trash   = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_trash_hub&id=' . $hub->ID ), 'aggregate_it_trash_hub_' . $hub->ID );
+							?>
+							<tr>
+								<td><a href="<?php echo esc_url( (string) get_edit_post_link( $hub->ID ) ); ?>"><strong><?php echo esc_html( $hub->post_title ?: '#' . $hub->ID ); ?></strong></a> <code><?php echo esc_html( $hub->post_type ); ?></code></td>
+								<td class="ai-hub-actions">
+									<a class="button button-small button-primary" href="<?php echo esc_url( $approve ); ?>"><?php esc_html_e( 'Approve', 'aggregate-it' ); ?></a>
+									<a class="button button-small" href="<?php echo esc_url( $trash ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Move this hub to Trash?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Trash', 'aggregate-it' ); ?></a>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	<?php endif; ?>
+
+	<div class="ai-hub-cols">
+		<div class="postbox ai-hub-activity">
+			<h2 class="hndle"><span><?php esc_html_e( 'What just happened', 'aggregate-it' ); ?></span></h2>
+			<div class="inside">
+				<?php if ( ! $activity ) : ?>
+					<p class="ai-empty"><?php esc_html_e( 'No hubs linked yet. Turn on a topic type below, then process some articles.', 'aggregate-it' ); ?></p>
+				<?php else : ?>
+					<ul class="ai-hub-feed">
+						<?php foreach ( $activity as $row ) : ?>
+							<?php
+							$detail  = is_array( $row['detail'] ?? null ) ? $row['detail'] : [];
+							$created = (array) ( $detail['created'] ?? [] );
+							$linked  = (array) ( $detail['linked'] ?? [] );
+							$skipped = (array) ( $detail['skipped'] ?? [] );
+							$post_link = $row['post_id'] ? get_edit_post_link( (int) $row['post_id'] ) : '';
+							?>
+							<li>
+								<time><?php echo esc_html( human_time_diff( strtotime( (string) $row['time'] ) ) . ' ' . __( 'ago', 'aggregate-it' ) ); ?></time>
+								<span class="ai-hub-feed-msg"><?php echo esc_html( (string) $row['message'] ); ?></span>
+								<?php if ( $created ) : ?>
+									<span class="ai-hub-tags">
+										<?php foreach ( $created as $name ) : ?><span class="ai-hub-tag ai-hub-tag--new"><?php echo esc_html( (string) $name ); ?></span><?php endforeach; ?>
+									</span>
+								<?php endif; ?>
+								<?php if ( $post_link ) : ?>
+									<a class="ai-hub-feed-link" href="<?php echo esc_url( (string) $post_link ); ?>"><?php esc_html_e( 'view article', 'aggregate-it' ); ?></a>
+								<?php endif; ?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+					<p><a href="<?php echo esc_url( $activity_url ); ?>"><?php esc_html_e( 'See all activity →', 'aggregate-it' ); ?></a></p>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<div class="postbox ai-hub-active">
+			<h2 class="hndle"><span><?php esc_html_e( 'Most active hubs', 'aggregate-it' ); ?></span></h2>
+			<div class="inside">
+				<?php if ( ! $recent_hubs ) : ?>
+					<p class="ai-empty"><?php esc_html_e( 'No hubs yet.', 'aggregate-it' ); ?></p>
+				<?php else : ?>
+					<table class="widefat striped">
+						<thead><tr>
+							<th><?php esc_html_e( 'Topic', 'aggregate-it' ); ?></th>
+							<th><?php esc_html_e( 'Articles', 'aggregate-it' ); ?></th>
+							<th></th>
+						</tr></thead>
+						<tbody>
+							<?php foreach ( $recent_hubs as $hub ) : ?>
+								<?php
+								$timeline = get_post_meta( $hub->ID, '_ai_timeline', true );
+								$articles = is_array( $timeline ) ? count( $timeline ) : 0;
+								$is_stub  = (bool) get_post_meta( $hub->ID, '_ai_is_stub', true );
+								?>
+								<tr>
+									<td>
+										<a href="<?php echo esc_url( (string) get_edit_post_link( $hub->ID ) ); ?>"><strong><?php echo esc_html( get_the_title( $hub ) ); ?></strong></a>
+										<code><?php echo esc_html( $hub->post_type ); ?></code>
+										<?php if ( $is_stub ) : ?><span class="ai-hub-tag"><?php esc_html_e( 'basic', 'aggregate-it' ); ?></span><?php endif; ?>
+									</td>
+									<td><?php echo esc_html( number_format_i18n( $articles ) ); ?></td>
+									<td><a href="<?php echo esc_url( (string) get_permalink( $hub ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View', 'aggregate-it' ); ?></a></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+			</div>
+		</div>
+	</div>
+
+	<details class="postbox ai-hub-config" <?php echo $summary['hubs'] === 0 ? 'open' : ''; ?>>
+		<summary><?php esc_html_e( 'Configure which topics get hubs', 'aggregate-it' ); ?></summary>
 		<div class="inside">
-		<p class="description">
-			<?php esc_html_e( 'Turn on the page type that should receive generated entity pages. Builder templates and block libraries are hidden by default.', 'aggregate-it' ); ?>
-			<?php if ( $show_all ) : ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Hide internal types', 'aggregate-it' ); ?></a>
-			<?php else : ?>
-				<a href="<?php echo esc_url( add_query_arg( 'show_all', '1', admin_url( 'admin.php?page=aggregate-it-entities' ) ) ); ?>"><?php esc_html_e( 'Show all types', 'aggregate-it' ); ?></a>
-			<?php endif; ?>
-		</p>
-		<table class="widefat striped">
-			<thead><tr>
-				<th><?php esc_html_e( 'Page type', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'When on', 'aggregate-it' ); ?></th>
-				<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
-			</tr></thead>
-			<tbody>
-				<?php foreach ( $visible_post_types as $pt ) :
-					$slug  = $pt->name;
-					$count = (int) ( wp_count_posts( $slug )->publish ?? 0 );
-					$on    = isset( $by_target[ $slug ] );
-					$archive_url = get_post_type_archive_link( $slug );
-					?>
-					<tr>
-						<td>
-							<strong><?php echo esc_html( $pt->labels->singular_name ); ?></strong> <code><?php echo esc_html( $slug ); ?></code>
-							<div class="row-actions">
+			<p class="description">
+				<?php esc_html_e( 'Turn on the page type that should receive generated topic hubs. When on, imported articles can create pages there, link mentions, and add the article to the page’s news list. Existing pages are never rewritten in bulk.', 'aggregate-it' ); ?>
+				<?php if ( $show_all ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Hide internal types', 'aggregate-it' ); ?></a>
+				<?php else : ?>
+					<a href="<?php echo esc_url( add_query_arg( 'show_all', '1', admin_url( 'admin.php?page=aggregate-it-entities' ) ) ); ?>"><?php esc_html_e( 'Show all types', 'aggregate-it' ); ?></a>
+				<?php endif; ?>
+			</p>
+			<table class="widefat striped">
+				<thead><tr>
+					<th><?php esc_html_e( 'Page type', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Pages', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
+					<th></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $visible_post_types as $pt ) : ?>
+						<?php
+						$slug  = $pt->name;
+						$count = (int) ( wp_count_posts( $slug )->publish ?? 0 );
+						$on    = isset( $by_target[ $slug ] );
+						?>
+						<tr>
+							<td><strong><?php echo esc_html( $pt->labels->singular_name ); ?></strong> <code><?php echo esc_html( $slug ); ?></code></td>
+							<td><?php echo (int) $count; ?></td>
+							<td><span class="post-state"><?php echo $on ? esc_html__( 'On', 'aggregate-it' ) : esc_html__( 'Off', 'aggregate-it' ); ?></span></td>
+							<td>
 								<?php if ( $on ) : ?>
 									<form method="post" action="<?php echo $post_action; ?>">
 										<input type="hidden" name="action" value="aggregate_it_delete_rule">
@@ -125,103 +231,35 @@ $post_action = esc_url( admin_url( 'admin-post.php' ) );
 										<button class="button-link"><?php esc_html_e( 'Turn on', 'aggregate-it' ); ?></button>
 									</form>
 								<?php endif; ?>
-							</div>
-						</td>
-						<td><?php echo (int) $count; ?></td>
-						<td>
-							<?php if ( $on ) : ?>
-								<span class="post-state"><?php esc_html_e( 'On', 'aggregate-it' ); ?></span>
-							<?php else : ?>
-								<span class="post-state"><?php esc_html_e( 'Off', 'aggregate-it' ); ?></span>
-							<?php endif; ?>
-						</td>
-						<td>
-							<?php if ( $on ) : ?>
-								<?php esc_html_e( 'Creates missing pages, links article mentions, and adds articles to each matching page’s news list. If a generated page only has a title, Aggregate It may add a short description.', 'aggregate-it' ); ?>
-							<?php else : ?>
-								<span class="description"><?php esc_html_e( 'Ignored.', 'aggregate-it' ); ?></span>
-							<?php endif; ?>
-						</td>
-						<td>
-							<?php if ( $archive_url ) : ?>
-								<a href="<?php echo esc_url( $archive_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View archive', 'aggregate-it' ); ?></a>
-							<?php else : ?>
-								<span class="description"><?php esc_html_e( 'Preview individual pages below', 'aggregate-it' ); ?></span>
-							<?php endif; ?>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
-		</div>
-	</div>
-
-	<div class="postbox">
-		<h2 class="hndle"><span><?php esc_html_e( 'Preview linked pages', 'aggregate-it' ); ?></span></h2>
-		<div class="inside">
-		<?php
-		$entities = $cpts ? get_posts(
-			[ 'post_type' => $cpts, 'post_status' => 'publish', 'posts_per_page' => 100, 'orderby' => 'modified', 'order' => 'DESC' ]
-		) : [];
-		?>
-		<?php if ( ! $entities ) : ?>
-			<p class="description"><?php esc_html_e( 'Nothing to preview yet. Turn on a page destination, process articles, and linked pages will appear here.', 'aggregate-it' ); ?></p>
-		<?php else : ?>
-			<p class="description"><?php esc_html_e( 'Recent pages in destinations that are turned on. Use View page to see what visitors see.', 'aggregate-it' ); ?></p>
-			<table class="widefat striped">
-				<thead><tr>
-					<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
-					<th><?php esc_html_e( 'Type', 'aggregate-it' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'aggregate-it' ); ?></th>
-					<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
-				</tr></thead>
-				<tbody>
-					<?php foreach ( $entities as $entity ) : ?>
-						<tr>
-							<td>
-								<strong><?php echo esc_html( get_the_title( $entity ) ); ?></strong>
-								<div class="row-actions">
-									<span class="view"><a href="<?php echo esc_url( (string) get_permalink( $entity ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View', 'aggregate-it' ); ?></a> | </span>
-									<span class="edit"><a href="<?php echo esc_url( (string) get_edit_post_link( $entity->ID ) ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a></span>
-								</div>
 							</td>
-							<td><code><?php echo esc_html( $entity->post_type ); ?></code></td>
-							<td><?php echo get_post_meta( $entity->ID, '_ai_is_stub', true ) ? esc_html__( 'Basic', 'aggregate-it' ) : esc_html__( 'Detailed', 'aggregate-it' ); ?></td>
-							<td><a href="<?php echo esc_url( (string) get_permalink( $entity ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View page', 'aggregate-it' ); ?></a></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
 			</table>
-		<?php endif; ?>
-		</div>
-	</div>
 
-	<details class="postbox">
-		<summary><?php esc_html_e( 'Advanced', 'aggregate-it' ); ?></summary>
-		<div class="inside">
-		<h3><?php esc_html_e( 'Create a new output type', 'aggregate-it' ); ?></h3>
-		<p class="description"><?php esc_html_e( 'Use this only if your site does not already have a suitable public post type for entity pages.', 'aggregate-it' ); ?></p>
-		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
-			<input type="hidden" name="action" value="aggregate_it_save_rule">
-			<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
-			<input name="type_name" type="text" class="regular-text" required
-				aria-label="<?php esc_attr_e( 'New output type name', 'aggregate-it' ); ?>"
-				placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
-			<datalist id="ai-type-suggestions">
-				<option value="Company"></option><option value="Person"></option>
-				<option value="Product"></option><option value="Place"></option><option value="Brand"></option>
-			</datalist>
-			<button class="button button-primary"><?php esc_html_e( 'Create and turn on', 'aggregate-it' ); ?></button>
-		</form>
+			<h3><?php esc_html_e( 'Create a new output type', 'aggregate-it' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Only if your site has no suitable public post type for topic hubs.', 'aggregate-it' ); ?></p>
+			<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
+				<input type="hidden" name="action" value="aggregate_it_save_rule">
+				<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
+				<input name="type_name" type="text" class="regular-text" required
+					aria-label="<?php esc_attr_e( 'New output type name', 'aggregate-it' ); ?>"
+					placeholder="<?php esc_attr_e( 'e.g. Company, Person, Product', 'aggregate-it' ); ?>" list="ai-type-suggestions">
+				<datalist id="ai-type-suggestions">
+					<option value="Company"></option><option value="Person"></option>
+					<option value="Product"></option><option value="Place"></option><option value="Brand"></option>
+				</datalist>
+				<button class="button button-primary"><?php esc_html_e( 'Create and turn on', 'aggregate-it' ); ?></button>
+			</form>
 
-		<h3><?php esc_html_e( 'Merge duplicate pages', 'aggregate-it' ); ?></h3>
-		<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
-			<input type="hidden" name="action" value="aggregate_it_merge_entities">
-			<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
-			<label><?php esc_html_e( 'Merge page ID', 'aggregate-it' ); ?><br><input name="source_id" type="number" required></label>
-			<label><?php esc_html_e( 'into page ID', 'aggregate-it' ); ?><br><input name="target_id" type="number" required></label>
-			<button class="button" onclick="return confirm('<?php echo esc_js( __( 'Merge and delete the source page?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Merge', 'aggregate-it' ); ?></button>
-		</form>
+			<h3><?php esc_html_e( 'Merge duplicate hubs', 'aggregate-it' ); ?></h3>
+			<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
+				<input type="hidden" name="action" value="aggregate_it_merge_entities">
+				<?php wp_nonce_field( 'aggregate_it_merge_entities' ); ?>
+				<label><?php esc_html_e( 'Merge page ID', 'aggregate-it' ); ?><br><input name="source_id" type="number" required></label>
+				<label><?php esc_html_e( 'into page ID', 'aggregate-it' ); ?><br><input name="target_id" type="number" required></label>
+				<button class="button" onclick="return confirm('<?php echo esc_js( __( 'Merge and delete the source page?', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Merge', 'aggregate-it' ); ?></button>
+			</form>
 		</div>
 	</details>
 </div>

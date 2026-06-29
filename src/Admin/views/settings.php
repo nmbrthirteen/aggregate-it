@@ -170,6 +170,10 @@ $has_key = $settings->api_key() !== '';
 				<th><?php esc_html_e( 'Auto categories', 'aggregate-it' ); ?></th>
 				<td><label><input name="ai_categorize" type="checkbox" <?php checked( $settings->ai_categorize() ); ?>> <?php esc_html_e( 'Let the AI pick each article\'s category by its topic (reuses your existing categories, creates one only when none fits). When off, posts use the feed\'s category.', 'aggregate-it' ); ?></label></td>
 			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Review new topic hubs', 'aggregate-it' ); ?></th>
+				<td><label><input name="hub_review" type="checkbox" <?php checked( $settings->hub_review() ); ?>> <?php esc_html_e( 'Create new topic hub pages as drafts and approve them on the Topic Hubs page before they go live', 'aggregate-it' ); ?></label></td>
+			</tr>
 		</table>
 
 		<h2><?php esc_html_e( 'Stories & keywords', 'aggregate-it' ); ?></h2>

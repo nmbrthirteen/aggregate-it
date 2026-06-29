@@ -197,6 +197,15 @@ $dest_options = [
 						<p class="description"><?php esc_html_e( 'Use names title, url, date, image, content for standard fields; anything else becomes a custom field. Attribute: text, html, or an attribute like href / src.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
+				<tr class="ai-scrape-row ai-scrape-list">
+					<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
+					<td>
+						<button type="button" class="button" id="ai-preview-btn"><?php esc_html_e( 'Preview extraction', 'aggregate-it' ); ?></button>
+						<span id="ai-preview-status" class="description"></span>
+						<div id="ai-preview" class="ai-preview"></div>
+						<p class="description"><?php esc_html_e( 'Runs the selectors above against the page and shows the first few items.', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
 				<tr>
 					<th><label for="ai-title"><?php esc_html_e( 'Title', 'aggregate-it' ); ?></label></th>
 					<td><input name="title" id="ai-title" type="text" class="regular-text"
@@ -341,6 +350,79 @@ $dest_options = [
 					if ( status ) { status.textContent = 'Could not suggest fields.'; }
 				} );
 			} );
+		}
+
+		function readFields() {
+			var out = [];
+			document.querySelectorAll( '.ai-fields-table tbody tr' ).forEach( function ( row ) {
+				var name = ( row.querySelector( 'input[name="field_name[]"]' ) || {} ).value || '';
+				if ( ! name ) { return; }
+				out.push( {
+					name: name,
+					selector: ( row.querySelector( 'input[name="field_selector[]"]' ) || {} ).value || '',
+					attr: ( row.querySelector( 'input[name="field_attr[]"]' ) || {} ).value || 'text',
+					regex: ( row.querySelector( 'input[name="field_regex[]"]' ) || {} ).value || ''
+				} );
+			} );
+			return out;
+		}
+
+		function robots() {
+			var box = document.querySelector( 'input[name="respect_robots"]' );
+			return box ? box.checked : true;
+		}
+
+		var previewBtn = document.getElementById( 'ai-preview-btn' );
+		if ( previewBtn && cfg.root ) {
+			previewBtn.addEventListener( 'click', function () {
+				var url = ( document.getElementById( 'ai-url' ) || {} ).value || '';
+				var item = ( document.getElementById( 'ai-item-selector' ) || {} ).value || '';
+				var status = document.getElementById( 'ai-preview-status' );
+				var box = document.getElementById( 'ai-preview' );
+				if ( ! url || ! item ) { if ( status ) { status.textContent = 'Enter the URL and item selector first.'; } return; }
+				previewBtn.disabled = true;
+				if ( status ) { status.textContent = 'Fetching…'; }
+				if ( box ) { box.innerHTML = ''; }
+
+				fetch( cfg.root + 'scrape-preview', {
+					method: 'POST',
+					headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' },
+					body: JSON.stringify( { url: url, item_selector: item, fields: readFields(), respect_robots: robots() } )
+				} ).then( function ( r ) { return r.json(); } ).then( function ( data ) {
+					previewBtn.disabled = false;
+					if ( ! data || ! data.ok ) {
+						if ( status ) { status.textContent = ( data && data.error ) || 'Preview failed.'; }
+						return;
+					}
+					if ( status ) { status.textContent = data.count + ' item(s) found.'; }
+					renderPreview( box, data.sample || [] );
+				} ).catch( function () {
+					previewBtn.disabled = false;
+					if ( status ) { status.textContent = 'Preview failed.'; }
+				} );
+			} );
+		}
+
+		function renderPreview( box, rows ) {
+			if ( ! box ) { return; }
+			box.innerHTML = '';
+			if ( ! rows.length ) { return; }
+			var table = document.createElement( 'table' );
+			table.className = 'widefat striped';
+			rows.forEach( function ( r ) {
+				var fields = r.fields || {};
+				var parts = [];
+				if ( r.title ) { parts.push( r.title ); }
+				if ( r.url ) { parts.push( r.url ); }
+				if ( r.date ) { parts.push( String( r.date ) ); }
+				Object.keys( fields ).forEach( function ( k ) { parts.push( k + ': ' + fields[ k ] ); } );
+				var tr = document.createElement( 'tr' );
+				var td = document.createElement( 'td' );
+				td.textContent = parts.join( '  •  ' ) || '(empty)';
+				tr.appendChild( td );
+				table.appendChild( tr );
+			} );
+			box.appendChild( table );
 		}
 
 		function fill( s ) {

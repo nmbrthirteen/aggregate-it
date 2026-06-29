@@ -287,6 +287,112 @@
 	padding: 4px;
 }
 
+.aggregate-it .ai-preview {
+	margin: 8px 0;
+	max-width: 880px;
+}
+
+.aggregate-it .ai-preview td {
+	font-size: 12px;
+}
+
+.aggregate-it .ai-hub-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	margin: 16px 0;
+}
+
+.aggregate-it .ai-hub-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	padding: 16px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.aggregate-it .ai-hub-num {
+	font-size: 28px;
+	font-weight: 600;
+	line-height: 1.1;
+}
+
+.aggregate-it .ai-hub-label {
+	color: #646970;
+	font-size: 13px;
+}
+
+.aggregate-it .ai-hub-cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+	align-items: start;
+}
+
+@media ( max-width: 960px ) {
+	.aggregate-it .ai-hub-cols {
+		grid-template-columns: 1fr;
+	}
+}
+
+.aggregate-it .ai-hub-feed {
+	margin: 0;
+	max-height: 420px;
+	overflow: auto;
+}
+
+.aggregate-it .ai-hub-feed li {
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 13px;
+}
+
+.aggregate-it .ai-hub-feed li:last-child {
+	border-bottom: 0;
+}
+
+.aggregate-it .ai-hub-feed time {
+	display: block;
+	color: #646970;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: .02em;
+}
+
+.aggregate-it .ai-hub-feed-link {
+	margin-left: 6px;
+	font-size: 12px;
+}
+
+.aggregate-it .ai-hub-tag {
+	display: inline-block;
+	background: #f0f0f1;
+	border-radius: 3px;
+	padding: 1px 6px;
+	margin: 2px 2px 0 0;
+	font-size: 11px;
+	color: #3c434a;
+}
+
+.aggregate-it .ai-hub-tag--new {
+	background: #d7f0dd;
+	color: #0a6c2e;
+}
+
+.aggregate-it .ai-hub-actions {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.aggregate-it summary.ai-hub-config,
+.aggregate-it details.ai-hub-config > summary {
+	cursor: pointer;
+	font-weight: 600;
+	padding: 12px 16px;
+}
+
 .aggregate-it .ai-setup ol {
 	margin: 0;
 	padding-left: 1.4em;

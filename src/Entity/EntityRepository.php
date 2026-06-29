@@ -19,7 +19,7 @@ final class EntityRepository {
 		$query = new \WP_Query(
 			[
 				'post_type'      => $cpt,
-				'post_status'    => 'publish',
+				'post_status'    => [ 'publish', 'draft', 'pending' ],
 				'posts_per_page' => 1,
 				'fields'         => 'ids',
 				'no_found_rows'  => true,
@@ -39,7 +39,7 @@ final class EntityRepository {
 		$ids = get_posts(
 			[
 				'post_type'      => $cpt,
-				'post_status'    => 'publish',
+				'post_status'    => [ 'publish', 'draft', 'pending' ],
 				'posts_per_page' => 500,
 				'fields'         => 'ids',
 				'no_found_rows'  => true,
@@ -57,10 +57,13 @@ final class EntityRepository {
 	 * @param array{description?:string,sameas?:string[],citations?:string[],schema_type?:string,is_stub?:bool} $data
 	 */
 	public function create( string $cpt, string $name, array $data ): int {
+		$status = (string) apply_filters( 'aggregate_it_new_hub_status', 'publish' );
+		$status = in_array( $status, [ 'publish', 'draft', 'pending' ], true ) ? $status : 'publish';
+
 		$post_id = wp_insert_post(
 			[
 				'post_type'    => $cpt,
-				'post_status'  => 'publish',
+				'post_status'  => $status,
 				'post_title'   => $name,
 				'post_content' => $this->stub_body( $data['description'] ?? '' ),
 			],

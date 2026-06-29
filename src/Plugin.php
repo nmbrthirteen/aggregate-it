@@ -120,6 +120,10 @@ final class Plugin {
 		( new IndexNow( $this->settings ) )->register();
 		( new EntityRegistrar( $this->rules ) )->register();
 		( new \AggregateIt\Source\ScraperPostTypes() )->register();
+
+		if ( $this->settings->hub_review() ) {
+			add_filter( 'aggregate_it_new_hub_status', static fn () => 'draft' );
+		}
 		( new HubRenderer( $this->rules, $this->settings ) )->register();
 
 		if ( $this->settings->wikipedia_research() ) {

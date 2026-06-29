@@ -4,6 +4,10 @@ Three independent but mutually reinforcing features. Build order below is by
 dependency, not by the order they were requested. Everything here is
 config-driven — no site-specific code, no hardcoded selectors or post types.
 
+> **STATUS: complete.** Phase 0 (v0.1.37), Phase 1 + scraper follow-ups (v0.1.38,
+> v0.1.39), Phase 2 (v0.1.40), and final polish — live extraction preview + stub-hub
+> review queue — all shipped. PRs #1–#5 merged.
+
 Guiding constraints (from project memory + this request):
 - Generalize everything; nothing hardcoded for any specific site.
 - Observability over silent fallbacks — every automated decision is recorded.
