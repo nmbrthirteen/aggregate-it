@@ -270,6 +270,23 @@
 	margin-top: 12px;
 }
 
+.aggregate-it .ai-scrape-row {
+	display: none;
+}
+
+.aggregate-it .ai-fields-table {
+	max-width: 880px;
+}
+
+.aggregate-it .ai-fields-table input,
+.aggregate-it .ai-fields-table select {
+	width: 100%;
+}
+
+.aggregate-it .ai-fields-table td {
+	padding: 4px;
+}
+
 .aggregate-it .ai-setup ol {
 	margin: 0;
 	padding-left: 1.4em;

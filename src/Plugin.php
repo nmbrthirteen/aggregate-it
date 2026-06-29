@@ -119,6 +119,7 @@ final class Plugin {
 		$related->register();
 		( new IndexNow( $this->settings ) )->register();
 		( new EntityRegistrar( $this->rules ) )->register();
+		( new \AggregateIt\Source\ScraperPostTypes() )->register();
 		( new HubRenderer( $this->rules, $this->settings ) )->register();
 
 		if ( $this->settings->wikipedia_research() ) {

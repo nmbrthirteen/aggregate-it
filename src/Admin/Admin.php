@@ -383,6 +383,7 @@ final class Admin {
 		$edit_id = isset( $_GET['edit'] ) ? (int) $_GET['edit'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$editing = $edit_id ? $this->plugin->sources()->get( $edit_id ) : null;
 		$default_interval = $this->plugin->settings()->import_interval_minutes();
+		$public_types     = get_post_types( [ 'public' => true ], 'objects' );
 		require AGGREGATE_IT_PATH . 'src/Admin/views/sources.php';
 	}
 
@@ -420,6 +421,11 @@ final class Admin {
 			'article_length'   => $length,
 		];
 
+		if ( sanitize_key( wp_unslash( $_POST['source_type'] ?? 'rss' ) ) === 'scrape' ) {
+			$settings = array_merge( $settings, $this->scrape_settings_from_post() );
+			\AggregateIt\Source\ScraperPostTypes::remember( (string) $settings['post_type'] );
+		}
+
 		$repo = $this->plugin->sources();
 		if ( $id ) {
 			$repo->update(
@@ -436,6 +442,72 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-sources', 'saved' );
+	}
+
+	/**
+	 * Build the scrape-specific settings from the source form. Field rows come in parallel
+	 * arrays; empty-named rows are dropped. The mapping destination is the field name for
+	 * meta/taxonomy so the form stays a single dropdown per field.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function scrape_settings_from_post(): array {
+		// phpcs:disable WordPress.Security.NonceVerification -- guarded by the caller's nonce check.
+		$mode = sanitize_key( wp_unslash( $_POST['scrape_mode'] ?? 'list' ) );
+		$mode = in_array( $mode, [ 'list', 'sitemap' ], true ) ? $mode : 'list';
+
+		$names      = (array) ( $_POST['field_name'] ?? [] );
+		$selectors  = (array) ( $_POST['field_selector'] ?? [] );
+		$attrs      = (array) ( $_POST['field_attr'] ?? [] );
+		$regexes    = (array) ( $_POST['field_regex'] ?? [] );
+		$dests      = (array) ( $_POST['field_dest'] ?? [] );
+		$extraction = [];
+		$mapping    = [];
+
+		foreach ( $names as $i => $raw_name ) {
+			$name = sanitize_key( wp_unslash( (string) $raw_name ) );
+			if ( $name === '' ) {
+				continue;
+			}
+
+			$rule = [
+				'selector' => sanitize_text_field( wp_unslash( (string) ( $selectors[ $i ] ?? '' ) ) ),
+				'attr'     => sanitize_text_field( wp_unslash( (string) ( $attrs[ $i ] ?? 'text' ) ) ) ?: 'text',
+			];
+			$regex = sanitize_text_field( wp_unslash( (string) ( $regexes[ $i ] ?? '' ) ) );
+			if ( $regex !== '' ) {
+				$rule['regex'] = $regex;
+			}
+			$extraction[ $name ] = $rule;
+
+			$dest = sanitize_text_field( wp_unslash( (string) ( $dests[ $i ] ?? '' ) ) );
+			if ( $dest === 'meta' ) {
+				$dest = 'meta:' . $name;
+			} elseif ( $dest === 'taxonomy' ) {
+				$dest = 'taxonomy:' . $name;
+			}
+			if ( $dest !== '' && $dest !== 'default' ) {
+				$mapping[ $name ] = [ 'dest' => $dest ];
+			}
+		}
+
+		$processing = sanitize_key( wp_unslash( $_POST['processing'] ?? 'passthrough' ) );
+		// phpcs:enable WordPress.Security.NonceVerification
+
+		return [
+			'source_type' => 'scrape',
+			'post_type'   => sanitize_key( wp_unslash( $_POST['post_type'] ?? '' ) ),
+			'processing'  => in_array( $processing, [ 'passthrough', 'rewrite' ], true ) ? $processing : 'passthrough',
+			'scrape'      => [
+				'discovery'  => [
+					'mode'          => $mode,
+					'item_selector' => sanitize_text_field( wp_unslash( $_POST['item_selector'] ?? '' ) ),
+					'url_filter'    => sanitize_text_field( wp_unslash( $_POST['url_filter'] ?? '' ) ),
+				],
+				'extraction' => [ 'fields' => $extraction ],
+				'mapping'    => [ 'fields' => $mapping ],
+			],
+		];
 	}
 
 	public function handle_delete_source(): void {

@@ -10,6 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * @var Source[]    $sources
  * @var Source|null $editing
  * @var int         $default_interval
+ * @var object[]    $public_types
  */
 
 $notice = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
@@ -22,6 +23,50 @@ $messages = [
 	'opml_none'  => __( 'No new feeds found in that OPML.', 'aggregate-it' ),
 	'bulk_done' => __( 'Selected feeds updated.', 'aggregate-it' ),
 	'bulk_none' => __( 'Choose feeds and a bulk action first.', 'aggregate-it' ),
+];
+
+$src_type  = $editing ? $editing->source_type() : 'rss';
+$scrape    = $editing ? $editing->scrape_config() : [];
+$sc_mode   = (string) ( $scrape['discovery']['mode'] ?? 'list' );
+$sc_item   = (string) ( $scrape['discovery']['item_selector'] ?? '' );
+$sc_filter = (string) ( $scrape['discovery']['url_filter'] ?? '' );
+$sc_ptype  = $editing ? $editing->post_type_connection() : '';
+$sc_proc   = $editing ? $editing->processing_mode() : 'passthrough';
+
+$sc_fields = (array) ( $scrape['extraction']['fields'] ?? [] );
+$sc_map    = (array) ( $scrape['mapping']['fields'] ?? [] );
+$field_rows = [];
+foreach ( $sc_fields as $f_name => $f_rule ) {
+	$dest     = (string) ( $sc_map[ $f_name ]['dest'] ?? '' );
+	$dest_sel = 'default';
+	if ( str_starts_with( $dest, 'meta:' ) ) {
+		$dest_sel = 'meta';
+	} elseif ( str_starts_with( $dest, 'taxonomy:' ) ) {
+		$dest_sel = 'taxonomy';
+	} elseif ( $dest !== '' ) {
+		$dest_sel = $dest;
+	}
+	$field_rows[] = [
+		'name'     => (string) $f_name,
+		'selector' => (string) ( $f_rule['selector'] ?? '' ),
+		'attr'     => (string) ( $f_rule['attr'] ?? 'text' ),
+		'regex'    => (string) ( $f_rule['regex'] ?? '' ),
+		'dest'     => $dest_sel,
+	];
+}
+while ( count( $field_rows ) < 6 ) {
+	$field_rows[] = [ 'name' => '', 'selector' => '', 'attr' => 'text', 'regex' => '', 'dest' => 'default' ];
+}
+
+$dest_options = [
+	'default'        => __( 'Default', 'aggregate-it' ),
+	'post_title'     => __( 'Title', 'aggregate-it' ),
+	'post_content'   => __( 'Content', 'aggregate-it' ),
+	'post_excerpt'   => __( 'Excerpt', 'aggregate-it' ),
+	'post_date'      => __( 'Date', 'aggregate-it' ),
+	'featured_image' => __( 'Featured image', 'aggregate-it' ),
+	'meta'           => __( 'Custom field', 'aggregate-it' ),
+	'taxonomy'       => __( 'Taxonomy term', 'aggregate-it' ),
 ];
 ?>
 <div class="wrap aggregate-it">
@@ -45,9 +90,101 @@ $messages = [
 
 			<table class="form-table" role="presentation">
 				<tr>
-					<th><label for="ai-url"><?php esc_html_e( 'Feed address', 'aggregate-it' ); ?></label></th>
+					<th><label for="ai-source-type"><?php esc_html_e( 'Source type', 'aggregate-it' ); ?></label></th>
+					<td>
+						<select name="source_type" id="ai-source-type">
+							<option value="rss" <?php selected( $src_type, 'rss' ); ?>><?php esc_html_e( 'Feed (RSS / Atom / JSON)', 'aggregate-it' ); ?></option>
+							<option value="scrape" <?php selected( $src_type, 'scrape' ); ?>><?php esc_html_e( 'Website (scrape HTML)', 'aggregate-it' ); ?></option>
+						</select>
+						<p class="description ai-scrape-row"><?php esc_html_e( 'Pull repeating items (events, listings) from a page that has no feed.', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th><label for="ai-url"><span class="ai-label-rss"><?php esc_html_e( 'Feed address', 'aggregate-it' ); ?></span><span class="ai-label-scrape ai-scrape-row"><?php esc_html_e( 'Page URL', 'aggregate-it' ); ?></span></label></th>
 					<td><input name="url" id="ai-url" type="url" class="regular-text" required
 						value="<?php echo esc_attr( $editing->url ?? '' ); ?>" placeholder="https://example.com/feed"></td>
+				</tr>
+
+				<tr class="ai-scrape-row">
+					<th><label for="ai-post-type"><?php esc_html_e( 'Save items as (post type)', 'aggregate-it' ); ?></label></th>
+					<td>
+						<input name="post_type" id="ai-post-type" type="text" class="regular-text" list="ai-post-types"
+							value="<?php echo esc_attr( $sc_ptype ); ?>" placeholder="post">
+						<datalist id="ai-post-types">
+							<?php foreach ( $public_types as $pt ) : ?>
+								<option value="<?php echo esc_attr( $pt->name ); ?>"><?php echo esc_html( $pt->labels->singular_name ?? $pt->name ); ?></option>
+							<?php endforeach; ?>
+						</datalist>
+						<p class="description"><?php esc_html_e( 'Pick an existing type or type a new slug (e.g. event) — it will be created automatically.', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row">
+					<th><label for="ai-processing"><?php esc_html_e( 'Processing', 'aggregate-it' ); ?></label></th>
+					<td>
+						<select name="processing" id="ai-processing">
+							<option value="passthrough" <?php selected( $sc_proc, 'passthrough' ); ?>><?php esc_html_e( 'Import as-is (no AI changes)', 'aggregate-it' ); ?></option>
+							<option value="rewrite" <?php selected( $sc_proc, 'rewrite' ); ?>><?php esc_html_e( 'AI rewrite (like feeds)', 'aggregate-it' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'Keep structured data (dates, venues) exact with "as-is".', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row">
+					<th><label for="ai-scrape-mode"><?php esc_html_e( 'Find items by', 'aggregate-it' ); ?></label></th>
+					<td>
+						<select name="scrape_mode" id="ai-scrape-mode">
+							<option value="list" <?php selected( $sc_mode, 'list' ); ?>><?php esc_html_e( 'Rows on a listing page', 'aggregate-it' ); ?></option>
+							<option value="sitemap" <?php selected( $sc_mode, 'sitemap' ); ?>><?php esc_html_e( 'URLs in a sitemap', 'aggregate-it' ); ?></option>
+						</select>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row ai-scrape-list">
+					<th><label for="ai-item-selector"><?php esc_html_e( 'Each item is (CSS selector)', 'aggregate-it' ); ?></label></th>
+					<td>
+						<input name="item_selector" id="ai-item-selector" type="text" class="regular-text code"
+							value="<?php echo esc_attr( $sc_item ); ?>" placeholder="tr.event">
+						<button type="button" class="button" id="ai-suggest"><?php esc_html_e( 'Suggest fields with AI', 'aggregate-it' ); ?></button>
+						<span id="ai-suggest-status" class="description"></span>
+						<p class="description"><?php esc_html_e( 'Fetches the page above and proposes selectors — review them before saving.', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row ai-scrape-sitemap">
+					<th><label for="ai-url-filter"><?php esc_html_e( 'Only URLs matching (regex)', 'aggregate-it' ); ?></label></th>
+					<td><input name="url_filter" id="ai-url-filter" type="text" class="regular-text code"
+						value="<?php echo esc_attr( $sc_filter ); ?>" placeholder="_\d+\.aspx$"></td>
+				</tr>
+				<tr class="ai-scrape-row ai-scrape-list">
+					<th><?php esc_html_e( 'Fields', 'aggregate-it' ); ?></th>
+					<td>
+						<table class="ai-fields-table widefat">
+							<thead>
+								<tr>
+									<th><?php esc_html_e( 'Name', 'aggregate-it' ); ?></th>
+									<th><?php esc_html_e( 'Selector (CSS, in the item)', 'aggregate-it' ); ?></th>
+									<th><?php esc_html_e( 'Attribute', 'aggregate-it' ); ?></th>
+									<th><?php esc_html_e( 'Regex', 'aggregate-it' ); ?></th>
+									<th><?php esc_html_e( 'Maps to', 'aggregate-it' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $field_rows as $row ) : ?>
+									<tr>
+										<td><input type="text" name="field_name[]" value="<?php echo esc_attr( $row['name'] ); ?>" placeholder="title"></td>
+										<td><input type="text" name="field_selector[]" class="code" value="<?php echo esc_attr( $row['selector'] ); ?>" placeholder="a.name"></td>
+										<td><input type="text" name="field_attr[]" value="<?php echo esc_attr( $row['attr'] ); ?>" placeholder="text"></td>
+										<td><input type="text" name="field_regex[]" class="code" value="<?php echo esc_attr( $row['regex'] ); ?>"></td>
+										<td>
+											<select name="field_dest[]">
+												<?php foreach ( $dest_options as $val => $label ) : ?>
+													<option value="<?php echo esc_attr( $val ); ?>" <?php selected( $row['dest'], $val ); ?>><?php echo esc_html( $label ); ?></option>
+												<?php endforeach; ?>
+											</select>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+						<p class="description"><?php esc_html_e( 'Use names title, url, date, image, content for standard fields; anything else becomes a custom field. Attribute: text, html, or an attribute like href / src.', 'aggregate-it' ); ?></p>
+					</td>
 				</tr>
 				<tr>
 					<th><label for="ai-title"><?php esc_html_e( 'Title', 'aggregate-it' ); ?></label></th>
@@ -145,6 +282,83 @@ $messages = [
 		</form>
 		</div>
 	</div>
+
+	<script>
+	( function () {
+		var type = document.getElementById( 'ai-source-type' );
+		var mode = document.getElementById( 'ai-scrape-mode' );
+		if ( ! type ) { return; }
+		function show( selector, on ) {
+			document.querySelectorAll( selector ).forEach( function ( el ) { el.style.display = on ? '' : 'none'; } );
+		}
+		function apply() {
+			var scrape = type.value === 'scrape';
+			show( '.ai-scrape-row', scrape );
+			show( '.ai-label-rss', ! scrape );
+			var sitemap = mode && mode.value === 'sitemap';
+			show( '.ai-scrape-list', scrape && ! sitemap );
+			show( '.ai-scrape-sitemap', scrape && sitemap );
+		}
+		type.addEventListener( 'change', apply );
+		if ( mode ) { mode.addEventListener( 'change', apply ); }
+		apply();
+
+		var suggest = document.getElementById( 'ai-suggest' );
+		var cfg = window.AggregateItAdmin || {};
+		if ( suggest && cfg.root ) {
+			suggest.addEventListener( 'click', function () {
+				var url = ( document.getElementById( 'ai-url' ) || {} ).value || '';
+				var status = document.getElementById( 'ai-suggest-status' );
+				if ( ! url ) { if ( status ) { status.textContent = 'Enter the page URL first.'; } return; }
+				suggest.disabled = true;
+				if ( status ) { status.textContent = 'Looking at the page…'; }
+
+				fetch( cfg.root + 'suggest-selectors', {
+					method: 'POST',
+					headers: { 'X-WP-Nonce': cfg.nonce, 'Content-Type': 'application/json' },
+					body: JSON.stringify( { url: url } )
+				} ).then( function ( r ) { return r.json(); } ).then( function ( data ) {
+					suggest.disabled = false;
+					if ( ! data || ! data.ok ) {
+						if ( status ) { status.textContent = ( data && data.error ) || 'Could not suggest fields.'; }
+						return;
+					}
+					fill( data.suggestion || {} );
+					if ( status ) { status.textContent = 'Filled — review and save.'; }
+				} ).catch( function () {
+					suggest.disabled = false;
+					if ( status ) { status.textContent = 'Could not suggest fields.'; }
+				} );
+			} );
+		}
+
+		function fill( s ) {
+			var item = document.getElementById( 'ai-item-selector' );
+			if ( item && s.item_selector ) { item.value = s.item_selector; }
+			var rows = document.querySelectorAll( '.ai-fields-table tbody tr' );
+			var fields = s.fields || [];
+			rows.forEach( function ( row, i ) {
+				var f = fields[ i ];
+				var name = row.querySelector( 'input[name="field_name[]"]' );
+				var sel = row.querySelector( 'input[name="field_selector[]"]' );
+				var attr = row.querySelector( 'input[name="field_attr[]"]' );
+				var dest = row.querySelector( 'select[name="field_dest[]"]' );
+				if ( ! f ) {
+					if ( name ) { name.value = ''; }
+					if ( sel ) { sel.value = ''; }
+					return;
+				}
+				if ( name ) { name.value = f.name || ''; }
+				if ( sel ) { sel.value = f.selector || ''; }
+				if ( attr ) { attr.value = f.attr || 'text'; }
+				if ( dest && f.dest ) {
+					var ok = Array.prototype.some.call( dest.options, function ( o ) { return o.value === f.dest; } );
+					dest.value = ok ? f.dest : 'default';
+				}
+			} );
+		}
+	} )();
+	</script>
 
 	<details class="postbox">
 		<summary><?php esc_html_e( 'Import many feeds at once (OPML)', 'aggregate-it' ); ?></summary>

@@ -133,16 +133,25 @@ Index on (created_at), (item_id), (source_id), (type).
 
 ## Phase 1 — Custom Website Sources (generalized scraper)
 
-**Engine + pipeline path landed on `feature/custom-website-sources`** (no UI yet):
-`CssToXpath`, `FieldExtractor`, `ScraperParser` (one-fetch list + sitemap discovery →
-normalized entries with a custom `fields` payload), `Source` scrape accessors,
-`FieldMapper` + `PostFactory::create_mapped` (generic field→post-type/meta/taxonomy
-mapping), per-source `processing=passthrough` with skip-guards in Extract/Embed/Cluster
-and a verbatim publish branch in Compose, and Importer dispatch (scrape sources dedupe on
-guid, not content hash). Unit-tested (CssToXpath/ScraperParser/FieldMapper).
-**Still to do (follow-up PRs):** admin UI (source-form branching + field-mapping builder),
-AI-assisted selector generation, generic CPT registration from config, and sitemap detail-
-page extraction in ExtractStage.
+**Feature-complete on `feature/custom-website-sources`** (PR #2):
+- Engine: `CssToXpath`, `FieldExtractor`, `ScraperParser` (one-fetch list + sitemap
+  discovery → normalized entries with a custom `fields` payload), `Source` scrape accessors.
+- Pipeline: `FieldMapper` + `PostFactory::create_mapped` (generic field→post-type/meta/
+  taxonomy/image mapping), per-source `processing=passthrough` with skip-guards in
+  Extract/Embed/Cluster and a verbatim publish branch in Compose; Importer dispatch (scrape
+  sources dedupe on guid, not content hash).
+- CPT registration: `ScraperPostTypes` registers any custom target post type from config
+  (slug remembered on source save), so an `event` type exists without code.
+- Admin UI: source-form branches on Feed vs Website; scrape config = post type (datalist +
+  new-slug), processing, list/sitemap mode, item selector, and a field table (name/selector/
+  attr/regex/maps-to).
+- AI-assisted selectors: `SelectorAssistant` + `/suggest-selectors` REST + a "Suggest fields
+  with AI" button that fetches the page, asks the configured provider for an item selector +
+  field map, and fills the form for review (never applied blind).
+- Tests: CssToXpath / ScraperParser / FieldMapper / SelectorAssistant (80 green).
+
+**Remaining (smaller follow-ups):** sitemap detail-page extraction in ExtractStage; a
+per-source robots-override toggle; a live extraction preview in the form.
 
 The centerpiece. Lets a user point at any HTML site (e.g. igamingcalendar.com),
 extract repeating items, and map fields onto a chosen post type. igaming is
