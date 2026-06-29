@@ -4,6 +4,7 @@ namespace AggregateIt\Pipeline;
 
 use AggregateIt\Ai\FactsGuard;
 use AggregateIt\Ai\Rewriter;
+use AggregateIt\Cluster\Clusterer;
 use AggregateIt\Cluster\ClusterRepository;
 use AggregateIt\Cost\CostMeter;
 use AggregateIt\Database\Schema;
@@ -41,7 +42,8 @@ final class ComposeStage implements PaidStage {
 		private ItemStore $items,
 		private CostMeter $cost,
 		private Settings $settings,
-		private CategoryResolver $categories
+		private CategoryResolver $categories,
+		private Clusterer $clusterer
 	) {}
 
 	public function handles(): string {
@@ -58,6 +60,19 @@ final class ComposeStage implements PaidStage {
 		if ( ! empty( $item->flags['thin'] ) ) {
 			$item->flags['suppressed'] = 'thin';
 			return Schema::STATE_ENTITY_LINKED;
+		}
+
+		// Clusters are created lazily here (compose), so a burst of the same breaking story
+		// can all clear ClusterStage before any cluster exists and each publish a duplicate.
+		// Re-match now that siblings may have created their cluster, folding them into one
+		// living post instead.
+		if ( $item->cluster_id === null ) {
+			$rematch = $this->clusterer->match( $this->vectors->get( 'item', $item->id ), (string) $item->raw_content );
+			if ( $rematch !== null ) {
+				$this->items->set_cluster( $item->id, $rematch );
+				$item->cluster_id           = $rematch;
+				$item->flags['cluster_new'] = false;
+			}
 		}
 
 		$is_update = $item->cluster_id !== null && empty( $item->flags['cluster_new'] );

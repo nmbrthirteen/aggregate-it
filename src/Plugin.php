@@ -101,7 +101,7 @@ final class Plugin {
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(
-			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings, $categories )
+			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings, $categories, $clusterer )
 		);
 		$this->pipeline->register(
 			new EntityStage(
