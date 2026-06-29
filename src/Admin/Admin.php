@@ -189,10 +189,14 @@ final class Admin {
 
 	public function render_articles(): void {
 		// phpcs:disable WordPress.Security.NonceVerification
-		$per_page = 30;
-		$paged    = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
-		$status   = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
-		$search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$allowed_per_page = [ 30, 50, 100, 200 ];
+		$per_page         = (int) ( $_GET['per_page'] ?? 50 );
+		if ( ! in_array( $per_page, $allowed_per_page, true ) ) {
+			$per_page = 50;
+		}
+		$paged  = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification
 
 		$items = $this->plugin->items();
@@ -229,7 +233,7 @@ final class Admin {
 		set_transient( 'aggregate_it_force_run', 1, 60 );
 		do_action( 'aggregate_it_dispatch_queue' );
 
-		$this->redirect( self::SLUG . '-articles', 'retried' );
+		$this->redirect( self::SLUG . '-articles', 'retried', $this->articles_context() );
 	}
 
 	public function handle_retry_failed(): void {
@@ -239,7 +243,7 @@ final class Admin {
 		set_transient( 'aggregate_it_force_run', 1, 60 );
 		do_action( 'aggregate_it_dispatch_queue' );
 
-		$this->redirect( self::SLUG . '-articles', 'retried' );
+		$this->redirect( self::SLUG . '-articles', 'retried', $this->articles_context() );
 	}
 
 	public function handle_delete_article(): void {
@@ -254,7 +258,7 @@ final class Admin {
 			$this->plugin->items()->delete( $id );
 		}
 
-		$this->redirect( self::SLUG . '-articles', 'deleted' );
+		$this->redirect( self::SLUG . '-articles', 'deleted', $this->articles_context() );
 	}
 
 	public function handle_refresh_image(): void {
@@ -266,13 +270,13 @@ final class Admin {
 			try {
 				$image = $this->plugin->extractor()->share_image( (string) $item->url );
 			} catch ( \Throwable $e ) {
-				$this->redirect( self::SLUG . '-articles', 'image_refresh_failed' );
+				$this->redirect( self::SLUG . '-articles', 'image_refresh_failed', $this->articles_context() );
 				return;
 			}
 			$this->plugin->imageImporter()->maybe_import( (int) $item->post_id, $image, get_the_title( (int) $item->post_id ), true );
 		}
 
-		$this->redirect( self::SLUG . '-articles', 'image_refreshed' );
+		$this->redirect( self::SLUG . '-articles', 'image_refreshed', $this->articles_context() );
 	}
 
 	public function handle_rewrite_article(): void {
@@ -284,7 +288,7 @@ final class Admin {
 			$this->plugin->reprocessor()->reprocess( (int) $item->post_id );
 		}
 
-		$this->redirect( self::SLUG . '-articles', 'rewritten' );
+		$this->redirect( self::SLUG . '-articles', 'rewritten', $this->articles_context() );
 	}
 
 	public function handle_bulk_articles(): void {
@@ -294,7 +298,7 @@ final class Admin {
 		$ids    = array_slice( array_values( array_filter( array_map( 'intval', (array) ( $_POST['ids'] ?? [] ) ) ) ), 0, 30 );
 
 		if ( ! $ids || ! in_array( $action, [ 'delete', 'publish', 'draft', 'rewrite', 'refresh_image' ], true ) ) {
-			$this->redirect( self::SLUG . '-articles', '' );
+			$this->redirect( self::SLUG . '-articles', '', $this->articles_context() );
 		}
 
 		$items     = $this->plugin->items();
@@ -354,10 +358,10 @@ final class Admin {
 				$msg .= ' ' . sprintf( _n( '%d was skipped because the source was busy — run it again to retry.', '%d were skipped because the source was busy — run it again to retry.', $busy, 'aggregate-it' ), $busy );
 			}
 			$this->flash( $msg );
-			$this->redirect( self::SLUG . '-articles', '' );
+			$this->redirect( self::SLUG . '-articles', '', $this->articles_context() );
 		}
 
-		$this->redirect( self::SLUG . '-articles', 'bulk_done' );
+		$this->redirect( self::SLUG . '-articles', 'bulk_done', $this->articles_context() );
 	}
 
 	public function render_sources(): void {
@@ -1228,17 +1232,51 @@ final class Admin {
 		check_admin_referer( $action );
 	}
 
-	private function redirect( string $page, string $notice ): void {
+	/** @param array<string,int|string> $extra extra query args to preserve (e.g. paged/status/search) */
+	private function redirect( string $page, string $notice, array $extra = [] ): void {
 		wp_safe_redirect(
 			add_query_arg(
-				[
-					'page'      => $page,
-					'ai_notice' => $notice,
-				],
+				array_merge(
+					[
+						'page'      => $page,
+						'ai_notice' => $notice,
+					],
+					$extra
+				),
 				admin_url( 'admin.php' )
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * The Articles list view state carried through an action so it returns to the same
+	 * page/tab/search instead of jumping back to page one.
+	 *
+	 * @return array<string,int|string>
+	 */
+	private function articles_context(): array {
+		// phpcs:disable WordPress.Security.NonceVerification
+		$extra  = [];
+		$paged  = max( 1, (int) ( $_REQUEST['paged'] ?? 1 ) );
+		$status = isset( $_REQUEST['status'] ) ? sanitize_key( wp_unslash( $_REQUEST['status'] ) ) : '';
+		$search = isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : '';
+		$per    = (int) ( $_REQUEST['per_page'] ?? 0 );
+		// phpcs:enable WordPress.Security.NonceVerification
+
+		if ( $paged > 1 ) {
+			$extra['paged'] = $paged;
+		}
+		if ( $status !== '' ) {
+			$extra['status'] = $status;
+		}
+		if ( $search !== '' ) {
+			$extra['s'] = $search;
+		}
+		if ( in_array( $per, [ 30, 100, 200 ], true ) ) {
+			$extra['per_page'] = $per;
+		}
+		return $extra;
 	}
 
 	private function asset_version( string $relative ): string {

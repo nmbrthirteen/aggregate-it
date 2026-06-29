@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || exit;
  * @var int                 $total
  * @var int                 $paged
  * @var int                 $per_page
+ * @var int[]               $allowed_per_page
  * @var string              $status
  * @var string              $search
  * @var string              $flash_message
@@ -45,8 +46,17 @@ $status_label = static function ( object $row, array $flags ): array {
 	return [ __( 'Being processed', 'aggregate-it' ), 'post-state' ];
 };
 
-$action_link = static function ( string $action, int $id ) {
-	return esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=' . $action . '&id=' . $id ), $action . '_' . $id ) );
+$ctx = array_filter(
+	[
+		'paged'    => $paged > 1 ? $paged : null,
+		'status'   => $status !== '' ? $status : null,
+		's'        => $search !== '' ? $search : null,
+		'per_page' => $per_page !== 50 ? $per_page : null,
+	]
+);
+$action_link = static function ( string $action, int $id ) use ( $ctx ) {
+	$url = add_query_arg( $ctx, admin_url( 'admin-post.php?action=' . $action . '&id=' . $id ) );
+	return esc_url( wp_nonce_url( $url, $action . '_' . $id ) );
 };
 
 $last_page = max( 1, (int) ceil( $total / $per_page ) );
@@ -56,6 +66,9 @@ if ( $status !== '' ) {
 }
 if ( $search !== '' ) {
 	$base = add_query_arg( 's', $search, $base );
+}
+if ( $per_page !== 50 ) {
+	$base = add_query_arg( 'per_page', $per_page, $base );
 }
 $notice  = isset( $_GET['ai_notice'] ) ? sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 $notices = [
@@ -94,6 +107,15 @@ $notices = [
 		<?php endif; ?>
 		<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search title or URL…', 'aggregate-it' ); ?>" class="regular-text">
 		<button type="submit" class="button"><?php esc_html_e( 'Search', 'aggregate-it' ); ?></button>
+		<label class="ai-perpage">
+			<?php esc_html_e( 'Show', 'aggregate-it' ); ?>
+			<select name="per_page" onchange="this.form.submit();">
+				<?php foreach ( $allowed_per_page as $option ) : ?>
+					<option value="<?php echo (int) $option; ?>" <?php selected( $per_page, $option ); ?>><?php echo (int) $option; ?></option>
+				<?php endforeach; ?>
+			</select>
+			<?php esc_html_e( 'per page', 'aggregate-it' ); ?>
+		</label>
 		<?php if ( $search !== '' ) : ?>
 			<a class="button-link" href="<?php echo esc_url( $status !== '' ? add_query_arg( 'status', $status, admin_url( 'admin.php?page=aggregate-it-articles' ) ) : admin_url( 'admin.php?page=aggregate-it-articles' ) ); ?>"><?php esc_html_e( 'Clear', 'aggregate-it' ); ?></a>
 			<span class="description">
@@ -118,6 +140,10 @@ $notices = [
 
 	<form method="post" action="<?php echo $post_action; ?>" id="aggregate-it-articles" onsubmit="return aiBulkConfirm(this);">
 		<input type="hidden" name="action" value="aggregate_it_bulk_articles">
+		<input type="hidden" name="paged" value="<?php echo (int) $paged; ?>">
+		<input type="hidden" name="status" value="<?php echo esc_attr( $status ); ?>">
+		<input type="hidden" name="s" value="<?php echo esc_attr( $search ); ?>">
+		<input type="hidden" name="per_page" value="<?php echo (int) $per_page; ?>">
 		<?php wp_nonce_field( 'aggregate_it_bulk_articles' ); ?>
 
 		<div class="tablenav top">

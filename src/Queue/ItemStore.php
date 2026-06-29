@@ -386,9 +386,12 @@ final class ItemStore {
 		}
 
 		if ( $search !== '' ) {
-			// Title lives inside the flags JSON, so search that and the URL.
+			// Match the published post (its AI title/body) first — that's what users look for —
+			// then the source URL and the original feed title (which lives in the flags JSON).
 			$like     = '%' . $wpdb->esc_like( $search ) . '%';
-			$where   .= ' AND ( url LIKE %s OR flags LIKE %s )';
+			$where   .= " AND ( post_id IN ( SELECT ID FROM {$wpdb->posts} WHERE post_title LIKE %s OR post_content LIKE %s ) OR url LIKE %s OR flags LIKE %s )";
+			$params[] = $like;
+			$params[] = $like;
 			$params[] = $like;
 			$params[] = $like;
 		}
