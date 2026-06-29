@@ -24,6 +24,7 @@ final class ActivityLogTest extends TestCase {
 			[
 				'item_id'    => 7,
 				'source_id'  => 3,
+				'post_id'    => 42,
 				'type'       => 'fetched',
 				'from_state' => 'fetched',
 				'to_state'   => 'extracted',
@@ -34,6 +35,7 @@ final class ActivityLogTest extends TestCase {
 		$row = $this->rows()[0];
 		$this->assertSame( 7, $row['item_id'] );
 		$this->assertSame( 3, $row['source_id'] );
+		$this->assertSame( 42, $row['post_id'] );
 		$this->assertSame( 'fetched', $row['stage'] );
 		$this->assertSame( 'fetched', $row['from_state'] );
 		$this->assertSame( 'extracted', $row['to_state'] );

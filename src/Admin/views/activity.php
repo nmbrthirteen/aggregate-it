@@ -130,8 +130,9 @@ window.addEventListener( 'load', function () {
 
 	var i18n = cfg.i18n || {};
 
-	// Live refresh only makes sense on the first page with no manual paging.
-	var onFirstPage = window.location.search.indexOf( 'paged=' ) === -1;
+	// Live refresh only makes sense on the newest page (no paging, or explicitly page 1).
+	var pagedParam = new URLSearchParams( window.location.search ).get( 'paged' );
+	var onFirstPage = ! pagedParam || pagedParam === '1';
 	if ( ! onFirstPage ) {
 		live.checked = false;
 		live.disabled = true;

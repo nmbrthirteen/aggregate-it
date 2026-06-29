@@ -177,7 +177,13 @@ final class ComposeStage implements PaidStage {
 		$known     = $this->clusters->fact_set( (int) $item->cluster_id );
 		$novel     = $this->facts->novel( $content, $known );
 
-		if ( ! $novel || ! $cluster || ! $cluster->canonical_post_id ) {
+		if ( ! $cluster || ! $cluster->canonical_post_id ) {
+			$item->flags['suppressed'] = 'no-canonical-post';
+			$this->suppressed( $item, 'no-canonical-post', sprintf( 'Article #%d could not update its story — the canonical post is missing.', $item->id ) );
+			return Schema::STATE_ENTITY_LINKED;
+		}
+
+		if ( ! $novel ) {
 			$item->flags['suppressed'] = 'no-novelty';
 			$this->suppressed( $item, 'no-novelty', sprintf( 'Article #%d folded into an existing story with no new facts — nothing added.', $item->id ) );
 			return Schema::STATE_ENTITY_LINKED;
