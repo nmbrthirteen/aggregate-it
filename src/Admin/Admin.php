@@ -2,8 +2,11 @@
 
 namespace AggregateIt\Admin;
 
+use AggregateIt\Database\Schema;
+use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Plugin;
 use AggregateIt\Settings;
+use AggregateIt\Support\ActivityLog;
 use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
@@ -117,6 +120,15 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
+			__( 'Activity', 'aggregate-it' ),
+			__( 'Activity', 'aggregate-it' ),
+			'manage_options',
+			self::SLUG . '-activity',
+			[ $this, 'render_activity' ]
+		);
+
+		$this->hooks[] = add_submenu_page(
+			self::SLUG,
 			__( 'Settings', 'aggregate-it' ),
 			__( 'Settings', 'aggregate-it' ),
 			'manage_options',
@@ -162,6 +174,8 @@ final class Admin {
 					'testing'    => __( 'Testing the connection…', 'aggregate-it' ),
 					'testOk'     => __( 'Connection works.', 'aggregate-it' ),
 					'testFail'   => __( 'Connection failed:', 'aggregate-it' ),
+					'details'    => __( 'Details', 'aggregate-it' ),
+					'activityEmpty' => __( 'Nothing here yet.', 'aggregate-it' ),
 				],
 			]
 		);
@@ -648,6 +662,27 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-settings', 'saved' );
+	}
+
+	public function render_activity(): void {
+		// phpcs:disable WordPress.Security.NonceVerification
+		$per_page = 50;
+		$page     = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+		$filters  = [
+			'level'   => isset( $_GET['level'] ) ? sanitize_key( wp_unslash( $_GET['level'] ) ) : '',
+			'type'    => isset( $_GET['type'] ) ? sanitize_key( wp_unslash( $_GET['type'] ) ) : '',
+			'item_id' => (int) ( $_GET['item'] ?? 0 ),
+			'search'  => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+		];
+		// phpcs:enable WordPress.Security.NonceVerification
+
+		$total    = ActivityLog::count( $filters );
+		$rows     = ActivityLog::query( $filters, $per_page, ( $page - 1 ) * $per_page );
+		$pages    = (int) max( 1, ceil( $total / $per_page ) );
+		$levels   = [ 'info', 'warning', 'error' ];
+		$types    = array_merge( Pipeline::default_order(), [ Schema::STATE_DEAD_LETTER ] );
+
+		require AGGREGATE_IT_PATH . 'src/Admin/views/activity.php';
 	}
 
 	public function render_tools(): void {

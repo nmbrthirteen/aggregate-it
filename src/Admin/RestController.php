@@ -4,6 +4,7 @@ namespace AggregateIt\Admin;
 
 use AggregateIt\Cost\SpendCap;
 use AggregateIt\Plugin;
+use AggregateIt\Support\ActivityLog;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -26,6 +27,16 @@ final class RestController {
 			[
 				'methods'             => 'GET',
 				'callback'            => [ $this, 'stats' ],
+				'permission_callback' => [ $this, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			self::NS,
+			'/activity',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ $this, 'activity' ],
 				'permission_callback' => [ $this, 'can_manage' ],
 			]
 		);
@@ -84,6 +95,29 @@ final class RestController {
 
 	public function stats(): WP_REST_Response {
 		return new WP_REST_Response( $this->plugin->stats()->payload(), 200 );
+	}
+
+	public function activity( WP_REST_Request $request ): WP_REST_Response {
+		$per_page = max( 10, min( 200, (int) $request->get_param( 'per_page' ) ?: 50 ) );
+		$page     = max( 1, (int) $request->get_param( 'page' ) ?: 1 );
+		$filters  = [
+			'level'   => sanitize_key( (string) $request->get_param( 'level' ) ),
+			'type'    => sanitize_key( (string) $request->get_param( 'type' ) ),
+			'item_id' => (int) $request->get_param( 'item' ),
+			'search'  => sanitize_text_field( (string) $request->get_param( 'search' ) ),
+		];
+
+		$total = ActivityLog::count( $filters );
+
+		return new WP_REST_Response(
+			[
+				'rows'  => ActivityLog::query( $filters, $per_page, ( $page - 1 ) * $per_page ),
+				'total' => $total,
+				'page'  => $page,
+				'pages' => (int) max( 1, ceil( $total / $per_page ) ),
+			],
+			200
+		);
 	}
 
 	public function run(): WP_REST_Response {

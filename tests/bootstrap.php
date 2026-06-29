@@ -22,6 +22,46 @@ $GLOBALS['__hooks']        = [ 'action' => 0, 'filter' => 0 ];
 $GLOBALS['__posts_meta']   = [];   // post_id => [key => value]
 $GLOBALS['__norm_posts']   = [];   // for entity repo: id => norm name
 $GLOBALS['__terms']        = [ 'category' => [] ]; // taxonomy => [ {term_id,name,slug} ]
+$GLOBALS['__db']           = [];   // table => list of inserted row arrays
+
+/** Minimal in-memory $wpdb: records inserts so log/cost writes work in pure-unit tests. */
+class AggregateIt_Test_WPDB {
+	public string $prefix    = 'wp_';
+	public string $last_query = '';
+
+	public function get_charset_collate(): string {
+		return '';
+	}
+
+	public function insert( string $table, array $data ): int {
+		$GLOBALS['__db'][ $table ][] = $data;
+		return 1;
+	}
+
+	public function query( string $sql ) {
+		$this->last_query = $sql;
+		return 0;
+	}
+
+	public function prepare( string $sql, $args = [] ) {
+		return $sql;
+	}
+
+	public function esc_like( string $text ): string {
+		return addcslashes( $text, '_%\\' );
+	}
+
+	public function get_var( $sql = '' ) {
+		return null;
+	}
+
+	public function get_results( $sql = '', $output = ARRAY_A ) {
+		return [];
+	}
+}
+
+defined( 'ARRAY_A' ) || define( 'ARRAY_A', 'ARRAY_A' );
+$GLOBALS['wpdb'] = new AggregateIt_Test_WPDB();
 
 // Autoload plugin classes (composer if present, else a simple PSR-4 fallback).
 if ( is_readable( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
@@ -47,7 +87,7 @@ if ( is_readable( dirname( __DIR__ ) . '/vendor/autoload.php' ) ) {
 if ( ! function_exists( 'get_option' ) ) {
 	function get_option( $key, $default = false ) {
 		if ( $key === 'aggregate_it_db_version' ) {
-			return AGGREGATE_IT_VERSION; // keep Schema::maybe_upgrade a no-op
+			return \AggregateIt\Database\Schema::DB_VERSION; // keep Schema::maybe_upgrade a no-op
 		}
 		return $GLOBALS['__options'][ $key ] ?? $default;
 	}

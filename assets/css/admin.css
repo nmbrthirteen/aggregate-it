@@ -211,6 +211,65 @@
 	display: none !important;
 }
 
+.aggregate-it .ai-act-filters {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+	margin: 12px 0;
+}
+
+.aggregate-it .ai-act-live {
+	margin-left: auto;
+}
+
+.aggregate-it .ai-act-table .ai-act-col-time {
+	width: 160px;
+}
+
+.aggregate-it .ai-act-table .ai-act-col-step {
+	width: 130px;
+}
+
+.aggregate-it .ai-act-time {
+	color: #646970;
+	white-space: nowrap;
+}
+
+.aggregate-it .ai-act--error .ai-act-msg {
+	color: #d63638;
+}
+
+.aggregate-it .ai-act--warning .ai-act-msg {
+	color: #996800;
+}
+
+.aggregate-it .ai-act-detail summary {
+	cursor: pointer;
+	color: #2271b1;
+	font-size: 12px;
+}
+
+.aggregate-it .ai-act-detail pre {
+	background: #f6f7f7;
+	border: 1px solid #e0e0e0;
+	padding: 8px;
+	overflow: auto;
+	font-size: 12px;
+}
+
+.aggregate-it .ai-act-transition {
+	font-weight: 600;
+	margin: 6px 0;
+}
+
+.aggregate-it .ai-act-pages {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin-top: 12px;
+}
+
 .aggregate-it .ai-setup ol {
 	margin: 0;
 	padding-left: 1.4em;
