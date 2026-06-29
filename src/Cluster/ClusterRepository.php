@@ -37,16 +37,6 @@ final class ClusterRepository {
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$this->table()} WHERE id = %d", $id ) ) ?: null;
 	}
 
-	/** @return object[] clusters that published a post, oldest first (id, canonical_post_id, fact_set) */
-	public function with_posts(): array {
-		global $wpdb;
-		return $wpdb->get_results(
-			"SELECT id, canonical_post_id, fact_set FROM {$this->table()}
-			 WHERE canonical_post_id IS NOT NULL AND canonical_post_id > 0
-			 ORDER BY id ASC"
-		) ?: [];
-	}
-
 	/** @return int[] ids of live clusters still inside their time window */
 	public function live_ids(): array {
 		global $wpdb;

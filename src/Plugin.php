@@ -205,7 +205,7 @@ final class Plugin {
 	}
 
 	public function deduplicator(): Deduplicator {
-		return new Deduplicator( new ClusterRepository(), new VectorStore(), new FactsGuard(), $this->settings );
+		return new Deduplicator( $this->settings );
 	}
 
 	public function seed_enabled(): bool {

@@ -75,13 +75,18 @@ final class OpenAiProvider extends BaseHttpProvider {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, $response->get_error_message() );
 		}
 
-		$data   = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( $code >= 400 || isset( $data['error'] ) ) {
+			return $this->degraded_embedding( $text, (string) ( $data['error']['message'] ?? ( 'HTTP ' . $code ) ) );
+		}
+
 		$vector = $data['data'][0]['embedding'] ?? null;
 		if ( ! is_array( $vector ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, 'no vector in response' );
 		}
 
 		return [

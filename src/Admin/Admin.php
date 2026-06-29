@@ -736,7 +736,8 @@ final class Admin {
 	public function handle_reset(): void {
 		$this->guard( 'aggregate_it_reset' );
 
-		switch ( sanitize_key( wp_unslash( $_POST['reset'] ?? '' ) ) ) {
+		$reset = sanitize_key( wp_unslash( $_POST['reset'] ?? '' ) );
+		switch ( $reset ) {
 			case 'settings':
 				Settings::reset();
 				$this->flash( __( 'Settings reset to defaults.', 'aggregate-it' ) );
@@ -756,10 +757,15 @@ final class Admin {
 				/* translators: %d: number of stale items dropped */
 				$this->flash( sprintf( _n( 'Dropped %d stale item from the queue.', 'Dropped %d stale items from the queue.', $dropped, 'aggregate-it' ), $dropped ) );
 				break;
+			case 'dupes_preview':
+				$preview = $this->plugin->deduplicator()->run( true );
+				/* translators: 1: duplicate posts, 2: stories */
+				$this->flash( sprintf( __( 'Preview: %1$d duplicate posts across %2$d stories. See the Activity log for examples. Nothing was changed.', 'aggregate-it' ), $preview['duplicates'], $preview['groups'] ) );
+				break;
 			case 'dupes':
-				$merged = $this->plugin->deduplicator()->run();
+				$result = $this->plugin->deduplicator()->run( false );
 				/* translators: %d: number of duplicate posts trashed */
-				$this->flash( sprintf( _n( 'Trashed %d duplicate post, keeping the original.', 'Trashed %d duplicate posts, keeping the originals.', $merged, 'aggregate-it' ), $merged ) );
+				$this->flash( sprintf( _n( 'Trashed %d duplicate post, keeping the oldest of its story.', 'Trashed %d duplicate posts, keeping the oldest of each story.', $result['duplicates'], 'aggregate-it' ), $result['duplicates'] ) );
 				break;
 			default:
 				$this->flash( __( 'Nothing was reset.', 'aggregate-it' ) );
