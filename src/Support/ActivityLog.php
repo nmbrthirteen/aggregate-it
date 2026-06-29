@@ -47,8 +47,6 @@ final class ActivityLog {
 			]
 		);
 
-		// A logger that loses writes silently is the failure it exists to surface; warn once
-		// per request (e.g. a pending schema migration) rather than swallowing it.
 		if ( $ok === false && ! self::$insert_warned ) {
 			self::$insert_warned = true;
 			error_log( '[Aggregate It] activity log write failed: ' . $wpdb->last_error ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions
@@ -140,6 +138,10 @@ final class ActivityLog {
 		if ( ! empty( $filters['search'] ) ) {
 			$clauses[] = 'message LIKE %s';
 			$args[]    = '%' . $GLOBALS['wpdb']->esc_like( (string) $filters['search'] ) . '%';
+		}
+		if ( ! empty( $filters['since'] ) ) {
+			$clauses[] = 'created_at >= %s';
+			$args[]    = (string) $filters['since'];
 		}
 
 		return [ implode( ' AND ', $clauses ), $args ];

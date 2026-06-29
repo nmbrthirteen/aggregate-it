@@ -58,7 +58,6 @@ final class FieldExtractor {
 	}
 
 	private function apply_regex( string $pattern, string $subject ): string {
-		// Admin-authored pattern; fix the delimiter and escape it so the config can't break out.
 		$delimited = '~' . str_replace( '~', '\~', $pattern ) . '~';
 		if ( @preg_match( $delimited, $subject, $m ) === 1 ) {
 			return $m[1] ?? $m[0];

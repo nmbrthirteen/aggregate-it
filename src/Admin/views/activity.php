@@ -118,7 +118,6 @@ $label_for = static function ( string $state ): string {
 </div>
 
 <script>
-// AggregateItAdmin is localized with the footer script, so wait for load before reading it.
 window.addEventListener( 'load', function () {
 	var cfg = window.AggregateItAdmin || {};
 	var table = document.getElementById( 'ai-act-table' );
@@ -130,7 +129,6 @@ window.addEventListener( 'load', function () {
 
 	var i18n = cfg.i18n || {};
 
-	// Live refresh only makes sense on the newest page (no paging, or explicitly page 1).
 	var pagedParam = new URLSearchParams( window.location.search ).get( 'paged' );
 	var onFirstPage = ! pagedParam || pagedParam === '1';
 	if ( ! onFirstPage ) {
@@ -200,7 +198,6 @@ window.addEventListener( 'load', function () {
 		if ( ! live.checked || ! onFirstPage || document.hidden ) {
 			return;
 		}
-		// Don't yank the table out from under someone reading an expanded row or copying text.
 		if ( body.querySelector( 'details[open]' ) ) {
 			return;
 		}

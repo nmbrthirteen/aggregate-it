@@ -6,6 +6,7 @@ use AggregateIt\Cost\CostMeter;
 use AggregateIt\Cost\SpendCap;
 use AggregateIt\Plugin;
 use AggregateIt\Source\HttpFetcher;
+use AggregateIt\Source\Parser\ScraperParser;
 use AggregateIt\Source\Scrape\SelectorAssistant;
 use AggregateIt\Support\ActivityLog;
 use WP_REST_Request;
@@ -40,6 +41,16 @@ final class RestController {
 			[
 				'methods'             => 'GET',
 				'callback'            => [ $this, 'activity' ],
+				'permission_callback' => [ $this, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			self::NS,
+			'/scrape-preview',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ $this, 'scrape_preview' ],
 				'permission_callback' => [ $this, 'can_manage' ],
 			]
 		);
@@ -131,6 +142,49 @@ final class RestController {
 			],
 			200
 		);
+	}
+
+	public function scrape_preview( WP_REST_Request $request ): WP_REST_Response {
+		$url           = esc_url_raw( (string) $request->get_param( 'url' ) );
+		$item_selector = sanitize_text_field( (string) $request->get_param( 'item_selector' ) );
+		if ( $url === '' || $item_selector === '' ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Enter the page URL and item selector first.', 'aggregate-it' ) ], 200 );
+		}
+
+		$fields = [];
+		foreach ( (array) $request->get_param( 'fields' ) as $field ) {
+			$name = sanitize_key( (string) ( $field['name'] ?? '' ) );
+			if ( $name === '' ) {
+				continue;
+			}
+			$rule = [
+				'selector' => sanitize_text_field( (string) ( $field['selector'] ?? '' ) ),
+				'attr'     => sanitize_text_field( (string) ( $field['attr'] ?? 'text' ) ) ?: 'text',
+			];
+			$regex = sanitize_text_field( (string) ( $field['regex'] ?? '' ) );
+			if ( $regex !== '' ) {
+				$rule['regex'] = $regex;
+			}
+			$fields[ $name ] = $rule;
+		}
+
+		try {
+			$respect_robots = $request->get_param( 'respect_robots' ) === null ? true : (bool) $request->get_param( 'respect_robots' );
+			$html           = ( new HttpFetcher() )->fetch( $url, $respect_robots );
+			if ( ! is_string( $html ) || $html === '' ) {
+				return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Could not fetch that page.', 'aggregate-it' ) ], 200 );
+			}
+
+			$cfg     = [ 'discovery' => [ 'item_selector' => $item_selector ], 'extraction' => [ 'fields' => $fields ] ];
+			$entries = ( new ScraperParser( new HttpFetcher() ) )->entries_from_html( $html, $cfg, $url );
+
+			return new WP_REST_Response(
+				[ 'ok' => true, 'count' => count( $entries ), 'sample' => array_slice( $entries, 0, 5 ) ],
+				200
+			);
+		} catch ( \Throwable $e ) {
+			return new WP_REST_Response( [ 'ok' => false, 'error' => $e->getMessage() ], 200 );
+		}
 	}
 
 	public function suggest_selectors( WP_REST_Request $request ): WP_REST_Response {

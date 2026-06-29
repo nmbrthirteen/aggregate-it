@@ -132,8 +132,6 @@ final class Importer {
 			if ( $cutoff > 0 && $entry['date'] > 0 && $entry['date'] < $cutoff ) {
 				continue;
 			}
-			// Scrape items dedupe on guid (the detail URL); their content is often empty or
-			// identical across rows, so a content-hash check would wrongly drop distinct items.
 			if ( ! $is_scrape && $this->items->exists_hash( hash( 'sha256', $entry['content'] ) ) ) {
 				continue;
 			}
@@ -156,8 +154,6 @@ final class Importer {
 				if ( $source->processing_mode() === 'passthrough' ) {
 					$flags['passthrough'] = true;
 				}
-				// Sitemap entries are URL-only, so the fields must be read from each detail page
-				// later in ExtractStage (one polite, deferrable fetch per item).
 				$scrape = $source->scrape_config();
 				if ( (string) ( $scrape['discovery']['mode'] ?? 'list' ) === 'sitemap' ) {
 					$flags['detail_fields']  = (array) ( $scrape['extraction']['fields'] ?? [] );

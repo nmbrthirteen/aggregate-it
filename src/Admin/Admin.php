@@ -31,6 +31,8 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_save_fields', [ $this, 'handle_save_fields' ] );
 		add_action( 'admin_post_aggregate_it_delete_rule', [ $this, 'handle_delete_rule' ] );
 		add_action( 'admin_post_aggregate_it_merge_entities', [ $this, 'handle_merge_entities' ] );
+		add_action( 'admin_post_aggregate_it_approve_hub', [ $this, 'handle_approve_hub' ] );
+		add_action( 'admin_post_aggregate_it_trash_hub', [ $this, 'handle_trash_hub' ] );
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
 		add_action( 'admin_post_aggregate_it_dismiss_setup', [ $this, 'handle_dismiss_setup' ] );
 		add_action( 'admin_post_aggregate_it_retry_article', [ $this, 'handle_retry_article' ] );
@@ -605,9 +607,46 @@ final class Admin {
 	}
 
 	public function render_entities(): void {
-		$rules    = $this->plugin->rules();
-		$cpts     = $rules->post_types();
+		$rules = $this->plugin->rules();
+		$cpts  = $rules->post_types();
+		$week  = gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS );
+
+		$pending     = $cpts ? get_posts( [ 'post_type' => $cpts, 'post_status' => [ 'draft', 'pending' ], 'posts_per_page' => 100, 'orderby' => 'date', 'order' => 'DESC' ] ) : [];
+		$recent_hubs = $cpts ? get_posts( [ 'post_type' => $cpts, 'post_status' => 'publish', 'posts_per_page' => 12, 'orderby' => 'modified', 'order' => 'DESC' ] ) : [];
+
+		$hub_total = 0;
+		foreach ( $cpts as $cpt ) {
+			$hub_total += (int) ( wp_count_posts( $cpt )->publish ?? 0 );
+		}
+		$new_week = $cpts ? count( (array) get_posts( [ 'post_type' => $cpts, 'post_status' => 'publish', 'fields' => 'ids', 'posts_per_page' => 500, 'date_query' => [ [ 'after' => '7 days ago' ] ] ] ) ) : 0;
+
+		$summary = [
+			'hubs'        => $hub_total,
+			'new_week'    => $new_week,
+			'linked_week' => ActivityLog::count( [ 'type' => Schema::STATE_ENTITY_LINKED, 'since' => $week ] ),
+			'pending'     => count( $pending ),
+		];
+		$activity = ActivityLog::query( [ 'type' => Schema::STATE_ENTITY_LINKED ], 12, 0 );
+
 		require AGGREGATE_IT_PATH . 'src/Admin/views/entities.php';
+	}
+
+	public function handle_approve_hub(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_approve_hub_' . $id );
+		if ( $id ) {
+			wp_update_post( [ 'ID' => $id, 'post_status' => 'publish' ] );
+		}
+		$this->redirect( self::SLUG . '-entities', 'approved' );
+	}
+
+	public function handle_trash_hub(): void {
+		$id = (int) ( $_REQUEST['id'] ?? 0 );
+		$this->guard( 'aggregate_it_trash_hub_' . $id );
+		if ( $id ) {
+			wp_trash_post( $id );
+		}
+		$this->redirect( self::SLUG . '-entities', 'hub_trashed' );
 	}
 
 	public function handle_save_rule(): void {
@@ -712,6 +751,7 @@ final class Admin {
 				'wikipedia_research'     => isset( $_POST['wikipedia_research'] ),
 				'related_articles'       => isset( $_POST['related_articles'] ),
 				'ai_categorize'          => isset( $_POST['ai_categorize'] ),
+				'hub_review'             => isset( $_POST['hub_review'] ),
 				'strategic_mode'         => isset( $_POST['strategic_mode'] ),
 				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),
 				'cluster_window_days'    => max( 1, (int) ( $_POST['cluster_window_days'] ?? 7 ) ),

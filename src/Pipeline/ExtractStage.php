@@ -33,8 +33,6 @@ final class ExtractStage implements Stage {
 	}
 
 	public function process( Item $item ): string {
-		// Scraped/passthrough items carry their final content already; skip readability + the
-		// publisher-image fetch. Sitemap items still need one detail-page fetch to fill fields.
 		if ( ! empty( $item->flags['passthrough'] ) ) {
 			$this->extract_detail( $item );
 			$item->flags['content_length'] = mb_strlen( (string) $item->raw_content );
@@ -100,11 +98,6 @@ final class ExtractStage implements Stage {
 		return Schema::STATE_EXTRACTED;
 	}
 
-	/**
-	 * For scrape items configured with detail fields (sitemap mode), fetch the item's page
-	 * once and merge the extracted fields. RateLimited propagates so the queue defers without
-	 * consuming a retry, spreading same-host detail fetches past the politeness window.
-	 */
 	private function extract_detail( Item $item ): void {
 		$fields = (array) ( $item->flags['detail_fields'] ?? [] );
 		if ( ! $fields || $item->url === '' ) {
