@@ -61,6 +61,11 @@ final class Source {
 		return (array) ( $this->settings['scrape']['mapping']['fields'] ?? [] );
 	}
 
+	/** Whether the scraper honors robots.txt for this source (default true). */
+	public function respects_robots(): bool {
+		return (bool) ( $this->settings['scrape']['respect_robots'] ?? true );
+	}
+
 	public function full_content_threshold(): int {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}

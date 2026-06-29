@@ -499,13 +499,14 @@ final class Admin {
 			'post_type'   => sanitize_key( wp_unslash( $_POST['post_type'] ?? '' ) ),
 			'processing'  => in_array( $processing, [ 'passthrough', 'rewrite' ], true ) ? $processing : 'passthrough',
 			'scrape'      => [
-				'discovery'  => [
+				'discovery'      => [
 					'mode'          => $mode,
 					'item_selector' => sanitize_text_field( wp_unslash( $_POST['item_selector'] ?? '' ) ),
 					'url_filter'    => sanitize_text_field( wp_unslash( $_POST['url_filter'] ?? '' ) ),
 				],
-				'extraction' => [ 'fields' => $extraction ],
-				'mapping'    => [ 'fields' => $mapping ],
+				'extraction'     => [ 'fields' => $extraction ],
+				'mapping'        => [ 'fields' => $mapping ],
+				'respect_robots' => isset( $_POST['respect_robots'] ), // phpcs:ignore WordPress.Security.NonceVerification
 			],
 		];
 	}

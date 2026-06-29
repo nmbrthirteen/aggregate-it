@@ -26,7 +26,7 @@ final class ScraperParser implements SourceParser {
 	public function parse( Source $source ): array {
 		$cfg  = $source->scrape_config();
 		$mode = (string) ( $cfg['discovery']['mode'] ?? 'list' );
-		$body = $this->http->fetch( $source->url );
+		$body = $this->http->fetch( $source->url, $source->respects_robots() );
 		if ( ! is_string( $body ) || $body === '' ) {
 			return [];
 		}
@@ -75,7 +75,34 @@ final class ScraperParser implements SourceParser {
 		foreach ( $fields as $name => $rule ) {
 			$values[ (string) $name ] = $extractor->value( $row, (array) $rule );
 		}
+		return self::assemble_entry( $values, $base_url );
+	}
 
+	/**
+	 * Extract fields from a whole detail page (sitemap mode, or to enrich a list row). Static
+	 * so the pipeline's ExtractStage can call it per item without a parser instance.
+	 *
+	 * @param array<string,mixed> $fields
+	 * @return array<string,mixed>
+	 */
+	public static function extract_detail( string $html, array $fields, string $base_url ): array {
+		$doc       = self::dom( $html );
+		$xpath     = new \DOMXPath( $doc );
+		$extractor = new FieldExtractor( $xpath );
+		$root      = $doc->documentElement ?? $doc;
+
+		$values = [];
+		foreach ( $fields as $name => $rule ) {
+			$values[ (string) $name ] = $extractor->value( $root, (array) $rule );
+		}
+		return self::assemble_entry( $values, $base_url );
+	}
+
+	/**
+	 * @param array<string,string> $values
+	 * @return array<string,mixed>
+	 */
+	private static function assemble_entry( array $values, string $base_url ): array {
 		$url     = self::absolute_url( (string) ( $values['url'] ?? '' ), $base_url );
 		$title   = (string) ( $values['title'] ?? '' );
 		$content = (string) ( $values['content'] ?? ( $values['description'] ?? '' ) );

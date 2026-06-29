@@ -6,6 +6,8 @@ use AggregateIt\Database\Schema;
 use AggregateIt\Queue\ItemStore;
 use AggregateIt\Settings;
 use AggregateIt\Source\ContentExtractor;
+use AggregateIt\Source\HttpFetcher;
+use AggregateIt\Source\Parser\ScraperParser;
 use AggregateIt\Support\ActivityLog;
 
 defined( 'ABSPATH' ) || exit;
@@ -22,7 +24,8 @@ final class ExtractStage implements Stage {
 	public function __construct(
 		private ContentExtractor $extractor,
 		private ItemStore $items,
-		private Settings $settings
+		private Settings $settings,
+		private HttpFetcher $fetcher
 	) {}
 
 	public function handles(): string {
@@ -31,8 +34,9 @@ final class ExtractStage implements Stage {
 
 	public function process( Item $item ): string {
 		// Scraped/passthrough items carry their final content already; skip readability + the
-		// publisher-image fetch and let them flow straight to the mapped publish step.
+		// publisher-image fetch. Sitemap items still need one detail-page fetch to fill fields.
 		if ( ! empty( $item->flags['passthrough'] ) ) {
+			$this->extract_detail( $item );
 			$item->flags['content_length'] = mb_strlen( (string) $item->raw_content );
 			$item->flags['thin']           = false;
 			return Schema::STATE_EXTRACTED;
@@ -94,5 +98,41 @@ final class ExtractStage implements Stage {
 		);
 
 		return Schema::STATE_EXTRACTED;
+	}
+
+	/**
+	 * For scrape items configured with detail fields (sitemap mode), fetch the item's page
+	 * once and merge the extracted fields. RateLimited propagates so the queue defers without
+	 * consuming a retry, spreading same-host detail fetches past the politeness window.
+	 */
+	private function extract_detail( Item $item ): void {
+		$fields = (array) ( $item->flags['detail_fields'] ?? [] );
+		if ( ! $fields || $item->url === '' ) {
+			return;
+		}
+
+		$html = $this->fetcher->fetch( $item->url, (bool) ( $item->flags['respect_robots'] ?? true ) );
+		if ( ! is_string( $html ) || $html === '' ) {
+			return;
+		}
+
+		$entry = ScraperParser::extract_detail( $html, $fields, $item->url );
+
+		if ( $entry['title'] !== '' ) {
+			$item->flags['title'] = $entry['title'];
+		}
+		if ( $entry['content'] !== '' ) {
+			$item->raw_content = $entry['content'];
+			$this->items->update_content( $item->id, $entry['content'] );
+		}
+		if ( $entry['image'] !== '' ) {
+			$item->flags['image'] = $entry['image'];
+		}
+		if ( ! empty( $entry['date'] ) ) {
+			$item->flags['published_at'] = $entry['date'];
+		}
+		if ( ! empty( $entry['fields'] ) ) {
+			$item->flags['fields'] = array_merge( (array) ( $item->flags['fields'] ?? [] ), $entry['fields'] );
+		}
 	}
 }
