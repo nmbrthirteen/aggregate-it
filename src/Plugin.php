@@ -138,7 +138,7 @@ final class Plugin {
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
 		( new Maintenance\RulesRefresher( $this->sources ) )->register();
-		( new Maintenance\GlobalRulesRefresher( $this->settings ) )->register();
+		( new Maintenance\GlobalRulesRefresher( $this->settings, $this->sources ) )->register();
 		( new RestController( $this ) )->register();
 
 		if ( is_admin() ) {

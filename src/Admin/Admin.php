@@ -774,8 +774,9 @@ final class Admin {
 			unset( $public_types['attachment'] );
 			$global       = $settings->global_rules();
 			$rtype        = isset( $_GET['rtype'] ) ? sanitize_key( wp_unslash( $_GET['rtype'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-			if ( ! $rtype || ! isset( $public_types[ $rtype ] ) ) {
-				$rtype = (string) ( array_key_first( $global ) ?: 'post' );
+			if ( ! isset( $public_types[ $rtype ] ) ) {
+				$saved_types = array_values( array_filter( array_keys( $global ), static fn ( $type ): bool => isset( $public_types[ $type ] ) ) );
+				$rtype       = (string) ( $saved_types[0] ?? ( isset( $public_types['post'] ) ? 'post' : (string) array_key_first( $public_types ) ) );
 			}
 			$rules    = (array) ( $global[ $rtype ] ?? [] );
 			$saved    = isset( $_GET['ai_notice'] ) && sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) === 'saved'; // phpcs:ignore WordPress.Security.NonceVerification
@@ -837,8 +838,10 @@ final class Admin {
 	public function handle_save_rules(): void {
 		$this->guard( 'aggregate_it_save_rules' );
 
-		$rtype = sanitize_key( wp_unslash( $_POST['rtype'] ?? '' ) );
-		if ( $rtype === '' ) {
+		$rtype   = sanitize_key( wp_unslash( $_POST['rtype'] ?? '' ) );
+		$allowed = get_post_types( [ 'public' => true ], 'names' );
+		unset( $allowed['attachment'] );
+		if ( $rtype === '' || ! in_array( $rtype, $allowed, true ) ) {
 			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'rules' ] );
 		}
 

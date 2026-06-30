@@ -4,6 +4,7 @@ namespace AggregateIt\Maintenance;
 
 use AggregateIt\Publish\Rules;
 use AggregateIt\Settings;
+use AggregateIt\Source\SourceRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -17,7 +18,13 @@ final class GlobalRulesRefresher {
 	private const HOOK  = 'aggregate_it_global_rules';
 	private const BATCH = 200;
 
-	public function __construct( private Settings $settings ) {}
+	/** @var array<int,array<string,bool>> source id => meta keys it governs */
+	private array $owned_cache = [];
+
+	public function __construct(
+		private Settings $settings,
+		private SourceRepository $sources
+	) {}
 
 	public function register(): void {
 		add_action( self::HOOK, [ $this, 'run' ] );
@@ -59,8 +66,14 @@ final class GlobalRulesRefresher {
 
 			foreach ( (array) $ids as $id ) {
 				$values = $this->values_for( (int) $id, $needed );
+				$owned  = $this->source_owned_keys( (int) $id );
 				foreach ( Rules::apply( $values, $rules, $now ) as $key => $value ) {
-					update_post_meta( (int) $id, sanitize_key( (string) $key ), $value );
+					$key = sanitize_key( (string) $key );
+					// A scraped post's per-source rules own these keys; leave them to win.
+					if ( isset( $owned[ $key ] ) ) {
+						continue;
+					}
+					update_post_meta( (int) $id, $key, $value );
 				}
 			}
 
@@ -85,6 +98,26 @@ final class GlobalRulesRefresher {
 			}
 		}
 		return array_keys( $fields );
+	}
+
+	/** @return array<string,bool> meta keys governed by the post's per-source scrape rules */
+	private function source_owned_keys( int $id ): array {
+		$sid = (int) get_post_meta( $id, '_ai_source_id', true );
+		if ( ! $sid ) {
+			return [];
+		}
+		if ( ! isset( $this->owned_cache[ $sid ] ) ) {
+			$source = $this->sources->get( $sid );
+			$keys   = [];
+			foreach ( $source ? $source->rules() : [] as $rule ) {
+				$key = sanitize_key( (string) ( $rule['set_key'] ?? '' ) );
+				if ( $key !== '' ) {
+					$keys[ $key ] = true;
+				}
+			}
+			$this->owned_cache[ $sid ] = $keys;
+		}
+		return $this->owned_cache[ $sid ];
 	}
 
 	/**
