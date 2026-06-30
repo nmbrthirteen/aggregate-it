@@ -161,13 +161,13 @@ $cards = [
 								<?php
 								$timeline = get_post_meta( $hub->ID, '_ai_timeline', true );
 								$articles = is_array( $timeline ) ? count( $timeline ) : 0;
-								$is_stub  = (bool) get_post_meta( $hub->ID, '_ai_is_stub', true );
+								$scraped  = (bool) get_post_meta( $hub->ID, '_ai_scraped', true );
 								?>
 								<tr>
 									<td>
 										<a href="<?php echo esc_url( (string) get_edit_post_link( $hub->ID ) ); ?>"><strong><?php echo esc_html( get_the_title( $hub ) ); ?></strong></a>
 										<code><?php echo esc_html( $hub->post_type ); ?></code>
-										<?php if ( $is_stub ) : ?><span class="ai-hub-tag"><?php esc_html_e( 'basic', 'aggregate-it' ); ?></span><?php endif; ?>
+										<?php if ( $scraped ) : ?><span class="ai-hub-tag ai-hub-tag--new"><?php esc_html_e( 'scraped', 'aggregate-it' ); ?></span><?php else : ?><span class="ai-hub-tag"><?php esc_html_e( 'topic hub', 'aggregate-it' ); ?></span><?php endif; ?>
 									</td>
 									<td><?php echo esc_html( number_format_i18n( $articles ) ); ?></td>
 									<td><a href="<?php echo esc_url( (string) get_permalink( $hub ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View', 'aggregate-it' ); ?></a></td>

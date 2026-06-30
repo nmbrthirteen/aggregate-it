@@ -121,6 +121,10 @@ final class Plugin {
 		( new EntityRegistrar( $this->rules ) )->register();
 		( new \AggregateIt\Source\ScraperPostTypes() )->register();
 
+		if ( is_admin() ) {
+			( new \AggregateIt\Admin\HubColumns() )->register();
+		}
+
 		if ( $this->settings->hub_review() ) {
 			add_filter( 'aggregate_it_new_hub_status', static fn () => 'draft' );
 		}
