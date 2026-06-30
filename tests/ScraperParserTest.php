@@ -88,6 +88,18 @@ final class ScraperParserTest extends TestCase {
 		$this->assertSame( 'Rome, Italy', $entry['fields']['location'] );
 	}
 
+	public function test_next_page_url_resolves_from_selector(): void {
+		$html = '<div class="nav"><a class="next" href="/events/page/2/">Next</a></div>';
+		$method = new \ReflectionMethod( ScraperParser::class, 'next_page_url' );
+		$method->setAccessible( true );
+
+		$this->assertSame(
+			'https://x.test/events/page/2/',
+			$method->invoke( null, $html, 'a.next', 'https://x.test/events/' )
+		);
+		$this->assertSame( '', $method->invoke( null, '<div>no next</div>', 'a.next', 'https://x.test/events/' ) );
+	}
+
 	public function test_sitemap_mode_filters_locs(): void {
 		$xml = '<urlset>'
 			. '<url><loc>https://x.test/Event-One_001.aspx</loc></url>'

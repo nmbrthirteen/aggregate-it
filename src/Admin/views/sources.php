@@ -33,6 +33,8 @@ $sc_filter = (string) ( $scrape['discovery']['url_filter'] ?? '' );
 $sc_ptype  = $editing ? $editing->post_type_connection() : '';
 $sc_proc   = $editing ? $editing->processing_mode() : 'passthrough';
 $sc_robots = $editing ? $editing->respects_robots() : true;
+$sc_next   = $editing ? $editing->pagination_next_selector() : '';
+$sc_pages  = $editing ? $editing->pagination_max_pages() : 1;
 
 $sc_fields = (array) ( $scrape['extraction']['fields'] ?? [] );
 $sc_map    = (array) ( $scrape['mapping']['fields'] ?? [] );
@@ -116,7 +118,6 @@ $dest_options = [
 								<option value="<?php echo esc_attr( $pt->name ); ?>"><?php echo esc_html( $pt->labels->singular_name ?? $pt->name ); ?></option>
 							<?php endforeach; ?>
 						</datalist>
-						<p class="description"><?php esc_html_e( 'Pick an existing type or type a new slug (e.g. event) — it will be created automatically.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row">
@@ -126,7 +127,6 @@ $dest_options = [
 							<option value="passthrough" <?php selected( $sc_proc, 'passthrough' ); ?>><?php esc_html_e( 'Import as-is (no AI changes)', 'aggregate-it' ); ?></option>
 							<option value="rewrite" <?php selected( $sc_proc, 'rewrite' ); ?>><?php esc_html_e( 'AI rewrite (like feeds)', 'aggregate-it' ); ?></option>
 						</select>
-						<p class="description"><?php esc_html_e( 'Keep structured data (dates, venues) exact with "as-is".', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row">
@@ -145,7 +145,6 @@ $dest_options = [
 							value="<?php echo esc_attr( $sc_item ); ?>" placeholder="tr.event">
 						<button type="button" class="button" id="ai-suggest"><?php esc_html_e( 'Suggest fields with AI', 'aggregate-it' ); ?></button>
 						<span id="ai-suggest-status" class="description"></span>
-						<p class="description"><?php esc_html_e( 'Fetches the page above and proposes selectors — review them before saving.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-sitemap">
@@ -194,7 +193,17 @@ $dest_options = [
 								<?php endforeach; ?>
 							</tbody>
 						</table>
-						<p class="description"><?php esc_html_e( 'Use names title, url, date, image, content for standard fields; anything else becomes a custom field. Attribute: text, html, or an attribute like href / src.', 'aggregate-it' ); ?></p>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row ai-scrape-list">
+					<th><label for="ai-next-selector"><?php esc_html_e( 'Next-page link', 'aggregate-it' ); ?></label></th>
+					<td>
+						<input name="next_selector" id="ai-next-selector" type="text" class="regular-text code"
+							value="<?php echo esc_attr( $sc_next ); ?>" placeholder="a.next">
+						<label class="ai-inline"><?php esc_html_e( 'up to', 'aggregate-it' ); ?>
+							<input name="max_pages" type="number" min="1" max="50" class="small-text" value="<?php echo esc_attr( (string) $sc_pages ); ?>">
+							<?php esc_html_e( 'pages', 'aggregate-it' ); ?>
+						</label>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-list">
@@ -203,7 +212,6 @@ $dest_options = [
 						<button type="button" class="button" id="ai-preview-btn"><?php esc_html_e( 'Preview extraction', 'aggregate-it' ); ?></button>
 						<span id="ai-preview-status" class="description"></span>
 						<div id="ai-preview" class="ai-preview"></div>
-						<p class="description"><?php esc_html_e( 'Runs the selectors above against the page and shows the first few items.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
 				<tr>

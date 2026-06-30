@@ -26,14 +26,77 @@ final class ScraperParser implements SourceParser {
 	public function parse( Source $source ): array {
 		$cfg  = $source->scrape_config();
 		$mode = (string) ( $cfg['discovery']['mode'] ?? 'list' );
-		$body = $this->http->fetch( $source->url, $source->respects_robots() );
-		if ( ! is_string( $body ) || $body === '' ) {
-			return [];
+
+		if ( $mode === 'sitemap' ) {
+			$body = $this->http->fetch( $source->url, $source->respects_robots() );
+			return is_string( $body ) && $body !== ''
+				? $this->entries_from_sitemap( $body, (string) ( $cfg['discovery']['url_filter'] ?? '' ) )
+				: [];
 		}
 
-		return $mode === 'sitemap'
-			? $this->entries_from_sitemap( $body, (string) ( $cfg['discovery']['url_filter'] ?? '' ) )
-			: $this->entries_from_html( $body, $cfg, $source->url );
+		return $this->parse_list( $source, $cfg );
+	}
+
+	/** @return array<int,array<string,mixed>> */
+	private function parse_list( Source $source, array $cfg ): array {
+		$next_selector = $source->pagination_next_selector();
+		$max_pages     = $next_selector !== '' ? $source->pagination_max_pages() : 1;
+		$respect       = $source->respects_robots();
+
+		$url      = $source->url;
+		$seen_url = [];
+		$seen_id  = [];
+		$entries  = [];
+
+		for ( $page = 0; $page < $max_pages && $url !== '' && ! isset( $seen_url[ $url ] ); $page++ ) {
+			$seen_url[ $url ] = true;
+
+			if ( $page === 0 ) {
+				$html = $this->http->fetch( $url, $respect );
+			} else {
+				sleep( 3 );
+				try {
+					$html = $this->http->fetch( $url, $respect );
+				} catch ( \Throwable $e ) {
+					break;
+				}
+			}
+			if ( ! is_string( $html ) || $html === '' ) {
+				break;
+			}
+
+			foreach ( $this->entries_from_html( $html, $cfg, $url ) as $entry ) {
+				if ( ! isset( $seen_id[ $entry['guid'] ] ) ) {
+					$seen_id[ $entry['guid'] ] = true;
+					$entries[]                 = $entry;
+				}
+			}
+
+			$url = $next_selector !== '' ? self::next_page_url( $html, $next_selector, $url ) : '';
+		}
+
+		return $entries;
+	}
+
+	private static function next_page_url( string $html, string $selector, string $base ): string {
+		$doc   = self::dom( $html );
+		$xpath = new \DOMXPath( $doc );
+		$nodes = $xpath->query( CssToXpath::convert( $selector ) );
+		if ( ! $nodes || $nodes->length === 0 ) {
+			return '';
+		}
+
+		$node = $nodes->item( 0 );
+		$href = $node instanceof \DOMElement ? $node->getAttribute( 'href' ) : '';
+		if ( $href === '' && $node instanceof \DOMNode ) {
+			$inner = $xpath->query( './/a[@href]', $node );
+			if ( $inner && $inner->length && $inner->item( 0 ) instanceof \DOMElement ) {
+				$href = $inner->item( 0 )->getAttribute( 'href' );
+			}
+		}
+
+		$abs = self::absolute_url( $href, $base );
+		return $abs === $base ? '' : $abs;
 	}
 
 	/**
