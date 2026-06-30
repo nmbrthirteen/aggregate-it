@@ -199,7 +199,7 @@ $dest_options = [
 						<p class="description"><?php esc_html_e( 'Only turn this off for sites you own or have permission to scrape — you are responsible for their terms.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
-				<tr class="ai-scrape-row ai-scrape-list">
+				<tr class="ai-scrape-row">
 					<th><?php esc_html_e( 'Fields', 'aggregate-it' ); ?></th>
 					<td>
 						<table class="ai-fields-table widefat">
@@ -243,7 +243,7 @@ $dest_options = [
 						</label>
 					</td>
 				</tr>
-				<tr class="ai-scrape-row ai-scrape-list">
+				<tr class="ai-scrape-row">
 					<th><?php esc_html_e( 'Rules', 'aggregate-it' ); ?></th>
 					<td>
 						<table class="ai-rules-table widefat" id="ai-rules">
