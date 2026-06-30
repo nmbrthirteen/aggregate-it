@@ -19,7 +19,7 @@ final class HttpFetcher {
 	private const CACHE_TTL     = 3600;   // response cache
 	private const ROBOTS_TTL    = 43200;  // robots.txt cache
 
-	public function fetch( string $url, bool $respect_robots = true ): ?string {
+	public function fetch( string $url, bool $respect_robots = true, bool $throttle = true ): ?string {
 		$host = wp_parse_url( $url, PHP_URL_HOST );
 		if ( ! $host ) {
 			return null;
@@ -37,7 +37,9 @@ final class HttpFetcher {
 			throw new \RuntimeException( 'Blocked by robots.txt: ' . esc_url_raw( $url ) );
 		}
 
-		$this->throttle( $host );
+		if ( $throttle ) {
+			$this->throttle( $host );
+		}
 
 		$response = wp_remote_get(
 			$url,

@@ -37,11 +37,15 @@ final class ScraperParser implements SourceParser {
 		return $this->parse_list( $source, $cfg );
 	}
 
+	private const PAGE_GAP    = 1;  // seconds between sequential page fetches
+	private const PAGE_BUDGET = 25; // wall-clock ceiling for one paginated crawl
+
 	/** @return array<int,array<string,mixed>> */
 	private function parse_list( Source $source, array $cfg ): array {
 		$next_selector = $source->pagination_next_selector();
 		$max_pages     = $next_selector !== '' ? $source->pagination_max_pages() : 1;
 		$respect       = $source->respects_robots();
+		$deadline      = time() + self::PAGE_BUDGET;
 
 		$url      = $source->url;
 		$seen_url = [];
@@ -54,9 +58,14 @@ final class ScraperParser implements SourceParser {
 			if ( $page === 0 ) {
 				$html = $this->http->fetch( $url, $respect );
 			} else {
-				sleep( 3 );
+				if ( time() >= $deadline ) {
+					break;
+				}
+				sleep( self::PAGE_GAP );
 				try {
-					$html = $this->http->fetch( $url, $respect );
+					// Sequential, same-source crawl: skip the per-host throttle (which would
+					// throw) and pace it ourselves with the short gap above.
+					$html = $this->http->fetch( $url, $respect, false );
 				} catch ( \Throwable $e ) {
 					break;
 				}
