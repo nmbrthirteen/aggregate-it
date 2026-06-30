@@ -11,19 +11,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$base = admin_url( 'admin.php?page=aggregate-it-activity' );
+$base = admin_url( 'admin.php?page=aggregate-it&tab=activity' );
 
 $label_for = static function ( string $state ): string {
 	return $state === '' ? '' : ucwords( str_replace( '_', ' ', $state ) );
 };
 ?>
-<div class="wrap aggregate-it">
-	<div class="ai-head">
-		<h1><?php esc_html_e( 'Activity', 'aggregate-it' ); ?></h1>
-	</div>
-
 	<form method="get" class="ai-act-filters">
-		<input type="hidden" name="page" value="aggregate-it-activity">
+		<input type="hidden" name="page" value="aggregate-it">
+		<input type="hidden" name="tab" value="activity">
 		<?php if ( $filters['item_id'] ) : ?>
 			<input type="hidden" name="item" value="<?php echo esc_attr( (string) $filters['item_id'] ); ?>">
 		<?php endif; ?>
@@ -98,7 +94,8 @@ $label_for = static function ( string $state ): string {
 		<?php
 		$qs       = array_filter(
 			[
-				'page'  => 'aggregate-it-activity',
+				'page'  => 'aggregate-it',
+				'tab'   => 'activity',
 				'level' => $filters['level'],
 				'type'  => $filters['type'],
 				'item'  => $filters['item_id'] ?: '',
@@ -116,7 +113,6 @@ $label_for = static function ( string $state ): string {
 			<?php if ( $page < $pages ) : ?><a class="button" href="<?php echo $page_url( $page + 1 ); ?>"><?php esc_html_e( 'Older', 'aggregate-it' ); ?> ›</a><?php endif; ?>
 		</p>
 	<?php endif; ?>
-</div>
 
 <script>
 window.addEventListener( 'load', function () {

@@ -46,7 +46,7 @@ foreach ( $post_types as $slug => $pt ) {
 }
 
 $post_action = esc_url( admin_url( 'admin-post.php' ) );
-$activity_url = admin_url( 'admin.php?page=aggregate-it-activity&type=' . rawurlencode( \AggregateIt\Database\Schema::STATE_ENTITY_LINKED ) );
+$activity_url = admin_url( 'admin.php?page=aggregate-it&tab=activity&type=' . rawurlencode( \AggregateIt\Database\Schema::STATE_ENTITY_LINKED ) );
 
 $cards = [
 	[ 'n' => $summary['hubs'], 'label' => __( 'Topic hubs', 'aggregate-it' ) ],
