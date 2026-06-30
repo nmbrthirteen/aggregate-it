@@ -26,38 +26,47 @@ final class RulesRefresher {
 		}
 	}
 
+	private const BATCH = 200;
+
 	public function run(): void {
-		$ids = get_posts(
-			[
-				'post_type'      => 'any',
-				'post_status'    => 'any',
-				'posts_per_page' => 1000,
-				'fields'         => 'ids',
-				'no_found_rows'  => true,
-				'meta_key'       => '_ai_rule_values', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-			]
-		);
+		$now    = time();
+		$rules  = [];
+		$offset = 0;
 
-		$now   = time();
-		$rules = [];
-		foreach ( (array) $ids as $id ) {
-			$values = (array) Json::decode( (string) get_post_meta( $id, '_ai_rule_values', true ), [] );
-			$sid    = (int) get_post_meta( $id, '_ai_source_id', true );
-			if ( ! $values || ! $sid ) {
-				continue;
+		do {
+			$ids = get_posts(
+				[
+					'post_type'      => 'any',
+					'post_status'    => 'any',
+					'posts_per_page' => self::BATCH,
+					'offset'         => $offset,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+					'meta_key'       => '_ai_rule_values', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				]
+			);
+
+			foreach ( (array) $ids as $id ) {
+				$values = (array) Json::decode( (string) get_post_meta( $id, '_ai_rule_values', true ), [] );
+				$sid    = (int) get_post_meta( $id, '_ai_source_id', true );
+				if ( ! $values || ! $sid ) {
+					continue;
+				}
+
+				if ( ! array_key_exists( $sid, $rules ) ) {
+					$source        = $this->sources->get( $sid );
+					$rules[ $sid ] = $source ? $source->rules() : [];
+				}
+				if ( ! $rules[ $sid ] ) {
+					continue;
+				}
+
+				foreach ( Rules::apply( $values, $rules[ $sid ], $now ) as $key => $value ) {
+					update_post_meta( $id, sanitize_key( (string) $key ), $value );
+				}
 			}
 
-			if ( ! array_key_exists( $sid, $rules ) ) {
-				$source        = $this->sources->get( $sid );
-				$rules[ $sid ] = $source ? $source->rules() : [];
-			}
-			if ( ! $rules[ $sid ] ) {
-				continue;
-			}
-
-			foreach ( Rules::apply( $values, $rules[ $sid ], $now ) as $key => $value ) {
-				update_post_meta( $id, sanitize_key( (string) $key ), $value );
-			}
-		}
+			$offset += self::BATCH;
+		} while ( count( (array) $ids ) === self::BATCH );
 	}
 }

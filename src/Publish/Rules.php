@@ -45,7 +45,7 @@ final class Rules {
 			case 'contains':
 				return $value !== '' && stripos( $raw, $value ) !== false;
 			case 'not_contains':
-				return $value === '' || stripos( $raw, $value ) === false;
+				return $value !== '' && stripos( $raw, $value ) === false;
 			case 'empty':
 				return trim( $raw ) === '';
 			case 'not_empty':
@@ -73,7 +73,7 @@ final class Rules {
 		return (string) preg_replace_callback(
 			'/\{([a-z0-9_]+)(?:\|([^}]+))?\}/i',
 			static function ( array $m ) use ( $values ): string {
-				$raw = (string) ( $values[ $m[1] ] ?? '' );
+				$raw = (string) ( $values[ strtolower( $m[1] ) ] ?? '' );
 				if ( isset( $m[2] ) && $m[2] !== '' ) {
 					$ts = strtotime( $raw );
 					return $ts !== false ? gmdate( $m[2], $ts ) : '';

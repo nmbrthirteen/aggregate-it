@@ -152,6 +152,7 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'aggregate_it_process_queue' );
 		wp_clear_scheduled_hook( 'aggregate_it_import' );
 		wp_clear_scheduled_hook( 'aggregate_it_retention' );
+		wp_clear_scheduled_hook( 'aggregate_it_rules_refresh' );
 	}
 
 	public function settings(): Settings {

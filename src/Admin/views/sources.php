@@ -536,6 +536,9 @@ $dest_options = [
 			ruleAdd.addEventListener( 'click', function () {
 				rulesBody.appendChild( ruleTpl.content.cloneNode( true ) );
 				bindRule( rulesBody.lastElementChild );
+				if ( window.jQuery && window.jQuery( rulesBody ).is( ':data(ui-sortable)' ) ) {
+					window.jQuery( rulesBody ).sortable( 'refresh' );
+				}
 			} );
 		}
 
