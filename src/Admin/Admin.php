@@ -34,6 +34,7 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_approve_hub', [ $this, 'handle_approve_hub' ] );
 		add_action( 'admin_post_aggregate_it_trash_hub', [ $this, 'handle_trash_hub' ] );
 		add_action( 'admin_post_aggregate_it_save_settings', [ $this, 'handle_save_settings' ] );
+		add_action( 'admin_post_aggregate_it_save_rules', [ $this, 'handle_save_rules' ] );
 		add_action( 'admin_post_aggregate_it_dismiss_setup', [ $this, 'handle_dismiss_setup' ] );
 		add_action( 'admin_post_aggregate_it_retry_article', [ $this, 'handle_retry_article' ] );
 		add_action( 'admin_post_aggregate_it_retry_failed', [ $this, 'handle_retry_failed' ] );
@@ -759,6 +760,7 @@ final class Admin {
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general'; // phpcs:ignore WordPress.Security.NonceVerification
 		$tabs = [
 			'general' => __( 'General', 'aggregate-it' ),
+			'rules'   => __( 'Rules', 'aggregate-it' ),
 			'tools'   => __( 'Tools', 'aggregate-it' ),
 		];
 		if ( ! isset( $tabs[ $tab ] ) ) {
@@ -766,6 +768,19 @@ final class Admin {
 		}
 
 		$settings = $this->plugin->settings();
+
+		if ( $tab === 'rules' ) {
+			$public_types = get_post_types( [ 'public' => true ], 'objects' );
+			unset( $public_types['attachment'] );
+			$global       = $settings->global_rules();
+			$rtype        = isset( $_GET['rtype'] ) ? sanitize_key( wp_unslash( $_GET['rtype'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+			if ( ! $rtype || ! isset( $public_types[ $rtype ] ) ) {
+				$rtype = (string) ( array_key_first( $global ) ?: 'post' );
+			}
+			$rules    = (array) ( $global[ $rtype ] ?? [] );
+			$saved    = isset( $_GET['ai_notice'] ) && sanitize_key( wp_unslash( $_GET['ai_notice'] ) ) === 'saved'; // phpcs:ignore WordPress.Security.NonceVerification
+			$rule_ops = self::rule_op_labels();
+		}
 
 		if ( $tab === 'tools' ) {
 			$flash = get_transient( 'aggregate_it_flash' );
@@ -796,9 +811,41 @@ final class Admin {
 		echo '</nav>';
 
 		$tab_embedded = true;
-		require AGGREGATE_IT_PATH . 'src/Admin/views/' . ( $tab === 'tools' ? 'tools.php' : 'settings.php' );
+		$view         = [ 'general' => 'settings.php', 'rules' => 'settings-rules.php', 'tools' => 'tools.php' ][ $tab ];
+		require AGGREGATE_IT_PATH . 'src/Admin/views/' . $view;
 
 		echo '</div>';
+	}
+
+	/** @return array<string,string> rule operator => label */
+	public static function rule_op_labels(): array {
+		return [
+			'always'       => __( 'always', 'aggregate-it' ),
+			'equals'       => __( 'equals', 'aggregate-it' ),
+			'not_equals'   => __( 'does not equal', 'aggregate-it' ),
+			'contains'     => __( 'contains', 'aggregate-it' ),
+			'not_contains' => __( 'does not contain', 'aggregate-it' ),
+			'empty'        => __( 'is empty', 'aggregate-it' ),
+			'not_empty'    => __( 'is not empty', 'aggregate-it' ),
+			'date_past'    => __( 'date is in the past', 'aggregate-it' ),
+			'date_future'  => __( 'date is in the future', 'aggregate-it' ),
+			'gt'           => __( 'greater than', 'aggregate-it' ),
+			'lt'           => __( 'less than', 'aggregate-it' ),
+		];
+	}
+
+	public function handle_save_rules(): void {
+		$this->guard( 'aggregate_it_save_rules' );
+
+		$rtype = sanitize_key( wp_unslash( $_POST['rtype'] ?? '' ) );
+		if ( $rtype === '' ) {
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'rules' ] );
+		}
+
+		$this->plugin->settings()->set_global_rules( $rtype, $this->rules_from_post() );
+		\AggregateIt\Maintenance\GlobalRulesRefresher::schedule_soon();
+
+		$this->redirect( self::SLUG . '-settings', 'saved', [ 'tab' => 'rules', 'rtype' => $rtype ] );
 	}
 
 	public function handle_save_settings(): void {
