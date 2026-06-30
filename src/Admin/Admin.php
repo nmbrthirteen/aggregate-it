@@ -153,6 +153,7 @@ final class Admin {
 		}
 
 		wp_enqueue_style( 'aggregate-it-admin', AGGREGATE_IT_URL . 'assets/css/admin.css', [], $this->asset_version( 'assets/css/admin.css' ) );
+		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'aggregate-it-charts', AGGREGATE_IT_URL . 'assets/js/charts.js', [], $this->asset_version( 'assets/js/charts.js' ), true );
 		wp_enqueue_script( 'aggregate-it-admin', AGGREGATE_IT_URL . 'assets/js/admin.js', [ 'aggregate-it-charts' ], $this->asset_version( 'assets/js/admin.js' ), true );
 
@@ -512,8 +513,45 @@ final class Admin {
 					'next_selector' => sanitize_text_field( wp_unslash( $_POST['next_selector'] ?? '' ) ), // phpcs:ignore WordPress.Security.NonceVerification
 					'max_pages'     => max( 1, min( 50, (int) ( $_POST['max_pages'] ?? 1 ) ) ), // phpcs:ignore WordPress.Security.NonceVerification
 				],
+				'rules'          => $this->rules_from_post(),
 			],
 		];
+	}
+
+	/**
+	 * Parse the ordered rule rows into rule definitions, dropping rows with no target meta key.
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	private function rules_from_post(): array {
+		// phpcs:disable WordPress.Security.NonceVerification -- guarded by the caller's nonce check.
+		$fields  = (array) ( $_POST['rule_field'] ?? [] );
+		$ops     = (array) ( $_POST['rule_op'] ?? [] );
+		$values  = (array) ( $_POST['rule_value'] ?? [] );
+		$keys    = (array) ( $_POST['rule_set_key'] ?? [] );
+		$results = (array) ( $_POST['rule_set_value'] ?? [] );
+		$rules   = [];
+
+		foreach ( $keys as $i => $raw_key ) {
+			$set_key = sanitize_key( wp_unslash( (string) $raw_key ) );
+			if ( $set_key === '' ) {
+				continue;
+			}
+			$op = sanitize_key( wp_unslash( (string) ( $ops[ $i ] ?? 'always' ) ) );
+			if ( ! in_array( $op, \AggregateIt\Publish\Rules::OPS, true ) ) {
+				$op = 'always';
+			}
+			$rules[] = [
+				'field'     => sanitize_key( wp_unslash( (string) ( $fields[ $i ] ?? '' ) ) ),
+				'op'        => $op,
+				'value'     => sanitize_text_field( wp_unslash( (string) ( $values[ $i ] ?? '' ) ) ),
+				'set_key'   => $set_key,
+				'set_value' => sanitize_text_field( wp_unslash( (string) ( $results[ $i ] ?? '' ) ) ),
+			];
+		}
+		// phpcs:enable WordPress.Security.NonceVerification
+
+		return $rules;
 	}
 
 	public function handle_delete_source(): void {

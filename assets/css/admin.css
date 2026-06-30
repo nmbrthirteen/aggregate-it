@@ -287,6 +287,33 @@
 	padding: 4px;
 }
 
+.aggregate-it .ai-rules-table {
+	max-width: 1000px;
+}
+
+.aggregate-it .ai-rules-table td {
+	padding: 4px;
+	vertical-align: middle;
+}
+
+.aggregate-it .ai-rules-table input,
+.aggregate-it .ai-rules-table select {
+	width: 100%;
+}
+
+.aggregate-it .ai-rule-handle {
+	cursor: grab;
+	color: #8c8f94;
+	width: 20px;
+	text-align: center;
+	font-size: 16px;
+}
+
+.aggregate-it .ai-rule-del {
+	color: #b32d2e;
+	text-decoration: none;
+}
+
 .aggregate-it .ai-preview {
 	margin: 8px 0;
 	max-width: 880px;

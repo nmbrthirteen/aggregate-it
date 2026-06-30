@@ -137,6 +137,7 @@ final class Plugin {
 		( new Importer( $this->sources, $this->items, $this->settings, new \AggregateIt\Source\Parser\ScraperParser( new HttpFetcher() ) ) )->register();
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
+		( new Maintenance\RulesRefresher( $this->sources ) )->register();
 		( new RestController( $this ) )->register();
 
 		if ( is_admin() ) {

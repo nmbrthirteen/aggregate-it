@@ -97,7 +97,8 @@ final class PostFactory {
 		$post_type = $source && $source->post_type_connection() !== '' ? $source->post_type_connection() : $this->settings->target_post_type();
 		$status    = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
 
-		$mapped = FieldMapper::map( $this->mapped_values( $item ), $source ? $source->field_map() : [] );
+		$values = $this->mapped_values( $item );
+		$mapped = FieldMapper::map( $values, $source ? $source->field_map() : [] );
 
 		$title = (string) ( $mapped['post']['post_title'] ?? ( $item->flags['title'] ?? 'Untitled' ) );
 		$body  = (string) ( $mapped['post']['post_content'] ?? '' );
@@ -134,6 +135,15 @@ final class PostFactory {
 			if ( taxonomy_exists( (string) $taxonomy ) ) {
 				wp_set_object_terms( $post_id, $names, (string) $taxonomy, false );
 			}
+		}
+
+		$rules = $source ? $source->rules() : [];
+		if ( $rules ) {
+			foreach ( Rules::apply( $values, $rules, time() ) as $key => $value ) {
+				update_post_meta( $post_id, sanitize_key( (string) $key ), $value );
+			}
+			update_post_meta( $post_id, '_ai_rule_values', wp_json_encode( $values ) );
+			update_post_meta( $post_id, '_ai_source_id', (int) $item->source_id );
 		}
 
 		return $post_id;

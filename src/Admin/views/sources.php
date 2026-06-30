@@ -35,6 +35,43 @@ $sc_proc   = $editing ? $editing->processing_mode() : 'passthrough';
 $sc_robots = $editing ? $editing->respects_robots() : true;
 $sc_next   = $editing ? $editing->pagination_next_selector() : '';
 $sc_pages  = $editing ? $editing->pagination_max_pages() : 1;
+$sc_rules = $editing ? $editing->rules() : [];
+if ( ! $sc_rules ) {
+	$sc_rules = [ [ 'field' => '', 'op' => 'always', 'value' => '', 'set_key' => '', 'set_value' => '' ] ];
+}
+$rule_ops = [
+	'always'       => __( 'always', 'aggregate-it' ),
+	'equals'       => __( 'equals', 'aggregate-it' ),
+	'not_equals'   => __( 'does not equal', 'aggregate-it' ),
+	'contains'     => __( 'contains', 'aggregate-it' ),
+	'not_contains' => __( 'does not contain', 'aggregate-it' ),
+	'empty'        => __( 'is empty', 'aggregate-it' ),
+	'not_empty'    => __( 'is not empty', 'aggregate-it' ),
+	'date_past'    => __( 'date is in the past', 'aggregate-it' ),
+	'date_future'  => __( 'date is in the future', 'aggregate-it' ),
+	'gt'           => __( 'greater than', 'aggregate-it' ),
+	'lt'           => __( 'less than', 'aggregate-it' ),
+];
+
+$render_rule_row = static function ( array $rule, array $rule_ops ): void {
+	?>
+	<tr class="ai-rule">
+		<td class="ai-rule-handle" title="<?php esc_attr_e( 'Drag to reorder', 'aggregate-it' ); ?>">⠿</td>
+		<td><input type="text" name="rule_field[]" list="ai-source-fields" value="<?php echo esc_attr( (string) ( $rule['field'] ?? '' ) ); ?>" placeholder="date"></td>
+		<td>
+			<select name="rule_op[]">
+				<?php foreach ( $rule_ops as $val => $label ) : ?>
+					<option value="<?php echo esc_attr( $val ); ?>" <?php selected( (string) ( $rule['op'] ?? 'always' ), $val ); ?>><?php echo esc_html( $label ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</td>
+		<td><input type="text" name="rule_value[]" value="<?php echo esc_attr( (string) ( $rule['value'] ?? '' ) ); ?>"></td>
+		<td><input type="text" name="rule_set_key[]" list="ai-meta-keys" value="<?php echo esc_attr( (string) ( $rule['set_key'] ?? '' ) ); ?>" placeholder="event_status"></td>
+		<td><input type="text" name="rule_set_value[]" value="<?php echo esc_attr( (string) ( $rule['set_value'] ?? '' ) ); ?>" placeholder="Upcoming or {date|Y-m-d}"></td>
+		<td><button type="button" class="button-link ai-rule-del" title="<?php esc_attr_e( 'Remove', 'aggregate-it' ); ?>">✕</button></td>
+	</tr>
+	<?php
+};
 
 $sc_fields = (array) ( $scrape['extraction']['fields'] ?? [] );
 $sc_map    = (array) ( $scrape['mapping']['fields'] ?? [] );
@@ -204,6 +241,31 @@ $dest_options = [
 							<input name="max_pages" type="number" min="1" max="50" class="small-text" value="<?php echo esc_attr( (string) $sc_pages ); ?>">
 							<?php esc_html_e( 'pages', 'aggregate-it' ); ?>
 						</label>
+					</td>
+				</tr>
+				<tr class="ai-scrape-row ai-scrape-list">
+					<th><?php esc_html_e( 'Rules', 'aggregate-it' ); ?></th>
+					<td>
+						<table class="ai-rules-table widefat" id="ai-rules">
+							<thead><tr>
+								<th></th>
+								<th><?php esc_html_e( 'If field', 'aggregate-it' ); ?></th>
+								<th><?php esc_html_e( 'Condition', 'aggregate-it' ); ?></th>
+								<th><?php esc_html_e( 'Value', 'aggregate-it' ); ?></th>
+								<th><?php esc_html_e( 'Set meta key', 'aggregate-it' ); ?></th>
+								<th><?php esc_html_e( 'To value', 'aggregate-it' ); ?></th>
+								<th></th>
+							</tr></thead>
+							<tbody id="ai-rules-body">
+								<?php foreach ( $sc_rules as $rule ) : ?>
+									<?php $render_rule_row( (array) $rule, $rule_ops ); ?>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+						<p><button type="button" class="button" id="ai-rule-add"><?php esc_html_e( 'Add rule', 'aggregate-it' ); ?></button></p>
+						<datalist id="ai-source-fields"></datalist>
+						<datalist id="ai-meta-keys"></datalist>
+						<template id="ai-rule-template"><?php $render_rule_row( [ 'op' => 'always' ], $rule_ops ); ?></template>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-list">
@@ -458,6 +520,56 @@ $dest_options = [
 				}
 			} );
 		}
+
+		var rulesBody = document.getElementById( 'ai-rules-body' );
+		var ruleAdd = document.getElementById( 'ai-rule-add' );
+		var ruleTpl = document.getElementById( 'ai-rule-template' );
+
+		function bindRule( row ) {
+			var del = row.querySelector( '.ai-rule-del' );
+			if ( del ) { del.addEventListener( 'click', function () { row.remove(); } ); }
+		}
+		if ( rulesBody ) {
+			rulesBody.querySelectorAll( 'tr.ai-rule' ).forEach( bindRule );
+		}
+		if ( ruleAdd && rulesBody && ruleTpl ) {
+			ruleAdd.addEventListener( 'click', function () {
+				rulesBody.appendChild( ruleTpl.content.cloneNode( true ) );
+				bindRule( rulesBody.lastElementChild );
+			} );
+		}
+
+		function fillSourceFields() {
+			var dl = document.getElementById( 'ai-source-fields' );
+			if ( ! dl ) { return; }
+			var names = {};
+			document.querySelectorAll( 'input[name="field_name[]"]' ).forEach( function ( i ) { if ( i.value ) { names[ i.value ] = 1; } } );
+			dl.innerHTML = '';
+			Object.keys( names ).forEach( function ( n ) { var o = document.createElement( 'option' ); o.value = n; dl.appendChild( o ); } );
+		}
+		document.querySelectorAll( 'input[name="field_name[]"]' ).forEach( function ( i ) { i.addEventListener( 'input', fillSourceFields ); } );
+		fillSourceFields();
+
+		function fillMetaKeys() {
+			var dl = document.getElementById( 'ai-meta-keys' );
+			var pt = ( document.getElementById( 'ai-post-type' ) || {} ).value || '';
+			if ( ! dl || ! cfg.root || ! pt ) { return; }
+			fetch( cfg.root + 'post-type-fields?type=' + encodeURIComponent( pt ), { headers: { 'X-WP-Nonce': cfg.nonce } } )
+				.then( function ( r ) { return r.json(); } ).then( function ( data ) {
+					if ( ! data || ! data.fields ) { return; }
+					dl.innerHTML = '';
+					data.fields.forEach( function ( k ) { var o = document.createElement( 'option' ); o.value = k; dl.appendChild( o ); } );
+				} ).catch( function () {} );
+		}
+		var ptInput = document.getElementById( 'ai-post-type' );
+		if ( ptInput ) { ptInput.addEventListener( 'change', fillMetaKeys ); }
+		fillMetaKeys();
+
+		window.addEventListener( 'load', function () {
+			if ( window.jQuery && window.jQuery.fn.sortable && rulesBody ) {
+				window.jQuery( rulesBody ).sortable( { handle: '.ai-rule-handle', items: '> tr', axis: 'y' } );
+			}
+		} );
 	} )();
 	</script>
 
