@@ -508,6 +508,10 @@ final class Admin {
 				'extraction'     => [ 'fields' => $extraction ],
 				'mapping'        => [ 'fields' => $mapping ],
 				'respect_robots' => isset( $_POST['respect_robots'] ), // phpcs:ignore WordPress.Security.NonceVerification
+				'pagination'     => [
+					'next_selector' => sanitize_text_field( wp_unslash( $_POST['next_selector'] ?? '' ) ), // phpcs:ignore WordPress.Security.NonceVerification
+					'max_pages'     => max( 1, min( 50, (int) ( $_POST['max_pages'] ?? 1 ) ) ), // phpcs:ignore WordPress.Security.NonceVerification
+				],
 			],
 		];
 	}

@@ -66,6 +66,15 @@ final class Source {
 		return (bool) ( $this->settings['scrape']['respect_robots'] ?? true );
 	}
 
+	/** CSS selector for the "next page" link, or '' for a single page. */
+	public function pagination_next_selector(): string {
+		return trim( (string) ( $this->settings['scrape']['pagination']['next_selector'] ?? '' ) );
+	}
+
+	public function pagination_max_pages(): int {
+		return max( 1, min( 50, (int) ( $this->settings['scrape']['pagination']['max_pages'] ?? 1 ) ) );
+	}
+
 	public function full_content_threshold(): int {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}

@@ -17,8 +17,9 @@ defined( 'ABSPATH' ) || exit;
 final class Importer {
 
 	private const HOOK         = 'aggregate_it_import';
-	private const MAX_PER_FEED = 50;
-	private const MAX_SOURCES  = 10;
+	private const MAX_PER_FEED   = 50;
+	private const MAX_PER_SCRAPE = 500;
+	private const MAX_SOURCES    = 10;
 
 	public function __construct(
 		private SourceRepository $sources,
@@ -119,10 +120,11 @@ final class Importer {
 		$max_age   = $this->settings->import_max_age_hours();
 		$cutoff    = $max_age > 0 ? time() - $max_age * HOUR_IN_SECONDS : 0;
 		$is_scrape = $source->source_type() === 'scrape';
+		$cap       = $is_scrape ? self::MAX_PER_SCRAPE : self::MAX_PER_FEED;
 		$imported  = 0;
 
 		foreach ( $entries as $entry ) {
-			if ( $imported >= self::MAX_PER_FEED ) {
+			if ( $imported >= $cap ) {
 				break;
 			}
 			if ( $entry['guid'] === '' || $this->items->exists_guid( $source->id, $entry['guid'] ) ) {

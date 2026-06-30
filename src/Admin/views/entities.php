@@ -60,10 +60,6 @@ $cards = [
 		<h1><?php esc_html_e( 'Topic Hubs', 'aggregate-it' ); ?></h1>
 	</div>
 
-	<p class="description" style="max-width: 760px;">
-		<?php esc_html_e( 'Topic hubs are pages Aggregate It builds for the companies, people, and products your articles mention — each one auto-links the first mention in every article and keeps a running "in the news" timeline. Here is what it has been doing.', 'aggregate-it' ); ?>
-	</p>
-
 	<?php
 	$messages = [
 		'saved'         => __( 'Updated.', 'aggregate-it' ),
@@ -92,7 +88,6 @@ $cards = [
 		<div class="postbox ai-hub-pending">
 			<h2 class="hndle"><span><?php echo esc_html( sprintf( /* translators: %d: count */ __( 'Awaiting your review (%d)', 'aggregate-it' ), count( $pending ) ) ); ?></span></h2>
 			<div class="inside">
-				<p class="description"><?php esc_html_e( 'New hubs are held as drafts until you approve them.', 'aggregate-it' ); ?></p>
 				<table class="widefat striped">
 					<tbody>
 						<?php foreach ( $pending as $hub ) : ?>
@@ -188,8 +183,7 @@ $cards = [
 	<details class="postbox ai-hub-config" <?php echo $summary['hubs'] === 0 ? 'open' : ''; ?>>
 		<summary><?php esc_html_e( 'Configure which topics get hubs', 'aggregate-it' ); ?></summary>
 		<div class="inside">
-			<p class="description">
-				<?php esc_html_e( 'Turn on the page type that should receive generated topic hubs. When on, imported articles can create pages there, link mentions, and add the article to the page’s news list. Existing pages are never rewritten in bulk.', 'aggregate-it' ); ?>
+			<p>
 				<?php if ( $show_all ) : ?>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=aggregate-it-entities' ) ); ?>"><?php esc_html_e( 'Hide internal types', 'aggregate-it' ); ?></a>
 				<?php else : ?>
@@ -238,7 +232,6 @@ $cards = [
 			</table>
 
 			<h3><?php esc_html_e( 'Create a new output type', 'aggregate-it' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Only if your site has no suitable public post type for topic hubs.', 'aggregate-it' ); ?></p>
 			<form method="post" action="<?php echo $post_action; ?>" class="ai-field-grid">
 				<input type="hidden" name="action" value="aggregate_it_save_rule">
 				<?php wp_nonce_field( 'aggregate_it_save_rule' ); ?>
