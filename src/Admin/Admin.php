@@ -122,15 +122,6 @@ final class Admin {
 
 		$this->hooks[] = add_submenu_page(
 			self::SLUG,
-			__( 'Activity', 'aggregate-it' ),
-			__( 'Activity', 'aggregate-it' ),
-			'manage_options',
-			self::SLUG . '-activity',
-			[ $this, 'render_activity' ]
-		);
-
-		$this->hooks[] = add_submenu_page(
-			self::SLUG,
 			__( 'Settings', 'aggregate-it' ),
 			__( 'Settings', 'aggregate-it' ),
 			'manage_options',
@@ -176,9 +167,17 @@ final class Admin {
 	}
 
 	public function render_dashboard(): void {
-		$s     = $this->plugin->settings();
+		$tab  = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification
+		$tabs = [
+			'overview' => __( 'Overview', 'aggregate-it' ),
+			'activity' => __( 'Activity', 'aggregate-it' ),
+		];
+		if ( ! isset( $tabs[ $tab ] ) ) {
+			$tab = 'overview';
+		}
 
-		$setup = [
+		$s          = $this->plugin->settings();
+		$setup      = [
 			'provider' => $s->provider_key() !== 'mock' && $s->api_key() !== '',
 			'feeds'    => (bool) $this->plugin->sources()->all(),
 			'types'    => (bool) $this->plugin->rules()->post_types(),
@@ -186,7 +185,41 @@ final class Admin {
 		$show_setup = ! get_option( 'aggregate_it_setup_dismissed' ) && ( ! $setup['provider'] || ! $setup['feeds'] );
 		$can_seed   = $this->plugin->seed_enabled();
 
-		require AGGREGATE_IT_PATH . 'src/Admin/views/dashboard.php';
+		if ( $tab === 'activity' ) {
+			// phpcs:disable WordPress.Security.NonceVerification
+			$per_page = 50;
+			$page     = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+			$filters  = [
+				'level'   => isset( $_GET['level'] ) ? sanitize_key( wp_unslash( $_GET['level'] ) ) : '',
+				'type'    => isset( $_GET['type'] ) ? sanitize_key( wp_unslash( $_GET['type'] ) ) : '',
+				'item_id' => (int) ( $_GET['item'] ?? 0 ),
+				'search'  => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+			];
+			// phpcs:enable WordPress.Security.NonceVerification
+			$total  = ActivityLog::count( $filters );
+			$rows   = ActivityLog::query( $filters, $per_page, ( $page - 1 ) * $per_page );
+			$pages  = (int) max( 1, ceil( $total / $per_page ) );
+			$levels = [ 'info', 'warning', 'error' ];
+			$types  = array_merge( Pipeline::default_order(), [ Schema::STATE_DEAD_LETTER ] );
+		}
+
+		echo '<div class="wrap aggregate-it">';
+		echo '<div class="ai-head"><h1>' . esc_html__( 'Aggregate It', 'aggregate-it' ) . '</h1></div>';
+		echo '<nav class="nav-tab-wrapper ai-tabs">';
+		foreach ( $tabs as $key => $label ) {
+			printf(
+				'<a href="%s" class="nav-tab%s">%s</a>',
+				esc_url( admin_url( 'admin.php?page=' . self::SLUG . ( $key === 'overview' ? '' : '&tab=' . $key ) ) ),
+				$tab === $key ? ' nav-tab-active' : '',
+				esc_html( $label )
+			);
+		}
+		echo '</nav>';
+
+		$tab_embedded = true;
+		require AGGREGATE_IT_PATH . 'src/Admin/views/' . ( $tab === 'activity' ? 'activity.php' : 'dashboard.php' );
+
+		echo '</div>';
 	}
 
 	public function handle_dismiss_setup(): void {
@@ -902,27 +935,6 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-settings', 'saved' );
-	}
-
-	public function render_activity(): void {
-		// phpcs:disable WordPress.Security.NonceVerification
-		$per_page = 50;
-		$page     = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
-		$filters  = [
-			'level'   => isset( $_GET['level'] ) ? sanitize_key( wp_unslash( $_GET['level'] ) ) : '',
-			'type'    => isset( $_GET['type'] ) ? sanitize_key( wp_unslash( $_GET['type'] ) ) : '',
-			'item_id' => (int) ( $_GET['item'] ?? 0 ),
-			'search'  => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
-		];
-		// phpcs:enable WordPress.Security.NonceVerification
-
-		$total    = ActivityLog::count( $filters );
-		$rows     = ActivityLog::query( $filters, $per_page, ( $page - 1 ) * $per_page );
-		$pages    = (int) max( 1, ceil( $total / $per_page ) );
-		$levels   = [ 'info', 'warning', 'error' ];
-		$types    = array_merge( Pipeline::default_order(), [ Schema::STATE_DEAD_LETTER ] );
-
-		require AGGREGATE_IT_PATH . 'src/Admin/views/activity.php';
 	}
 
 	public function handle_bulk_add_sources(): void {

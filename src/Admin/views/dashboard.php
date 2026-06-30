@@ -9,11 +9,9 @@ defined( 'ABSPATH' ) || exit;
  * @var bool               $show_setup
  */
 ?>
-<div class="wrap aggregate-it" id="aggregate-it-app">
+<div id="aggregate-it-app">
 
-	<div class="ai-head">
-		<h1><?php esc_html_e( 'Aggregate It', 'aggregate-it' ); ?></h1>
-		<div class="ai-actions">
+	<div class="ai-actions">
 			<span class="post-state" id="ai-provider-pill"></span>
 			<span class="post-state ai-hidden" id="ai-paused-pill" role="status">
 				<?php esc_html_e( 'Daily cost limit reached — paused', 'aggregate-it' ); ?>
@@ -25,7 +23,6 @@ defined( 'ABSPATH' ) || exit;
 			<button class="button ai-hidden" id="ai-resume" type="button"><?php esc_html_e( 'Resume', 'aggregate-it' ); ?></button>
 			<button class="button button-primary" id="ai-refresh" type="button"><?php esc_html_e( 'Refresh', 'aggregate-it' ); ?></button>
 		</div>
-	</div>
 
 	<?php if ( ! empty( $show_setup ) ) : ?>
 		<div class="postbox ai-setup">
