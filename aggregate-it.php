@@ -14,7 +14,7 @@
  * - SEO built in: Article/NewsArticle and entity schema, meta tags, clean slugs, and instant IndexNow submission.
  * - Featured-image import, history retention, and hands-off background processing.
  * - Dashboard with charts and an activity log, bulk article actions, and a Tools page for export/import, logs, system info, and reset.
- * Version:     0.1.44
+ * Version:     0.1.45
  * Author:      Nika Siradze
  * Author URI:  https://nikusha.com
  * Text Domain: aggregate-it
@@ -25,7 +25,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AGGREGATE_IT_VERSION', '0.1.44' );
+define( 'AGGREGATE_IT_VERSION', '0.1.45' );
 define( 'AGGREGATE_IT_FILE', __FILE__ );
 define( 'AGGREGATE_IT_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AGGREGATE_IT_URL', plugin_dir_url( __FILE__ ) );
