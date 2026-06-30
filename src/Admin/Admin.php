@@ -405,6 +405,8 @@ final class Admin {
 			$categories = $this->infer_categories_from_feed_url( $url );
 		}
 
+		$post_type = sanitize_key( wp_unslash( $_POST['post_type'] ?? '' ) );
+
 		$settings = [
 			'interval_minutes' => $interval,
 			'categories'       => $categories,
@@ -413,11 +415,14 @@ final class Admin {
 			'include_keywords' => $include,
 			'exclude_keywords' => $exclude,
 			'article_length'   => $length,
+			'post_type'        => $post_type,
 		];
 
 		if ( sanitize_key( wp_unslash( $_POST['source_type'] ?? 'rss' ) ) === 'scrape' ) {
 			$settings = array_merge( $settings, $this->scrape_settings_from_post() );
-			\AggregateIt\Source\ScraperPostTypes::remember( (string) $settings['post_type'] );
+		}
+		if ( $post_type !== '' ) {
+			\AggregateIt\Source\ScraperPostTypes::remember( $post_type );
 		}
 
 		$repo = $this->plugin->sources();
@@ -490,7 +495,6 @@ final class Admin {
 
 		return [
 			'source_type' => 'scrape',
-			'post_type'   => sanitize_key( wp_unslash( $_POST['post_type'] ?? '' ) ),
 			'processing'  => in_array( $processing, [ 'passthrough', 'rewrite' ], true ) ? $processing : 'passthrough',
 			'scrape'      => [
 				'discovery'      => [

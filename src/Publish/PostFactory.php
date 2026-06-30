@@ -27,12 +27,13 @@ final class PostFactory {
 		$slug  = (string) ( $structured['slug'] ?? '' );
 		$slug  = $this->slugs->generate( $slug !== '' ? $slug : $keyword, $title );
 
-		$source = $item->source_id ? $this->sources->get( $item->source_id ) : null;
-		$status = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
+		$source    = $item->source_id ? $this->sources->get( $item->source_id ) : null;
+		$status    = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
+		$post_type = $source && $source->post_type_connection() !== '' ? $source->post_type_connection() : $this->settings->target_post_type();
 
 		$post_id = wp_insert_post(
 			[
-				'post_type'    => $this->settings->target_post_type(),
+				'post_type'    => $post_type,
 				'post_status'  => $status,
 				'post_title'   => $title,
 				'post_name'    => $slug,
@@ -53,7 +54,7 @@ final class PostFactory {
 		update_post_meta( $post_id, '_ai_schema_type', $item->flags['schema_type'] ?? 'Article' );
 		update_post_meta( $post_id, '_ai_prompt_version', AGGREGATE_IT_VERSION );
 
-		$this->assign_terms( (int) $post_id, $item->source_id, (string) ( $structured['category'] ?? '' ) );
+		$this->assign_terms( (int) $post_id, $post_type, $item->source_id, (string) ( $structured['category'] ?? '' ) );
 
 		return (int) $post_id;
 	}
@@ -62,9 +63,9 @@ final class PostFactory {
 	 * Categorize by the AI's per-article topic (created on first use), falling back to the
 	 * feed's configured categories when the AI gives nothing. Tags come from the feed.
 	 */
-	private function assign_terms( int $post_id, int $source_id, string $ai_category ): void {
+	private function assign_terms( int $post_id, string $post_type, int $source_id, string $ai_category ): void {
 		$source = $source_id ? $this->sources->get( $source_id ) : null;
-		$taxes  = get_object_taxonomies( $this->settings->target_post_type() );
+		$taxes  = get_object_taxonomies( $post_type );
 
 		if ( in_array( 'category', $taxes, true ) ) {
 			$ids = [];
@@ -129,7 +130,7 @@ final class PostFactory {
 		update_post_meta( $post_id, '_ai_prompt_version', AGGREGATE_IT_VERSION );
 
 		foreach ( $mapped['meta'] as $key => $value ) {
-			update_post_meta( $post_id, sanitize_key( (string) $key ), $value );
+			Meta::write( $post_id, sanitize_key( (string) $key ), $value );
 		}
 		foreach ( $mapped['terms'] as $taxonomy => $names ) {
 			if ( taxonomy_exists( (string) $taxonomy ) ) {
@@ -140,7 +141,7 @@ final class PostFactory {
 		$rules = $source ? $source->rules() : [];
 		if ( $rules ) {
 			foreach ( Rules::apply( $values, $rules, time() ) as $key => $value ) {
-				update_post_meta( $post_id, sanitize_key( (string) $key ), $value );
+				Meta::write( $post_id, sanitize_key( (string) $key ), $value );
 			}
 			update_post_meta( $post_id, '_ai_rule_values', wp_json_encode( $values ) );
 			update_post_meta( $post_id, '_ai_source_id', (int) $item->source_id );
