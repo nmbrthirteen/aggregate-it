@@ -13,11 +13,6 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 $keyword_list = implode( "\n", $settings->keyword_list() );
 $has_key = $settings->api_key() !== '';
 ?>
-<div class="wrap aggregate-it">
-	<div class="ai-head">
-		<h1><?php esc_html_e( 'Aggregate It — Settings', 'aggregate-it' ); ?></h1>
-	</div>
-
 	<?php if ( $notice === 'saved' ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
@@ -272,4 +267,3 @@ $has_key = $settings->api_key() !== '';
 		}
 	} )();
 	</script>
-</div>

@@ -138,6 +138,7 @@ final class Plugin {
 		( new QueueWorker( $this->items, $this->pipeline, $this->cost, $this->cap, $this->settings ) )->register();
 		( new Maintenance\Retention( $this->items, $this->settings ) )->register();
 		( new Maintenance\RulesRefresher( $this->sources ) )->register();
+		( new Maintenance\GlobalRulesRefresher( $this->settings, $this->sources ) )->register();
 		( new RestController( $this ) )->register();
 
 		if ( is_admin() ) {
@@ -153,6 +154,7 @@ final class Plugin {
 		wp_clear_scheduled_hook( 'aggregate_it_import' );
 		wp_clear_scheduled_hook( 'aggregate_it_retention' );
 		wp_clear_scheduled_hook( 'aggregate_it_rules_refresh' );
+		wp_clear_scheduled_hook( 'aggregate_it_global_rules' );
 	}
 
 	public function settings(): Settings {

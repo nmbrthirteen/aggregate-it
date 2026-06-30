@@ -18,7 +18,9 @@ $label_for = static function ( string $state ): string {
 };
 ?>
 <div class="wrap aggregate-it">
-	<h1><?php esc_html_e( 'Activity', 'aggregate-it' ); ?></h1>
+	<div class="ai-head">
+		<h1><?php esc_html_e( 'Activity', 'aggregate-it' ); ?></h1>
+	</div>
 
 	<form method="get" class="ai-act-filters">
 		<input type="hidden" name="page" value="aggregate-it-activity">

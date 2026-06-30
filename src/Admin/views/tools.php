@@ -22,11 +22,6 @@ foreach ( $info as $label => $value ) {
 	$info_text .= $label . ': ' . $value . "\n";
 }
 ?>
-<div class="wrap aggregate-it">
-	<div class="ai-head">
-		<h1><?php esc_html_e( 'Tools', 'aggregate-it' ); ?></h1>
-	</div>
-
 	<?php if ( $flash ) : ?>
 		<div class="notice notice-<?php echo $flash_type === 'error' ? 'error' : 'success'; ?> is-dismissible"><p><?php echo esc_html( $flash ); ?></p></div>
 	<?php endif; ?>
@@ -152,4 +147,3 @@ foreach ( $info as $label => $value ) {
 			</div>
 		</div>
 	</div>
-</div>

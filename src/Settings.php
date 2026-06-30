@@ -179,6 +179,23 @@ final class Settings {
 		return (bool) $this->get( 'hub_review', false );
 	}
 
+	/** @return array<string,array<int,array<string,string>>> post type => rules */
+	public function global_rules(): array {
+		$rules = $this->get( 'global_rules', [] );
+		return is_array( $rules ) ? $rules : [];
+	}
+
+	/** @param array<int,array<string,string>> $rules */
+	public function set_global_rules( string $post_type, array $rules ): void {
+		$all = $this->global_rules();
+		if ( $rules ) {
+			$all[ $post_type ] = array_values( $rules );
+		} else {
+			unset( $all[ $post_type ] );
+		}
+		$this->set( 'global_rules', $all );
+	}
+
 	/** Skip feed items older than this many hours. 0 = no age limit. */
 	public function import_max_age_hours(): int {
 		return max( 0, (int) $this->get( 'import_max_age_hours', 48 ) );
