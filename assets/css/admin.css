@@ -314,6 +314,10 @@
 	text-decoration: none;
 }
 
+.aggregate-it .ai-tabs {
+	margin: 12px 0 20px;
+}
+
 .aggregate-it .ai-preview {
 	margin: 8px 0;
 	max-width: 880px;

@@ -136,15 +136,6 @@ final class Admin {
 			self::SLUG . '-settings',
 			[ $this, 'render_settings' ]
 		);
-
-		$this->hooks[] = add_submenu_page(
-			self::SLUG,
-			__( 'Tools', 'aggregate-it' ),
-			__( 'Tools', 'aggregate-it' ),
-			'manage_options',
-			self::SLUG . '-tools',
-			[ $this, 'render_tools' ]
-		);
 	}
 
 	public function assets( string $hook ): void {
@@ -765,8 +756,49 @@ final class Admin {
 	}
 
 	public function render_settings(): void {
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general'; // phpcs:ignore WordPress.Security.NonceVerification
+		$tabs = [
+			'general' => __( 'General', 'aggregate-it' ),
+			'tools'   => __( 'Tools', 'aggregate-it' ),
+		];
+		if ( ! isset( $tabs[ $tab ] ) ) {
+			$tab = 'general';
+		}
+
 		$settings = $this->plugin->settings();
-		require AGGREGATE_IT_PATH . 'src/Admin/views/settings.php';
+
+		if ( $tab === 'tools' ) {
+			$flash = get_transient( 'aggregate_it_flash' );
+			if ( $flash ) {
+				delete_transient( 'aggregate_it_flash' );
+			}
+			$flash_type = 'success';
+			if ( is_array( $flash ) ) {
+				$flash_type = sanitize_key( (string) ( $flash['type'] ?? 'success' ) );
+				$flash      = (string) ( $flash['message'] ?? '' );
+			}
+			$blacklist = $settings->blacklist_raw();
+			$events    = ActivityLog::recent( 200 );
+			$info      = $this->system_info();
+		}
+
+		echo '<div class="wrap aggregate-it">';
+		echo '<div class="ai-head"><h1>' . esc_html__( 'Settings', 'aggregate-it' ) . '</h1></div>';
+		echo '<nav class="nav-tab-wrapper ai-tabs">';
+		foreach ( $tabs as $key => $label ) {
+			printf(
+				'<a href="%s" class="nav-tab%s">%s</a>',
+				esc_url( admin_url( 'admin.php?page=' . self::SLUG . '-settings&tab=' . $key ) ),
+				$tab === $key ? ' nav-tab-active' : '',
+				esc_html( $label )
+			);
+		}
+		echo '</nav>';
+
+		$tab_embedded = true;
+		require AGGREGATE_IT_PATH . 'src/Admin/views/' . ( $tab === 'tools' ? 'tools.php' : 'settings.php' );
+
+		echo '</div>';
 	}
 
 	public function handle_save_settings(): void {
@@ -839,23 +871,6 @@ final class Admin {
 		require AGGREGATE_IT_PATH . 'src/Admin/views/activity.php';
 	}
 
-	public function render_tools(): void {
-		$settings = $this->plugin->settings();
-		$flash    = get_transient( 'aggregate_it_flash' );
-		if ( $flash ) {
-			delete_transient( 'aggregate_it_flash' );
-		}
-		$flash_type = 'success';
-		if ( is_array( $flash ) ) {
-			$flash_type = sanitize_key( (string) ( $flash['type'] ?? 'success' ) );
-			$flash      = (string) ( $flash['message'] ?? '' );
-		}
-		$blacklist = $settings->blacklist_raw();
-		$events    = ActivityLog::recent( 200 );
-		$info      = $this->system_info();
-		require AGGREGATE_IT_PATH . 'src/Admin/views/tools.php';
-	}
-
 	public function handle_bulk_add_sources(): void {
 		$this->guard( 'aggregate_it_bulk_add_sources' );
 
@@ -875,7 +890,7 @@ final class Admin {
 
 		/* translators: %d: number of feeds added */
 		$this->flash( sprintf( _n( '%d feed added.', '%d feeds added.', $added, 'aggregate-it' ), $added ) );
-		$this->redirect( self::SLUG . '-tools', '' );
+		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 	}
 
 	public function handle_save_blacklist(): void {
@@ -883,7 +898,7 @@ final class Admin {
 
 		$this->plugin->settings()->set( 'blacklist', sanitize_textarea_field( wp_unslash( $_POST['blacklist'] ?? '' ) ) );
 		$this->flash( __( 'Blacklist saved.', 'aggregate-it' ) );
-		$this->redirect( self::SLUG . '-tools', '' );
+		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 	}
 
 	public function handle_export_config(): void {
@@ -919,23 +934,23 @@ final class Admin {
 		$upload = $_FILES['config'] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		if ( ! is_array( $upload ) ) {
 			$this->flash( __( 'Choose a JSON or XML file to import.', 'aggregate-it' ), 'error' );
-			$this->redirect( self::SLUG . '-tools', '' );
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 		}
 
 		$raw = $this->read_import_upload( $upload );
 		if ( $raw === null ) {
-			$this->redirect( self::SLUG . '-tools', '' );
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 		}
 
 		if ( str_starts_with( ltrim( $raw ), '<' ) ) {
 			$this->flash( $this->import_wxr_config( $raw ) );
-			$this->redirect( self::SLUG . '-tools', '' );
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 		}
 
 		$data = json_decode( $raw, true );
 		if ( ! is_array( $data ) ) {
 			$this->flash( __( 'That file is not valid JSON or WordPress XML.', 'aggregate-it' ), 'error' );
-			$this->redirect( self::SLUG . '-tools', '' );
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 		}
 
 		if ( isset( $data['aggregate_it_export'] ) ) {
@@ -952,14 +967,14 @@ final class Admin {
 			}
 		}
 
-		$this->redirect( self::SLUG . '-tools', '' );
+		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 	}
 
 	public function handle_clear_logs(): void {
 		$this->guard( 'aggregate_it_clear_logs' );
 		ActivityLog::clear();
 		$this->flash( __( 'Activity log cleared.', 'aggregate-it' ) );
-		$this->redirect( self::SLUG . '-tools', '' );
+		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 	}
 
 	public function handle_reset(): void {
@@ -1000,7 +1015,7 @@ final class Admin {
 				$this->flash( __( 'Nothing was reset.', 'aggregate-it' ) );
 		}
 
-		$this->redirect( self::SLUG . '-tools', '' );
+		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 	}
 
 	private function flash( string $message, string $type = 'success' ): void {
@@ -1142,7 +1157,7 @@ final class Admin {
 
 		if ( $xml === false || ! isset( $xml->channel->item ) ) {
 			$this->flash( __( 'That file is not valid WordPress XML.', 'aggregate-it' ), 'error' );
-			$this->redirect( self::SLUG . '-tools', '' );
+			$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
 		}
 
 		$sources = [];
