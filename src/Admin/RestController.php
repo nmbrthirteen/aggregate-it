@@ -161,18 +161,44 @@ final class RestController {
 			return new WP_REST_Response( [ 'ok' => true, 'fields' => [] ], 200 );
 		}
 
-		$keys = (array) $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT DISTINCT pm.meta_key FROM {$wpdb->postmeta} pm
-				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-				 WHERE p.post_type = %s AND pm.meta_key NOT LIKE %s
-				 ORDER BY pm.meta_key LIMIT 200",
-				$type,
-				$wpdb->esc_like( '_' ) . '%'
+		$keys = [ 'post_title', 'post_date' ];
+
+		$keys = array_merge(
+			$keys,
+			(array) $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT DISTINCT pm.meta_key FROM {$wpdb->postmeta} pm
+					 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+					 WHERE p.post_type = %s AND pm.meta_key NOT LIKE %s
+					 ORDER BY pm.meta_key LIMIT 300",
+					$type,
+					$wpdb->esc_like( '_' ) . '%'
+				)
 			)
 		);
 
-		return new WP_REST_Response( [ 'ok' => true, 'fields' => array_values( array_map( 'strval', $keys ) ) ], 200 );
+		// ACF field names for this post type (the values live under the field name as meta).
+		if ( function_exists( 'acf_get_field_groups' ) && function_exists( 'acf_get_fields' ) ) {
+			foreach ( (array) acf_get_field_groups( [ 'post_type' => $type ] ) as $group ) {
+				foreach ( (array) acf_get_fields( $group['key'] ?? '' ) as $field ) {
+					if ( ! empty( $field['name'] ) ) {
+						$keys[] = (string) $field['name'];
+					}
+				}
+			}
+		}
+
+		// Meta registered via register_post_meta().
+		foreach ( array_keys( get_registered_meta_keys( 'post', $type ) ) as $registered ) {
+			if ( strpos( (string) $registered, '_' ) !== 0 ) {
+				$keys[] = (string) $registered;
+			}
+		}
+
+		$keys = array_values( array_unique( array_filter( array_map( 'strval', $keys ) ) ) );
+		sort( $keys );
+
+		return new WP_REST_Response( [ 'ok' => true, 'fields' => $keys ], 200 );
 	}
 
 	public function scrape_preview( WP_REST_Request $request ): WP_REST_Response {
