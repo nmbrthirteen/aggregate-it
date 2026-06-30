@@ -75,6 +75,17 @@ final class Source {
 		return max( 1, min( 50, (int) ( $this->settings['scrape']['pagination']['max_pages'] ?? 1 ) ) );
 	}
 
+	/**
+	 * Post-processing rules: each writes a meta value when a condition on an extracted field
+	 * holds. Generic — any field, operator, meta key, and value.
+	 *
+	 * @return array<int,array{field:string,op:string,value:string,set_key:string,set_value:string}>
+	 */
+	public function rules(): array {
+		$rules = $this->settings['scrape']['rules'] ?? [];
+		return is_array( $rules ) ? array_values( $rules ) : [];
+	}
+
 	public function full_content_threshold(): int {
 		return max( 0, (int) ( $this->settings['full_content_threshold'] ?? 1200 ) );
 	}

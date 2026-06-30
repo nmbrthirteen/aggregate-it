@@ -47,6 +47,16 @@ final class RestController {
 
 		register_rest_route(
 			self::NS,
+			'/post-type-fields',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ $this, 'post_type_fields' ],
+				'permission_callback' => [ $this, 'can_manage' ],
+			]
+		);
+
+		register_rest_route(
+			self::NS,
 			'/scrape-preview',
 			[
 				'methods'             => 'POST',
@@ -142,6 +152,27 @@ final class RestController {
 			],
 			200
 		);
+	}
+
+	public function post_type_fields( WP_REST_Request $request ): WP_REST_Response {
+		global $wpdb;
+		$type = sanitize_key( (string) $request->get_param( 'type' ) );
+		if ( $type === '' ) {
+			return new WP_REST_Response( [ 'ok' => true, 'fields' => [] ], 200 );
+		}
+
+		$keys = (array) $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT pm.meta_key FROM {$wpdb->postmeta} pm
+				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				 WHERE p.post_type = %s AND pm.meta_key NOT LIKE %s
+				 ORDER BY pm.meta_key LIMIT 200",
+				$type,
+				$wpdb->esc_like( '_' ) . '%'
+			)
+		);
+
+		return new WP_REST_Response( [ 'ok' => true, 'fields' => array_values( array_map( 'strval', $keys ) ) ], 200 );
 	}
 
 	public function scrape_preview( WP_REST_Request $request ): WP_REST_Response {
