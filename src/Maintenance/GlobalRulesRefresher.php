@@ -2,6 +2,7 @@
 
 namespace AggregateIt\Maintenance;
 
+use AggregateIt\Publish\Meta;
 use AggregateIt\Publish\Rules;
 use AggregateIt\Settings;
 use AggregateIt\Source\SourceRepository;
@@ -73,7 +74,7 @@ final class GlobalRulesRefresher {
 					if ( isset( $owned[ $key ] ) ) {
 						continue;
 					}
-					update_post_meta( (int) $id, $key, $value );
+					Meta::write( (int) $id, $key, $value );
 				}
 			}
 

@@ -2,6 +2,7 @@
 
 namespace AggregateIt\Maintenance;
 
+use AggregateIt\Publish\Meta;
 use AggregateIt\Publish\Rules;
 use AggregateIt\Source\SourceRepository;
 use AggregateIt\Support\Json;
@@ -62,7 +63,7 @@ final class RulesRefresher {
 				}
 
 				foreach ( Rules::apply( $values, $rules[ $sid ], $now ) as $key => $value ) {
-					update_post_meta( $id, sanitize_key( (string) $key ), $value );
+					Meta::write( (int) $id, sanitize_key( (string) $key ), $value );
 				}
 			}
 

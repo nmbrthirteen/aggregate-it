@@ -145,7 +145,7 @@ $dest_options = [
 						value="<?php echo esc_attr( $editing->url ?? '' ); ?>" placeholder="https://example.com/feed"></td>
 				</tr>
 
-				<tr class="ai-scrape-row">
+				<tr>
 					<th><label for="ai-post-type"><?php esc_html_e( 'Save items as (post type)', 'aggregate-it' ); ?></label></th>
 					<td>
 						<input name="post_type" id="ai-post-type" type="text" class="regular-text" list="ai-post-types"
