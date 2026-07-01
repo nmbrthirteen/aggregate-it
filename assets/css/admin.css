@@ -327,6 +327,51 @@
 	max-width: 880px;
 }
 
+.aggregate-it .ai-scrape-cards {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 240px, 1fr ) );
+	gap: 12px;
+}
+
+.aggregate-it .ai-scrape-card {
+	display: flex;
+	gap: 10px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 10px;
+	background: #fff;
+}
+
+.aggregate-it .ai-scrape-card img {
+	width: 56px;
+	height: 56px;
+	object-fit: cover;
+	border-radius: 4px;
+	flex: 0 0 auto;
+}
+
+.aggregate-it .ai-scrape-card-body {
+	min-width: 0;
+	font-size: 12px;
+}
+
+.aggregate-it .ai-scrape-card-body strong {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 13px;
+}
+
+.aggregate-it .ai-scrape-line {
+	color: #50575e;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aggregate-it .ai-scrape-key {
+	color: #8c8f94;
+}
+
 .aggregate-it .ai-preview td {
 	font-size: 12px;
 }
