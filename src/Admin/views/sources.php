@@ -175,13 +175,11 @@ $dest_options = [
 						</select>
 					</td>
 				</tr>
-				<tr class="ai-scrape-row ai-scrape-list">
+				<tr class="ai-scrape-row ai-scrape-list ai-scrape-adv">
 					<th><label for="ai-item-selector"><?php esc_html_e( 'Each item is (CSS selector)', 'aggregate-it' ); ?></label></th>
 					<td>
 						<input name="item_selector" id="ai-item-selector" type="text" class="regular-text code"
 							value="<?php echo esc_attr( $sc_item ); ?>" placeholder="tr.event">
-						<button type="button" class="button" id="ai-suggest"><?php esc_html_e( 'Suggest fields with AI', 'aggregate-it' ); ?></button>
-						<span id="ai-suggest-status" class="description"></span>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-sitemap">
@@ -199,7 +197,7 @@ $dest_options = [
 						<p class="description"><?php esc_html_e( 'Only turn this off for sites you own or have permission to scrape — you are responsible for their terms.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
-				<tr class="ai-scrape-row">
+				<tr class="ai-scrape-row ai-scrape-adv">
 					<th><?php esc_html_e( 'Fields', 'aggregate-it' ); ?></th>
 					<td>
 						<table class="ai-fields-table widefat">
@@ -232,7 +230,7 @@ $dest_options = [
 						</table>
 					</td>
 				</tr>
-				<tr class="ai-scrape-row ai-scrape-list">
+				<tr class="ai-scrape-row ai-scrape-list ai-scrape-adv">
 					<th><label for="ai-next-selector"><?php esc_html_e( 'Next-page link', 'aggregate-it' ); ?></label></th>
 					<td>
 						<input name="next_selector" id="ai-next-selector" type="text" class="regular-text code"
@@ -269,9 +267,14 @@ $dest_options = [
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-list">
-					<th><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></th>
+					<th><?php esc_html_e( 'Detect content', 'aggregate-it' ); ?></th>
 					<td>
-						<button type="button" class="button" id="ai-preview-btn"><?php esc_html_e( 'Preview extraction', 'aggregate-it' ); ?></button>
+						<p class="ai-inline">
+							<button type="button" class="button button-primary" id="ai-suggest"><?php esc_html_e( 'Auto-detect fields', 'aggregate-it' ); ?></button>
+							<button type="button" class="button" id="ai-preview-btn"><?php esc_html_e( 'Preview', 'aggregate-it' ); ?></button>
+							<button type="button" class="button-link" id="ai-edit-selectors"><?php esc_html_e( 'Edit selectors', 'aggregate-it' ); ?></button>
+						</p>
+						<span id="ai-suggest-status" class="description"></span>
 						<span id="ai-preview-status" class="description"></span>
 						<div id="ai-preview" class="ai-preview"></div>
 					</td>
@@ -378,6 +381,7 @@ $dest_options = [
 		var type = document.getElementById( 'ai-source-type' );
 		var mode = document.getElementById( 'ai-scrape-mode' );
 		if ( ! type ) { return; }
+		var advOn = false;
 		function show( selector, on ) {
 			document.querySelectorAll( selector ).forEach( function ( el ) { el.style.display = on ? '' : 'none'; } );
 		}
@@ -388,9 +392,19 @@ $dest_options = [
 			var sitemap = mode && mode.value === 'sitemap';
 			show( '.ai-scrape-list', scrape && ! sitemap );
 			show( '.ai-scrape-sitemap', scrape && sitemap );
+			// Selectors are auto-filled by detection; keep them tucked away unless asked for.
+			if ( scrape && ! advOn ) { show( '.ai-scrape-adv', false ); }
 		}
 		type.addEventListener( 'change', apply );
 		if ( mode ) { mode.addEventListener( 'change', apply ); }
+		var editSel = document.getElementById( 'ai-edit-selectors' );
+		if ( editSel ) {
+			editSel.addEventListener( 'click', function () {
+				advOn = ! advOn;
+				editSel.textContent = advOn ? 'Hide selectors' : 'Edit selectors';
+				apply();
+			} );
+		}
 		apply();
 
 		var suggest = document.getElementById( 'ai-suggest' );
@@ -414,7 +428,9 @@ $dest_options = [
 						return;
 					}
 					fill( data.suggestion || {} );
-					if ( status ) { status.textContent = 'Filled — review and save.'; }
+					if ( status ) { status.textContent = 'Detected — showing a sample of what will be scraped…'; }
+					var pv = document.getElementById( 'ai-preview-btn' );
+					if ( pv ) { pv.click(); }
 				} ).catch( function () {
 					suggest.disabled = false;
 					if ( status ) { status.textContent = 'Could not suggest fields.'; }
@@ -476,23 +492,56 @@ $dest_options = [
 		function renderPreview( box, rows ) {
 			if ( ! box ) { return; }
 			box.innerHTML = '';
-			if ( ! rows.length ) { return; }
-			var table = document.createElement( 'table' );
-			table.className = 'widefat striped';
+			if ( ! rows.length ) {
+				box.textContent = 'No items matched — try Edit selectors below.';
+				return;
+			}
+			var grid = document.createElement( 'div' );
+			grid.className = 'ai-scrape-cards';
+
 			rows.forEach( function ( r ) {
+				var card = document.createElement( 'div' );
+				card.className = 'ai-scrape-card';
+
+				if ( r.image ) {
+					var img = document.createElement( 'img' );
+					img.src = r.image;
+					img.loading = 'lazy';
+					img.alt = '';
+					card.appendChild( img );
+				}
+
+				var body = document.createElement( 'div' );
+				body.className = 'ai-scrape-card-body';
+
+				if ( r.title ) {
+					var h = document.createElement( 'strong' );
+					h.textContent = r.title;
+					body.appendChild( h );
+				}
+
+				function addLine( label, val ) {
+					if ( ! val ) { return; }
+					var line = document.createElement( 'div' );
+					line.className = 'ai-scrape-line';
+					var key = document.createElement( 'span' );
+					key.className = 'ai-scrape-key';
+					key.textContent = label + ': ';
+					line.appendChild( key );
+					line.appendChild( document.createTextNode( String( val ) ) );
+					body.appendChild( line );
+				}
+
+				addLine( 'date', r.date );
+				addLine( 'url', r.url );
 				var fields = r.fields || {};
-				var parts = [];
-				if ( r.title ) { parts.push( r.title ); }
-				if ( r.url ) { parts.push( r.url ); }
-				if ( r.date ) { parts.push( String( r.date ) ); }
-				Object.keys( fields ).forEach( function ( k ) { parts.push( k + ': ' + fields[ k ] ); } );
-				var tr = document.createElement( 'tr' );
-				var td = document.createElement( 'td' );
-				td.textContent = parts.join( '  •  ' ) || '(empty)';
-				tr.appendChild( td );
-				table.appendChild( tr );
+				Object.keys( fields ).forEach( function ( k ) { addLine( k, fields[ k ] ); } );
+
+				card.appendChild( body );
+				grid.appendChild( card );
 			} );
-			box.appendChild( table );
+
+			box.appendChild( grid );
 		}
 
 		function fill( s ) {
