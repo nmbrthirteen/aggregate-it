@@ -117,7 +117,7 @@ final class Settings {
 	}
 
 	public function similarity_threshold(): float {
-		return (float) $this->get( 'similarity_threshold', 0.82 );
+		return (float) $this->get( 'similarity_threshold', 0.72 );
 	}
 
 	public function cluster_window_days(): int {
