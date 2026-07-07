@@ -149,6 +149,22 @@ $has_key = $settings->api_key() !== '';
 					</select>
 				</td>
 			</tr>
+			<tr class="ai-default-image-row">
+				<th><label><?php esc_html_e( 'Fallback image', 'aggregate-it' ); ?></label></th>
+				<td>
+					<?php
+					$default_image_id  = $settings->default_image_id();
+					$default_image_src = $default_image_id ? wp_get_attachment_image_url( $default_image_id, 'medium' ) : '';
+					?>
+					<input type="hidden" name="default_image_id" id="default_image_id" value="<?php echo esc_attr( (string) $default_image_id ); ?>">
+					<img id="default_image_preview" src="<?php echo esc_url( (string) $default_image_src ); ?>" alt="" style="max-width:160px;height:auto;border-radius:6px;margin-bottom:6px;display:<?php echo $default_image_src ? 'block' : 'none'; ?>;">
+					<p>
+						<button type="button" class="button" id="default_image_choose"><?php esc_html_e( 'Choose image', 'aggregate-it' ); ?></button>
+						<button type="button" class="button-link" id="default_image_clear" style="display:<?php echo $default_image_id ? 'inline' : 'none'; ?>;"><?php esc_html_e( 'Remove', 'aggregate-it' ); ?></button>
+					</p>
+					<p class="description"><?php esc_html_e( 'Featured image used only when an article has none of its own. Leave empty to allow image-less posts.', 'aggregate-it' ); ?></p>
+				</td>
+			</tr>
 			<tr>
 				<th><?php esc_html_e( 'Tell search engines instantly', 'aggregate-it' ); ?></th>
 				<td><label><input name="indexnow_enabled" type="checkbox" <?php checked( $settings->indexnow_enabled() ); ?>> <?php esc_html_e( 'Let search engines know right away when an article is published or updated', 'aggregate-it' ); ?></label></td>
@@ -243,6 +259,35 @@ $has_key = $settings->api_key() !== '';
 		if ( provider ) { provider.addEventListener( 'change', sync ); }
 		if ( imageMode ) { imageMode.addEventListener( 'change', sync ); }
 		sync();
+
+		var chooseBtn = document.getElementById( 'default_image_choose' );
+		var clearBtn = document.getElementById( 'default_image_clear' );
+		var imageIdField = document.getElementById( 'default_image_id' );
+		var imagePreview = document.getElementById( 'default_image_preview' );
+		var mediaFrame;
+		if ( chooseBtn && imageIdField && window.wp && wp.media ) {
+			chooseBtn.addEventListener( 'click', function () {
+				if ( mediaFrame ) { mediaFrame.open(); return; }
+				mediaFrame = wp.media( { title: chooseBtn.textContent, library: { type: 'image' }, multiple: false } );
+				mediaFrame.on( 'select', function () {
+					var att = mediaFrame.state().get( 'selection' ).first().toJSON();
+					imageIdField.value = att.id;
+					if ( imagePreview ) {
+						imagePreview.src = ( att.sizes && att.sizes.medium ) ? att.sizes.medium.url : att.url;
+						imagePreview.style.display = 'block';
+					}
+					if ( clearBtn ) { clearBtn.style.display = 'inline'; }
+				} );
+				mediaFrame.open();
+			} );
+		}
+		if ( clearBtn && imageIdField ) {
+			clearBtn.addEventListener( 'click', function () {
+				imageIdField.value = '0';
+				if ( imagePreview ) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
+				clearBtn.style.display = 'none';
+			} );
+		}
 
 		var test = document.getElementById( 'ai-test-key' );
 		var result = document.getElementById( 'ai-test-result' );

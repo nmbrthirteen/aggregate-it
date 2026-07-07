@@ -85,13 +85,32 @@ final class ContentExtractor {
 	}
 
 	private function first_content_image( string $html ): string {
-		if ( ! preg_match_all( '/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m ) ) {
+		if ( ! preg_match_all( '/<img\b[^>]*>/i', $html, $m ) ) {
 			return '';
 		}
-		foreach ( $m[1] as $src ) {
-			$src = trim( html_entity_decode( $src ) );
-			if ( preg_match( '#^https?://#i', $src ) && ! $this->is_junk_image( $src ) ) {
+		foreach ( $m[0] as $tag ) {
+			$src = $this->img_src( $tag );
+			if ( $src !== '' && preg_match( '#^https?://#i', $src ) && ! $this->is_junk_image( $src ) ) {
 				return $src;
+			}
+		}
+		return '';
+	}
+
+	/** Publishers lazy-load heroes: the real URL sits in data-src/srcset while src holds a placeholder. */
+	private function img_src( string $tag ): string {
+		foreach ( [ 'data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'src' ] as $attr ) {
+			if ( preg_match( '/\b' . preg_quote( $attr, '/' ) . '=(["\'])(.*?)\1/i', $tag, $m ) ) {
+				$url = trim( html_entity_decode( $m[2] ) );
+				if ( $url !== '' && strpos( $url, 'data:' ) !== 0 ) {
+					return $url;
+				}
+			}
+		}
+		if ( preg_match( '/\bsrcset=(["\'])(.*?)\1/i', $tag, $m ) ) {
+			$first = trim( (string) strtok( trim( html_entity_decode( $m[2] ) ), ' ' ) );
+			if ( $first !== '' && strpos( $first, 'data:' ) !== 0 ) {
+				return $first;
 			}
 		}
 		return '';

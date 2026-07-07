@@ -6,6 +6,7 @@ use AggregateIt\Pipeline\Item;
 use AggregateIt\Seo\SlugGenerator;
 use AggregateIt\Settings;
 use AggregateIt\Source\SourceRepository;
+use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -80,6 +81,14 @@ final class PostFactory {
 			}
 			if ( $ids ) {
 				wp_set_post_terms( $post_id, $ids, 'category', false );
+			} elseif ( $this->settings->ai_categorize() ) {
+				EventLog::warning(
+					sprintf(
+						'Post #%d kept the site default category: the AI returned %s and the source has no category set.',
+						$post_id,
+						$ai_category === '' ? 'no category' : sprintf( '"%s", which could not be created', $ai_category )
+					)
+				);
 			}
 		}
 
