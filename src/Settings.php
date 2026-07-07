@@ -159,6 +159,10 @@ final class Settings {
 		return in_array( $src, [ 'share', 'feed' ], true ) ? $src : 'share';
 	}
 
+	public function default_image_id(): int {
+		return max( 0, (int) $this->get( 'default_image_id', 0 ) );
+	}
+
 	public function indexnow_enabled(): bool {
 		return (bool) $this->get( 'indexnow_enabled', true );
 	}

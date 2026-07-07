@@ -73,6 +73,21 @@ final class ContentExtractorTest extends TestCase {
 		$ext->share_image( 'https://example.com/x', true );
 	}
 
+	public function test_reads_lazy_loaded_hero_from_data_src(): void {
+		$html = '<article><img src="data:image/svg+xml;base64,PLACEHOLDER" data-src="https://cdn/hero.jpg"></article>';
+		$this->assertSame( 'https://cdn/hero.jpg', $this->best->invoke( $this->extractor, $html ) );
+	}
+
+	public function test_reads_lazy_loaded_hero_from_srcset(): void {
+		$html = '<article><img src="data:image/gif;base64,R0lGOD" srcset="https://cdn/small.jpg 480w, https://cdn/large.jpg 1200w"></article>';
+		$this->assertSame( 'https://cdn/small.jpg', $this->best->invoke( $this->extractor, $html ) );
+	}
+
+	public function test_skips_placeholder_only_image(): void {
+		$html = '<article><img src="data:image/svg+xml;base64,PLACEHOLDER"></article>';
+		$this->assertSame( '', $this->best->invoke( $this->extractor, $html ) );
+	}
+
 	public function test_readability_keeps_article_drops_chrome(): void {
 		$html = '<html><body><nav>Home About</nav><header>Site</header>'
 			. '<article><h2>Big News</h2><p>First paragraph with real content.</p>'

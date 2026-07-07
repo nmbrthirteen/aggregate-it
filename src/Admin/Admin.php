@@ -136,6 +136,7 @@ final class Admin {
 		}
 
 		wp_enqueue_style( 'aggregate-it-admin', AGGREGATE_IT_URL . 'assets/css/admin.css', [], $this->asset_version( 'assets/css/admin.css' ) );
+		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script( 'aggregate-it-charts', AGGREGATE_IT_URL . 'assets/js/charts.js', [], $this->asset_version( 'assets/js/charts.js' ), true );
 		wp_enqueue_script( 'aggregate-it-admin', AGGREGATE_IT_URL . 'assets/js/admin.js', [ 'aggregate-it-charts' ], $this->asset_version( 'assets/js/admin.js' ), true );
@@ -908,6 +909,7 @@ final class Admin {
 				'daily_spend_cap_usd'    => max( 0, (float) ( $_POST['daily_spend_cap_usd'] ?? 5 ) ),
 				'image_mode'             => sanitize_key( wp_unslash( $_POST['image_mode'] ?? 'import' ) ),
 				'image_source'           => sanitize_key( wp_unslash( $_POST['image_source'] ?? 'share' ) ),
+				'default_image_id'       => max( 0, (int) ( $_POST['default_image_id'] ?? 0 ) ),
 				'indexnow_enabled'       => isset( $_POST['indexnow_enabled'] ),
 				'wikipedia_research'     => isset( $_POST['wikipedia_research'] ),
 				'related_articles'       => isset( $_POST['related_articles'] ),

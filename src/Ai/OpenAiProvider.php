@@ -28,8 +28,38 @@ final class OpenAiProvider extends BaseHttpProvider {
 	}
 
 	public function structured( string $prompt, array $schema, array $opts = [] ): array {
-		$model = $this->settings->ai_model() ?: self::DEFAULT_MODEL;
+		$model   = $this->settings->ai_model() ?: self::DEFAULT_MODEL;
+		$message = $prompt . $this->schema_hint( $schema );
 
+		// Strict Structured Outputs guarantees every required field (e.g. category) is
+		// present; plain JSON mode does not, and a dropped category silently sends the post
+		// to the default WordPress category. Fall back to JSON mode if the model rejects it.
+		try {
+			$data = $this->chat(
+				$model,
+				$message,
+				[
+					'type'        => 'json_schema',
+					'json_schema' => [ 'name' => 'article', 'strict' => true, 'schema' => $this->strict_schema( $schema ) ],
+				]
+			);
+		} catch ( \RuntimeException $e ) {
+			$data = $this->chat( $model, $message, [ 'type' => 'json_object' ] );
+		}
+
+		$text = (string) ( $data['choices'][0]['message']['content'] ?? '' );
+		$in   = (int) ( $data['usage']['prompt_tokens'] ?? 0 );
+		$out  = (int) ( $data['usage']['completion_tokens'] ?? 0 );
+
+		return [
+			'result'   => $this->first_json( $text ),
+			'tokens'   => $in + $out,
+			'cost_usd' => $this->cost( self::PRICING, $model, self::DEFAULT_MODEL, $in, $out ),
+		];
+	}
+
+	/** @param array<string,mixed> $response_format */
+	private function chat( string $model, string $message, array $response_format ): array {
 		$response = wp_remote_post(
 			self::CHAT_ENDPOINT,
 			[
@@ -41,24 +71,40 @@ final class OpenAiProvider extends BaseHttpProvider {
 				'body'    => wp_json_encode(
 					[
 						'model'           => $model,
-						'messages'        => [ [ 'role' => 'user', 'content' => $prompt . $this->schema_hint( $schema ) ] ],
-						'response_format' => [ 'type' => 'json_object' ],
+						'messages'        => [ [ 'role' => 'user', 'content' => $message ] ],
+						'response_format' => $response_format,
 					]
 				),
 			]
 		);
 
-		$data = $this->decode( $response );
+		return $this->decode( $response );
+	}
 
-		$text = (string) ( $data['choices'][0]['message']['content'] ?? '' );
-		$in   = (int) ( $data['usage']['prompt_tokens'] ?? 0 );
-		$out  = (int) ( $data['usage']['completion_tokens'] ?? 0 );
+	/**
+	 * Rewrite our schema into the subset OpenAI's strict mode accepts: every object must list
+	 * all properties as required and forbid extras, and string/number constraints it rejects
+	 * (maxLength and friends) are dropped — length is still guided by the prompt.
+	 *
+	 * @param array<string,mixed> $schema
+	 * @return array<string,mixed>
+	 */
+	private function strict_schema( array $schema ): array {
+		unset( $schema['minLength'], $schema['maxLength'], $schema['pattern'], $schema['format'], $schema['minimum'], $schema['maximum'] );
 
-		return [
-			'result'   => $this->first_json( $text ),
-			'tokens'   => $in + $out,
-			'cost_usd' => $this->cost( self::PRICING, $model, self::DEFAULT_MODEL, $in, $out ),
-		];
+		if ( ( $schema['type'] ?? '' ) === 'object' && isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+			foreach ( $schema['properties'] as $key => $prop ) {
+				$schema['properties'][ $key ] = $this->strict_schema( (array) $prop );
+			}
+			$schema['required']             = array_keys( $schema['properties'] );
+			$schema['additionalProperties'] = false;
+		}
+
+		if ( ( $schema['type'] ?? '' ) === 'array' && isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+			$schema['items'] = $this->strict_schema( (array) $schema['items'] );
+		}
+
+		return $schema;
 	}
 
 	public function embed( string $text ): array {

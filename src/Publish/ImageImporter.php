@@ -30,23 +30,31 @@ final class ImageImporter {
 		if ( ! $replace && $this->settings->image_mode() === 'off' ) {
 			return;
 		}
-		if ( $image_url === '' ) {
-			EventLog::warning( sprintf( 'Post #%d: no image found for this article.', $post_id ) );
-			return;
-		}
 		if ( has_post_thumbnail( $post_id ) && ! $replace ) {
 			return;
 		}
 
-		$this->load_media_deps();
+		if ( $image_url !== '' ) {
+			$this->load_media_deps();
+			$attachment_id = $this->sideload( esc_url_raw( $image_url ), $post_id, $alt );
+			if ( $attachment_id !== 0 ) {
+				set_post_thumbnail( $post_id, $attachment_id );
+				update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+				return;
+			}
+		}
 
-		$attachment_id = $this->sideload( esc_url_raw( $image_url ), $post_id, $alt );
-		if ( $attachment_id === 0 ) {
+		// No usable source image (missing, or download/import failed): fall back to the
+		// configured default so no post is left image-less.
+		$default = $this->settings->default_image_id();
+		if ( $default > 0 && wp_attachment_is_image( $default ) ) {
+			set_post_thumbnail( $post_id, $default );
 			return;
 		}
 
-		set_post_thumbnail( $post_id, $attachment_id );
-		update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+		if ( $image_url === '' ) {
+			EventLog::warning( sprintf( 'Post #%d: no image found for this article.', $post_id ) );
+		}
 	}
 
 	/**
