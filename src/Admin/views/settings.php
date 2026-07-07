@@ -175,7 +175,8 @@ $has_key = $settings->api_key() !== '';
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="similarity_threshold"><?php esc_html_e( 'Duplicate sensitivity', 'aggregate-it' ); ?></label></th>
-				<td><input name="similarity_threshold" id="similarity_threshold" type="number" step="0.01" min="0" max="1" class="small-text" value="<?php echo esc_attr( (string) $settings->similarity_threshold() ); ?>"></td>
+				<td><input name="similarity_threshold" id="similarity_threshold" type="number" step="0.01" min="0" max="1" class="small-text" value="<?php echo esc_attr( (string) $settings->similarity_threshold() ); ?>">
+					<p class="description"><?php esc_html_e( 'How similar two articles must be to merge into one story (0-1). Lower merges more aggressively; raise it if unrelated stories are being combined. Default 0.72.', 'aggregate-it' ); ?></p></td>
 			</tr>
 			<tr>
 				<th><label for="cluster_window_days"><?php esc_html_e( 'Keep updating a story for (days)', 'aggregate-it' ); ?></label></th>

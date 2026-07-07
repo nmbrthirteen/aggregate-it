@@ -41,6 +41,14 @@ final class Clusterer {
 
 		foreach ( $candidates as $candidate ) {
 			if ( $candidate['score'] < $threshold ) {
+				EventLog::info(
+					sprintf(
+						'Nearest existing story #%d scored %.3f, under the %.2f duplicate threshold, so this published as a new story. Lower "Duplicate sensitivity" to merge stories like this.',
+						$candidate['owner_id'],
+						$candidate['score'],
+						$threshold
+					)
+				);
 				return null; // sorted desc — nothing below the top will clear it either
 			}
 

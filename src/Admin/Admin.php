@@ -914,7 +914,7 @@ final class Admin {
 				'ai_categorize'          => isset( $_POST['ai_categorize'] ),
 				'hub_review'             => isset( $_POST['hub_review'] ),
 				'strategic_mode'         => isset( $_POST['strategic_mode'] ),
-				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.82 ) ) ),
+				'similarity_threshold'   => min( 1, max( 0, (float) ( $_POST['similarity_threshold'] ?? 0.72 ) ) ),
 				'cluster_window_days'    => max( 1, (int) ( $_POST['cluster_window_days'] ?? 7 ) ),
 				'import_interval_minutes' => max( 1, (int) ( $_POST['import_interval_minutes'] ?? 30 ) ),
 				'processing_enabled'     => isset( $_POST['processing_enabled'] ),
