@@ -23,12 +23,15 @@ final class Vector {
 	}
 
 	/**
+	 * Vectors from different models or fallbacks have different dimensions and share no
+	 * coordinate system, so they score 0 rather than a meaningless partial overlap.
+	 *
 	 * @param float[] $a
 	 * @param float[] $b
 	 */
 	public static function cosine( array $a, array $b ): float {
-		$len = min( count( $a ), count( $b ) );
-		if ( $len === 0 ) {
+		$len = count( $a );
+		if ( $len === 0 || $len !== count( $b ) ) {
 			return 0.0;
 		}
 

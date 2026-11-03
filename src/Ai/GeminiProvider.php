@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Google Gemini provider. Structured output via generateContent with a JSON response
- * mime type; embeddings via text-embedding-004. Default model gemini-2.0-flash-lite —
+ * mime type; embeddings via text-embedding-004. Default model gemini-2.0-flash-lite,
  * among the cheapest text models available.
  */
 final class GeminiProvider extends BaseHttpProvider {
@@ -31,10 +31,10 @@ final class GeminiProvider extends BaseHttpProvider {
 		$model = $this->settings->ai_model() ?: self::DEFAULT_MODEL;
 
 		$response = wp_remote_post(
-			self::BASE . rawurlencode( $model ) . ':generateContent?key=' . rawurlencode( $this->settings->api_key() ),
+			self::BASE . rawurlencode( $model ) . ':generateContent',
 			[
 				'timeout' => 120,
-				'headers' => [ 'content-type' => 'application/json' ],
+				'headers' => $this->headers(),
 				'body'    => wp_json_encode(
 					[
 						'contents'         => [ [ 'parts' => [ [ 'text' => $prompt . $this->schema_hint( $schema ) ] ] ] ],
@@ -59,10 +59,10 @@ final class GeminiProvider extends BaseHttpProvider {
 
 	public function embed( string $text ): array {
 		$response = wp_remote_post(
-			self::BASE . self::EMBED_MODEL . ':embedContent?key=' . rawurlencode( $this->settings->api_key() ),
+			self::BASE . self::EMBED_MODEL . ':embedContent',
 			[
 				'timeout' => 30,
-				'headers' => [ 'content-type' => 'application/json' ],
+				'headers' => $this->headers(),
 				'body'    => wp_json_encode(
 					[
 						'model'   => 'models/' . self::EMBED_MODEL,
@@ -73,19 +73,27 @@ final class GeminiProvider extends BaseHttpProvider {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, $response->get_error_message() );
 		}
 
 		$data   = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		$vector = $data['embedding']['values'] ?? null;
 		if ( ! is_array( $vector ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, (string) ( $data['error']['message'] ?? 'no vector in response' ) );
 		}
 
 		return [
 			'vector'   => array_map( 'floatval', $vector ),
 			'tokens'   => 0,
 			'cost_usd' => 0.0,
+		];
+	}
+
+	/** The key travels in a header so it never lands in URLs, proxy logs, or error messages. */
+	private function headers(): array {
+		return [
+			'content-type'   => 'application/json',
+			'x-goog-api-key' => $this->settings->api_key(),
 		];
 	}
 

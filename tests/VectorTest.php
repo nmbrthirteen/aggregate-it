@@ -26,6 +26,10 @@ final class VectorTest extends TestCase {
 		$this->assertEqualsWithDelta( 0.0, Vector::cosine( [ 1.0, 0.0 ], [ 0.0, 1.0 ] ), 1e-6 );
 	}
 
+	public function test_vectors_of_different_dimensions_score_zero(): void {
+		$this->assertSame( 0.0, Vector::cosine( [ 1.0, 2.0 ], [ 1.0, 2.0, 3.0 ] ) );
+	}
+
 	public function test_empty_vector_is_safe(): void {
 		$this->assertSame( 0.0, Vector::cosine( [], [ 1.0 ] ) );
 	}

@@ -2,6 +2,7 @@
 
 namespace AggregateIt\Queue;
 
+use AggregateIt\Ai\ProviderNotConfigured;
 use AggregateIt\Cost\CostMeter;
 use AggregateIt\Cost\SpendCap;
 use AggregateIt\Pipeline\Item;
@@ -48,7 +49,7 @@ final class QueueWorker {
 
 	/**
 	 * Background tick (every minute). Runs only when automatic processing is on, and at
-	 * most once per the configured interval — the transient gates the cadence without
+	 * most once per the configured interval; the transient gates the cadence without
 	 * rescheduling cron, so interval changes take effect immediately.
 	 */
 	public function cron_tick(): void {
@@ -143,9 +144,12 @@ final class QueueWorker {
 			$next = $stage->process( $item );
 			$this->items->advance( $item->id, $next, $item->flags );
 		} catch ( RateLimited $e ) {
-			// Politeness gap, not a failure — re-queue (no attempt consumed) with jitter so
+			// Politeness gap, not a failure: re-queue (no attempt consumed) with jitter so
 			// same-host items spread out past the per-host window instead of re-colliding.
 			$this->items->defer( $item->id, 5 + wp_rand( 0, 10 ) );
+		} catch ( ProviderNotConfigured $e ) {
+			// Not a failure of the item: hold it until the site owner configures a provider.
+			$this->items->defer( $item->id, 15 * MINUTE_IN_SECONDS );
 		} catch ( \Throwable $e ) {
 			$this->fail( $item, $attempts, $e );
 		}

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The data-driven config that maps an extracted entity type to a custom post type and
  * tells the engine how to match, research, and link it. Adding support for a new post
- * type is adding a rule — no code. Stored as one option.
+ * type is adding a rule, with no code. Stored as one option.
  */
 final class DelegationRules {
 

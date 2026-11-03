@@ -2,12 +2,12 @@
 /**
  * Plugin Name: Aggregate It
  * Plugin URI:  https://github.com/nmbrthirteen/aggregate-it
- * Description: An SEO content engine that uses RSS as raw material — it imports feeds, faithfully rewrites them with AI, deduplicates stories into living topic pages, and auto-builds entity hubs with an internal-link graph.
+ * Description: An SEO content engine that uses RSS as raw material. It imports feeds, faithfully rewrites them with AI, deduplicates stories into living topic pages, and auto-builds entity hubs with an internal-link graph.
  *
  * Features:
  * - Import RSS/Atom and JSON feeds on a per-feed schedule, with categories, tags, include/exclude keywords, and per-feed length and publish overrides.
  * - Bulk-add feeds, OPML import (paste or upload), and a global keyword/domain blacklist.
- * - Faithful AI rewrite that keeps the facts and strips promo — choose Google Gemini, OpenAI, or Claude with your own key.
+ * - Faithful AI rewrite that keeps the facts and strips promo, choose Google Gemini, OpenAI, or Claude with your own key.
  * - Model, article-length, and writing-style controls, a daily spend cap, and a one-click connection test.
  * - Semantic deduplication into one canonical post per story, a novelty gate, and dated "In the news" timelines.
  * - Automatic entity hub pages with schema.org types, sameAs links, optional Wikipedia enrichment, an internal-link graph, and related articles.

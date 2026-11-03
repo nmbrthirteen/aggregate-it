@@ -4,53 +4,45 @@ namespace AggregateIt\Tests;
 
 use AggregateIt\Cluster\Deduplicator;
 use AggregateIt\Settings;
+use AggregateIt\Vector\VectorStore;
 use PHPUnit\Framework\TestCase;
 
 final class DeduplicatorTest extends TestCase {
 
-	private function similarity( string $a_title, string $a_body, string $b_title, string $b_body ): float {
-		$dedup  = new Deduplicator( new Settings() );
-		$ref    = new \ReflectionClass( $dedup );
-		$tokens = $ref->getMethod( 'tokens' );
-		$tokens->setAccessible( true );
-		$cosine = $ref->getMethod( 'cosine' );
-		$cosine->setAccessible( true );
-
-		$a  = $tokens->invoke( $dedup, $a_title, $a_body );
-		$b  = $tokens->invoke( $dedup, $b_title, $b_body );
-		$na = sqrt( array_sum( array_map( static fn ( $v ) => $v * $v, $a ) ) );
-		$nb = sqrt( array_sum( array_map( static fn ( $v ) => $v * $v, $b ) ) );
-
-		return $cosine->invoke( $dedup, $a, $na, $b, $nb );
+	private function scan( array $ids, array $embeddings, float $threshold, int $cursor = 0, ?int $deadline = null ): array {
+		$dedup    = new Deduplicator( new Settings(), new VectorStore() );
+		$assigned = [];
+		$next     = $dedup->scan( $ids, $embeddings, $threshold, $cursor, $deadline ?? PHP_INT_MAX, $assigned );
+		return [ $next, $assigned ];
 	}
 
-	public function test_same_story_paraphrases_score_above_threshold(): void {
-		$sim = $this->similarity(
-			"Bally's Faces Increased Pressure in Chicago, Las Vegas with New York Project on Horizon",
-			"Bally's faces mounting pressure in Chicago and Las Vegas as its New York casino project approaches construction. The company must juggle several developments at once.",
-			"Bally's Faces Challenges as New York Casino Construction Approaches",
-			"Bally's is under pressure in Chicago and Las Vegas while the New York casino construction project looms, forcing the company to manage multiple developments."
+	public function test_similar_stories_group_under_the_oldest_post(): void {
+		[ $next, $assigned ] = $this->scan(
+			[ 1, 2, 3 ],
+			[ 1 => [ 1.0, 0.0 ], 2 => [ 0.99, 0.1 ], 3 => [ 0.0, 1.0 ] ],
+			0.72
 		);
-		$this->assertGreaterThan( 0.50, $sim );
+		$this->assertSame( 3, $next );
+		$this->assertSame( [ 2 => 1 ], $assigned );
 	}
 
-	public function test_different_stories_about_same_entity_score_low(): void {
-		$sim = $this->similarity(
-			'Ballys reports strong quarterly earnings beating estimates',
-			'Ballys posted quarterly revenue above analyst estimates driven by online betting growth and interactive segment gains.',
-			'Ballys Faces Challenges as New York Casino Construction Approaches',
-			'Ballys is under pressure in Chicago and Las Vegas while the New York casino construction project looms.'
-		);
-		$this->assertLessThan( 0.40, $sim );
+	public function test_threshold_comes_from_the_caller(): void {
+		$embeddings = [ 1 => [ 1.0, 0.0 ], 2 => [ 0.8, 0.6 ] ];
+		$this->assertSame( [ 2 => 1 ], $this->scan( [ 1, 2 ], $embeddings, 0.75 )[1] );
+		$this->assertSame( [], $this->scan( [ 1, 2 ], $embeddings, 0.9 )[1] );
 	}
 
-	public function test_unrelated_stories_score_near_zero(): void {
-		$sim = $this->similarity(
-			'UKGC fines Stakelogic over slot speed rule breaches',
-			'The UK Gambling Commission fined Stakelogic for breaching slot speed rules designed to slow play.',
-			'Entain sells 20% of CEE business launching full exit strategy',
-			'Entain announced the sale of a stake in its central and eastern Europe business as part of an exit.'
-		);
-		$this->assertLessThan( 0.40, $sim );
+	public function test_posts_with_different_dimensions_never_match(): void {
+		$assigned = $this->scan( [ 1, 2 ], [ 1 => [ 1.0, 0.0 ], 2 => [ 1.0, 0.0, 0.0 ] ], 0.5 )[1];
+		$this->assertSame( [], $assigned );
+	}
+
+	public function test_posts_without_an_embedding_are_skipped(): void {
+		$this->assertSame( [], $this->scan( [ 1, 2 ], [ 1 => [ 1.0, 0.0 ] ], 0.5 )[1] );
+	}
+
+	public function test_scan_stops_at_the_deadline_and_reports_where_to_resume(): void {
+		[ $next ] = $this->scan( [ 1, 2 ], [ 1 => [ 1.0 ], 2 => [ 1.0 ] ], 0.5, 0, 0 );
+		$this->assertSame( 0, $next );
 	}
 }

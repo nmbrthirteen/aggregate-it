@@ -1,25 +1,25 @@
 # Extending Aggregate It
 
 Aggregate It's core is free and provider-agnostic. Every paid/external capability is a
-seam you (or a premium add-on) plug into via a filter — no core fork required. This is
+seam you (or a premium add-on) plug into via a filter, no core fork required. This is
 also the freemium boundary: the free plugin ships the engine; add-ons ship providers.
 
 ## AI provider (rewrite + embeddings)
 
-The one required capability. Four providers ship in core — pick one in Settings, no
+The one required capability. Four providers ship in core; pick one in Settings, no
 filter needed:
 
-- **`MockProvider`** — deterministic, free, the default. Good for testing the pipeline.
-- **`GeminiProvider`** — cheapest live option. `generateContent` JSON mode + native
+- **`MockProvider`**: deterministic and free, for the test suite only. It echoes the source text, so publishing refuses to run with it; the default is "not configured" until a real provider and key are saved.
+- **`GeminiProvider`**: cheapest live option. `generateContent` JSON mode + native
   `text-embedding-004`. Default model `gemini-2.0-flash-lite`.
-- **`OpenAiProvider`** — Chat Completions JSON mode + native `text-embedding-3-small`.
+- **`OpenAiProvider`**: Chat Completions JSON mode + native `text-embedding-3-small`.
   Default model `gpt-4o-mini`.
-- **`AnthropicProvider`** — Claude Messages API (structured outputs). Default Haiku 4.5.
+- **`AnthropicProvider`**: Claude Messages API (structured outputs). Default Haiku 4.5.
   Anthropic has no embeddings endpoint, so it uses Voyage AI when a Voyage key is set,
   else a local lexical fallback.
 
 All call their HTTP APIs via the WP HTTP layer (no SDK bundling). The model is a free
-Settings field — blank uses the provider's cheapest default.
+Settings field; blank uses the provider's cheapest default.
 
 To register a *different* provider (a local model, Azure, etc.):
 
@@ -44,14 +44,14 @@ interface AiProvider {
 }
 ```
 
-The structured schema is the one from `Ai\Rewriter::schema()` —
+The structured schema is the one from `Ai\Rewriter::schema()`,
 `rewritten_body, seo_title, meta_description, slug, primary_keyword, entities[], facts[]`.
 Report real `tokens`/`cost_usd` so the spend cap and dashboard work. Use the
 Anthropic Batch API for the ~50% discount where latency allows.
 
 ## Research provider (entity enrichment, optional)
 
-Absent by default — entities are built from in-article context only. Register one to add
+Absent by default; entities are built from in-article context only. Register one to add
 cited external facts + `sameAs`:
 
 ```php
@@ -72,21 +72,21 @@ Implement `AggregateIt\Keyword\KeywordProvider::metrics( array $keywords )` →
 
 ## Content / prompt / schema hooks
 
-- `aggregate_it_rewrite_prompt` ( $prompt, $title, $content, $target_keyword ) — mutate the rewrite instruction.
-- `aggregate_it_rewrite_schema` ( $schema ) — extend the structured-output contract.
-- `aggregate_it_extract_html` ( null, $html ) — return a string to override the built-in readability heuristic with a real library.
-- `aggregate_it_schema_graph` ( $graph, $post_id ) — mutate the JSON-LD before output.
-- `aggregate_it_entity_post_types` ( $types ) — declare extra entity CPTs for the dashboard count.
+- `aggregate_it_rewrite_prompt` ( $prompt, $title, $content, $target_keyword ): mutate the rewrite instruction.
+- `aggregate_it_rewrite_schema` ( $schema ): extend the structured-output contract.
+- `aggregate_it_extract_html` ( null, $html ): return a string to override the built-in readability heuristic with a real library.
+- `aggregate_it_schema_graph` ( $graph, $post_id ): mutate the JSON-LD before output.
+- `aggregate_it_entity_post_types` ( $types ): declare extra entity CPTs for the dashboard count.
 
 ## Lifecycle
 
-- `aggregate_it_publish_ping` ( $post_id ) — fired when a post is published or updated (IndexNow listens here).
-- `aggregate_it_spend_cap_reached` ( $cap ) — daily spend ceiling hit.
-- `aggregate_it_dead_letter` ( $item, $exception ) — an item failed permanently.
-- `aggregate_it_booted` ( $plugin ) — container ready.
+- `aggregate_it_publish_ping` ( $post_id ): fired when a post is published or updated (IndexNow listens here).
+- `aggregate_it_spend_cap_reached` ( $cap ): daily spend ceiling hit.
+- `aggregate_it_dead_letter` ( $item, $exception ): an item failed permanently.
+- `aggregate_it_booted` ( $plugin ): container ready.
 
 ## Notes for premium add-ons
 
 - Ship as a separate plugin that registers the filters above on `plugins_loaded`/`init`.
-- The free core never hard-depends on any add-on — every seam degrades gracefully.
+- The free core never hard-depends on any add-on: every seam degrades gracefully.
 - Keep GPL-2.0-or-later for WordPress.org compatibility.

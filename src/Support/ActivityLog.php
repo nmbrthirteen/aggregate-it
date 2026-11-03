@@ -7,7 +7,7 @@ use AggregateIt\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Durable activity feed backed by the `log` table — every pipeline decision and the
+ * Durable activity feed backed by the `log` table: every pipeline decision and the
  * before/after of each transformation, queryable and filterable. Cost rows (written by
  * CostMeter into the same table) are activity too; they simply carry tokens/cost and an
  * empty message, so the human feed filters to rows that have a message.

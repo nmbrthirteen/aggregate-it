@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 	<div class="ai-actions">
 			<span class="post-state" id="ai-provider-pill"></span>
 			<span class="post-state ai-hidden" id="ai-paused-pill" role="status">
-				<?php esc_html_e( 'Daily cost limit reached — paused', 'aggregate-it' ); ?>
+				<?php esc_html_e( 'Daily cost limit reached: paused', 'aggregate-it' ); ?>
 			</span>
 			<?php if ( ! empty( $can_seed ) ) : ?>
 				<button class="button" id="ai-seed" type="button"><?php esc_html_e( 'Add sample articles', 'aggregate-it' ); ?></button>
@@ -78,7 +78,7 @@ defined( 'ABSPATH' ) || exit;
 			<div class="postbox ai-card">
 				<div class="inside">
 					<span class="ai-card__label"><?php echo esc_html( $label ); ?></span>
-					<span class="ai-card__value" data-card="<?php echo esc_attr( $key ); ?>">—</span>
+					<span class="ai-card__value" data-card="<?php echo esc_attr( $key ); ?>">-</span>
 				</div>
 			</div>
 		<?php endforeach; ?>

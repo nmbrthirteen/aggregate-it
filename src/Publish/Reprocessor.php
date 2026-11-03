@@ -2,26 +2,33 @@
 
 namespace AggregateIt\Publish;
 
+use AggregateIt\Ai\ProviderFactory;
 use AggregateIt\Ai\Rewriter;
 use AggregateIt\Seo\Seo;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Re-runs an already-published post through the rewriter again — with the current model,
- * writing style, and prompt — without re-importing. Uses the stored original article
+ * Re-runs an already-published post through the rewriter again, with the current model,
+ * writing style, and prompt, without re-importing. Uses the stored original article
  * text. The slug is left unchanged so the URL stays stable.
  */
 final class Reprocessor {
 
 	public function __construct(
 		private Rewriter $rewriter,
-		private Seo $seo
+		private Seo $seo,
+		private ProviderFactory $providers
 	) {}
+
+	/** True when no real AI provider is usable, so a rewrite would echo the source text. */
+	public function blocked(): bool {
+		return $this->providers->blocked_reason() !== null;
+	}
 
 	public function reprocess( int $post_id ): bool {
 		$original = (string) get_post_meta( $post_id, '_ai_original', true );
-		if ( $original === '' ) {
+		if ( $original === '' || $this->blocked() ) {
 			return false;
 		}
 

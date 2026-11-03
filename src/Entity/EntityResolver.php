@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * Type-constrained, conservative resolution. Exact/alias or high fuzzy similarity links;
  * clearly novel creates; the ambiguous middle is skipped and logged rather than guessed.
  * A clean sparse graph outranks a dense corrupted one, and duplicates are recoverable
- * via the merge tool — wrong links are not.
+ * via the merge tool; wrong links are not.
  */
 final class EntityResolver {
 
@@ -55,7 +55,7 @@ final class EntityResolver {
 		}
 
 		if ( $best_id && $best_score >= $ambiguous_floor ) {
-			EventLog::warning( sprintf( 'Not sure which page "%s" belongs to (%.0f%% match with page #%d) — skipped it for now.', $name, $best_score, $best_id ) );
+			EventLog::warning( sprintf( 'Not sure which page "%s" belongs to (%.0f%% match with page #%d). Skipped it for now.', $name, $best_score, $best_id ) );
 			return [ 'action' => 'skip', 'entity_id' => null ];
 		}
 

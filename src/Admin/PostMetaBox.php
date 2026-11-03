@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Shows the original source text, source citations, and any flagged invented figures on
- * the editor for generated posts — the "what did the AI change" view.
+ * the editor for generated posts: the "what did the AI change" view.
  */
 final class PostMetaBox {
 
@@ -21,7 +21,7 @@ final class PostMetaBox {
 	public function add(): void {
 		add_meta_box(
 			'aggregate-it-source',
-			__( 'Aggregate It — where this came from', 'aggregate-it' ),
+			__( 'Aggregate It: where this came from', 'aggregate-it' ),
 			[ $this, 'render' ],
 			$this->settings->target_post_type(),
 			'normal',

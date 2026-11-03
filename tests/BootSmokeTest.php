@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Boots the whole container with the WP stubs to catch wiring / constructor-arity bugs
- * automatically — the thing only a real-ish boot can find.
+ * automatically: the thing only a real-ish boot can find.
  */
 final class BootSmokeTest extends TestCase {
 

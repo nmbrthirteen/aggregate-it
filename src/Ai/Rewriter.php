@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The single structured call: one round trip produces the rewritten body plus all SEO
- * fields, entities, and facts. Faithful rewrite — reword and strip promotional cruft,
+ * fields, entities, and facts. Faithful rewrite: reword and strip promotional cruft,
  * never change facts or invent information.
  */
 final class Rewriter {
@@ -25,6 +25,41 @@ final class Rewriter {
 		return $this->providers->get()->structured( $prompt, $this->schema() );
 	}
 
+	/**
+	 * Short update note for a story that already has a live post: only the facts the post
+	 * lacks, never a second full article.
+	 *
+	 * @param string[] $novel facts or names the live post does not yet cover
+	 * @return array{result:array<string,mixed>,tokens:int,cost_usd:float}
+	 */
+	public function rewrite_update( string $title, string $content, array $novel ): array {
+		$rules = [
+			'An article on this story is already published. Write ONLY a short update note covering what is new in the article below.',
+			'Cover just the new facts. Do not repeat background the published article already has.',
+			'Keep it to one short paragraph of 2-4 sentences, under 80 words.',
+			'PRESERVE every number, name, date, and quote you use exactly. Never invent or alter a fact.',
+			'Neutral, factual tone. Do not mention sources, the original article, or that this is an update note.',
+			'Return ONLY the structured object, with the note in "rewritten_body".',
+		];
+		if ( $novel ) {
+			$rules[] = 'Details that are new: ' . implode( ', ', array_slice( $novel, 0, 20 ) ) . '.';
+		}
+
+		$prompt = "You are a faithful news editor.\n\n"
+			. implode( "\n", array_map( static fn ( $r ) => '- ' . $r, $rules ) )
+			. "\n\nTITLE: " . $title
+			. "\n\nARTICLE:\n" . $content;
+
+		$schema = [
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => [ 'rewritten_body' ],
+			'properties'           => [ 'rewritten_body' => [ 'type' => 'string' ] ],
+		];
+
+		return $this->providers->get()->structured( $prompt, $schema );
+	}
+
 	/** @param string[] $categories */
 	private function prompt( string $title, string $content, ?string $target_keyword, ?string $length = null, array $categories = [] ): string {
 		$rules = [
@@ -32,9 +67,9 @@ final class Rewriter {
 			'PRESERVE every fact verbatim: names, numbers, dates, quotes, and claims. Never invent, alter, or DROP a fact. Fact-keeping is the top priority and overrides brevity.',
 			'Write naturally and human: vary sentence length and structure, use a plain confident voice, and make it flow. It must NOT read as AI-generated or templated.',
 			'Avoid AI tells and stock filler. Do not use phrases like "in conclusion", "furthermore", "moreover", "it is worth noting", "in today\'s world", "delve", "navigate the landscape", "robust", "leverage", "boasts", "a testament to", or formulaic intros/outros. No hedging padding.',
-			'Be concise WITHOUT losing information. Shorten by tightening wording and cutting filler, repetition, and throat-clearing — never by removing facts. If a sentence carries a fact, keep the fact; only trim the words around it.',
+			'Be concise WITHOUT losing information. Shorten by tightening wording and cutting filler, repetition, and throat-clearing, never by removing facts. If a sentence carries a fact, keep the fact; only trim the words around it.',
 			'REMOVE promotional cruft: calls-to-action, "subscribe", affiliate lines, ads, author self-promotion, "read more" links.',
-			'Keep news as news — neutral, factual tone. Do not editorialize. Do not mention sources, the original article, or that this is a rewrite.',
+			'Keep news as news: neutral, factual tone. Do not editorialize. Do not mention sources, the original article, or that this is a rewrite.',
 			'In "entities", list the notable organizations, people, products, and places the article is about (the main subjects, not every passing mention). For each, give its name, a one-word type (company, person, product, place), and a "description": one or two neutral sentences explaining what it is and its role in this story. Keep descriptions factual; do not invent specific figures.',
 			'Return ONLY the structured object.',
 		];
@@ -61,7 +96,7 @@ final class Rewriter {
 		];
 		$length  = $length ?: $this->settings->article_length();
 		$rules[] = ( $lengths[ $length ] ?? $lengths['auto'] )
-			. ( $length === 'auto' ? '' : ' Treat this as a target, not a hard limit — never drop or shorten facts to hit it.' );
+			. ( $length === 'auto' ? '' : ' Treat this as a target, not a hard limit. Never drop or shorten facts to hit it.' );
 
 		$custom = $this->settings->writing_instructions();
 		if ( $custom !== '' ) {

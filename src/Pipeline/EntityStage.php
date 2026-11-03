@@ -126,7 +126,7 @@ final class EntityStage implements Stage {
 		if ( $skipped ) {
 			ActivityLog::record(
 				'info',
-				sprintf( 'Post #%d: skipped %d topic(s) — %s.', $post_id, count( $skipped ), implode( ', ', array_map( static fn ( $s ) => $s['name'] . ' (' . $s['reason'] . ')', $skipped ) ) ),
+				sprintf( 'Post #%d: skipped %d topic(s): %s.', $post_id, count( $skipped ), implode( ', ', array_map( static fn ( $s ) => $s['name'] . ' (' . $s['reason'] . ')', $skipped ) ) ),
 				[
 					'item_id'   => $item->id,
 					'source_id' => $item->source_id,

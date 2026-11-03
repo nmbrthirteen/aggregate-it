@@ -35,9 +35,9 @@ $status_label = static function ( object $row, array $flags ): array {
 	if ( $row->state === 'published' ) {
 		if ( ! empty( $flags['suppressed'] ) ) {
 			$reason = [
-				'thin'             => __( 'Skipped — too short', 'aggregate-it' ),
-				'no-novelty'       => __( 'Skipped — duplicate', 'aggregate-it' ),
-				'no-keyword-match' => __( 'Skipped — no keyword match', 'aggregate-it' ),
+				'thin'             => __( 'Skipped: too short', 'aggregate-it' ),
+				'no-novelty'       => __( 'Skipped: duplicate', 'aggregate-it' ),
+				'no-keyword-match' => __( 'Skipped: no keyword match', 'aggregate-it' ),
 			];
 			return [ $reason[ $flags['suppressed'] ] ?? __( 'Skipped', 'aggregate-it' ), 'post-state' ];
 		}
@@ -201,7 +201,7 @@ $notices = [
 								<span class="trash"><a href="<?php echo $action_link( 'aggregate_it_delete_article', (int) $row->id ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Remove this article? The published post is moved to Trash.', 'aggregate-it' ) ); ?>');"><?php esc_html_e( 'Delete', 'aggregate-it' ); ?></a></span>
 							</div>
 						</td>
-						<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '—' ); ?></td>
+						<td><?php echo esc_html( $feeds[ (int) $row->source_id ] ?? '-' ); ?></td>
 						<td><span class="<?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></span>
 							<?php if ( $row->state === 'dead_letter' ) : ?>
 								<?php if ( $row->last_error ) : ?>
@@ -215,7 +215,7 @@ $notices = [
 								<a href="<?php echo esc_url( (string) get_permalink( $post_id ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( get_the_title( $post_id ) ); ?></a>
 								&nbsp;·&nbsp;<a href="<?php echo esc_url( (string) get_edit_post_link( $post_id ) ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a>
 							<?php else : ?>
-								—
+								-
 							<?php endif; ?>
 						</td>
 						<td><?php echo esc_html( $row->created_at ); ?></td>

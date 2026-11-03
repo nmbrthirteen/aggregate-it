@@ -13,6 +13,7 @@ defined( 'AGGREGATE_IT_URL' ) || define( 'AGGREGATE_IT_URL', 'http://example.tes
 defined( 'MINUTE_IN_SECONDS' ) || define( 'MINUTE_IN_SECONDS', 60 );
 defined( 'HOUR_IN_SECONDS' ) || define( 'HOUR_IN_SECONDS', 3600 );
 defined( 'DAY_IN_SECONDS' ) || define( 'DAY_IN_SECONDS', 86400 );
+defined( 'AGGREGATE_IT_TESTING' ) || define( 'AGGREGATE_IT_TESTING', true );
 defined( 'WPINC' ) || define( 'WPINC', 'wp-includes' );
 
 $GLOBALS['__options']      = [];

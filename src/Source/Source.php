@@ -77,7 +77,7 @@ final class Source {
 
 	/**
 	 * Post-processing rules: each writes a meta value when a condition on an extracted field
-	 * holds. Generic — any field, operator, meta key, and value.
+	 * holds. Generic: any field, operator, meta key, and value.
 	 *
 	 * @return array<int,array{field:string,op:string,value:string,set_key:string,set_value:string}>
 	 */

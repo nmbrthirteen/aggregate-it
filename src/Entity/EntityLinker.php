@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Injects a single contextual link on the first mention of each entity (capped per post)
- * and records the bidirectional relationship as `_ai_entity` meta — which powers the
+ * and records the bidirectional relationship as `_ai_entity` meta, which powers the
  * hub's auto-growing related-posts list and the article's schema about/mentions.
  */
 final class EntityLinker {

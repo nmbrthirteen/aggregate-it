@@ -3,6 +3,8 @@
 namespace AggregateIt\Pipeline;
 
 use AggregateIt\Ai\FactsGuard;
+use AggregateIt\Ai\ProviderFactory;
+use AggregateIt\Ai\ProviderNotConfigured;
 use AggregateIt\Ai\Rewriter;
 use AggregateIt\Cluster\Clusterer;
 use AggregateIt\Cluster\ClusterRepository;
@@ -31,6 +33,7 @@ defined( 'ABSPATH' ) || exit;
 final class ComposeStage implements PaidStage {
 
 	public function __construct(
+		private ProviderFactory $providers,
 		private Rewriter $rewriter,
 		private FactsGuard $facts,
 		private KeywordStrategy $keywords,
@@ -102,6 +105,26 @@ final class ComposeStage implements PaidStage {
 		return $len !== '' ? $len : null;
 	}
 
+	/** @throws ProviderNotConfigured */
+	private function require_provider( Item $item ): void {
+		$reason = $this->providers->blocked_reason();
+		if ( $reason === null ) {
+			return;
+		}
+
+		// Log once per reason so a held queue does not flood the activity log every retry.
+		if ( get_transient( ProviderFactory::BLOCKED_TRANSIENT ) !== $reason ) {
+			EventLog::warning(
+				$reason === 'undecryptable'
+					? 'Articles are on hold: the saved AI API key cannot be decrypted. Enter the key again in Settings.'
+					: 'Articles are on hold: no AI service is configured. Choose a service and add its API key in Settings.'
+			);
+		}
+		set_transient( ProviderFactory::BLOCKED_TRANSIENT, $reason, DAY_IN_SECONDS );
+
+		throw new ProviderNotConfigured( sprintf( 'Article #%d held: no usable AI provider (%s).', $item->id, $reason ) );
+	}
+
 	public function process( Item $item ): string {
 		if ( ! empty( $item->flags['passthrough'] ) ) {
 			return $this->publish_mapped( $item );
@@ -112,6 +135,8 @@ final class ComposeStage implements PaidStage {
 			$this->suppressed( $item, 'thin', sprintf( 'Article #%d not published: too little content to rewrite (%d chars).', $item->id, (int) ( $item->flags['content_length'] ?? 0 ) ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
+
+		$this->require_provider( $item );
 
 		// Clusters are created lazily here (compose), so a burst of the same breaking story
 		// can all clear ClusterStage before any cluster exists and each publish a duplicate.
@@ -157,6 +182,8 @@ final class ComposeStage implements PaidStage {
 		}
 		$keyword = $decision['keyword'];
 
+		$invented = $this->facts->invented( $content, (string) ( $structured['rewritten_body'] ?? '' ) );
+
 		$vector = $this->vectors->get( 'item', $item->id );
 
 		$cluster_id = null;
@@ -175,18 +202,17 @@ final class ComposeStage implements PaidStage {
 
 		$item->flags['entities'] = (array) ( $structured['entities'] ?? [] );
 
-		$post_id = $this->posts->create( $cluster_id, $item, $structured, $keyword, [ $item->url ] );
+		$post_id = $this->posts->create( $cluster_id, $item, $structured, $keyword, [ $item->url ], $invented !== [] );
 
 		$this->clusters->set_canonical_post( $cluster_id, $post_id );
 		$this->items->set_post( $item->id, $post_id );
 		$item->post_id          = $post_id;
 		$item->flags['post_id'] = $post_id;
 
-		$invented = $this->facts->invented( $content, (string) ( $structured['rewritten_body'] ?? '' ) );
 		if ( $invented ) {
 			$item->flags['invented'] = $invented;
 			update_post_meta( $post_id, '_ai_invented', $invented );
-			EventLog::warning( sprintf( 'Post #%d: possible made-up numbers: %s', $post_id, implode( ', ', $invented ) ) );
+			EventLog::warning( sprintf( 'Post #%d saved as a draft: the rewrite has numbers not in the source (%s). Review it before publishing.', $post_id, implode( ', ', $invented ) ) );
 		}
 
 		$this->images->maybe_import( $post_id, (string) ( $item->flags['image'] ?? '' ), (string) ( $structured['seo_title'] ?? '' ) );
@@ -213,22 +239,32 @@ final class ComposeStage implements PaidStage {
 
 		if ( ! $cluster || ! $cluster->canonical_post_id ) {
 			$item->flags['suppressed'] = 'no-canonical-post';
-			$this->suppressed( $item, 'no-canonical-post', sprintf( 'Article #%d could not update its story — the canonical post is missing.', $item->id ) );
+			$this->suppressed( $item, 'no-canonical-post', sprintf( 'Article #%d could not update its story: the canonical post is missing.', $item->id ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 
 		if ( ! $novel ) {
 			$item->flags['suppressed'] = 'no-novelty';
-			$this->suppressed( $item, 'no-novelty', sprintf( 'Article #%d folded into an existing story with no new facts — nothing added.', $item->id ) );
+			$this->suppressed( $item, 'no-novelty', sprintf( 'Article #%d folded into an existing story with no new facts. Nothing added.', $item->id ) );
 			return Schema::STATE_ENTITY_LINKED;
 		}
 
-		$rewrite    = $this->rewriter->rewrite( (string) ( $item->flags['title'] ?? '' ), $content, null, $this->length( $item ) );
-		$structured = $rewrite['result'];
+		$rewrite     = $this->rewriter->rewrite_update( (string) ( $item->flags['title'] ?? '' ), $content, $novel );
+		$structured  = $rewrite['result'];
+		$update_body = (string) ( $structured['rewritten_body'] ?? '' );
 		$this->cost->record( Schema::STATE_CLUSTERED, $rewrite['tokens'], $rewrite['cost_usd'], $item->id );
 
-		$post_id = (int) $cluster->canonical_post_id;
-		$this->posts->append_update( $post_id, (string) ( $structured['rewritten_body'] ?? '' ), $item->url );
+		$post_id  = (int) $cluster->canonical_post_id;
+		$invented = $this->facts->invented( $content, $update_body );
+		if ( $invented ) {
+			$item->flags['suppressed'] = 'invented-facts';
+			$item->flags['invented']   = $invented;
+			$this->suppressed( $item, 'invented-facts', sprintf( 'Update for post #%d skipped: it has numbers not in the source (%s).', $post_id, implode( ', ', $invented ) ) );
+			EventLog::warning( sprintf( 'Post #%d not updated: the generated update has numbers not in the source (%s).', $post_id, implode( ', ', $invented ) ) );
+			return Schema::STATE_ENTITY_LINKED;
+		}
+
+		$this->posts->append_update( $post_id, $update_body, $item->url );
 		$this->clusters->merge_facts( (int) $item->cluster_id, $novel );
 		$this->items->set_post( $item->id, $post_id );
 

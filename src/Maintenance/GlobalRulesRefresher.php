@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Applies global per-post-type rules to every post of each configured type, reading the
  * post's own meta as the field values. Runs daily (and on demand after a save) so derived
- * meta like status stays correct as dates pass — for any post type, not just scraped ones.
+ * meta like status stays correct as dates pass, for any post type, not just scraped ones.
  */
 final class GlobalRulesRefresher {
 

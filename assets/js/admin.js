@@ -143,7 +143,7 @@
 		}
 		tbody.innerHTML = '';
 		if ( ! rows.length ) {
-			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No articles yet — add a feed to get started.</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="4" class="ai-empty">No articles yet. Add a feed to get started.</td></tr>';
 			return;
 		}
 		rows.forEach( function ( r ) {

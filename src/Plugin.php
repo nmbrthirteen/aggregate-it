@@ -102,7 +102,7 @@ final class Plugin {
 		$this->pipeline->register( new EmbedStage( $this->providers, $vectors, $this->cost ) );
 		$this->pipeline->register( new ClusterStage( $clusterer, $vectors, $this->items ) );
 		$this->pipeline->register(
-			new ComposeStage( $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings, $categories, $clusterer )
+			new ComposeStage( $this->providers, $rewriter, $facts, $keywords, $cluster_repo, $post_factory, $this->imageImporter(), $related, $seo, $vectors, $this->items, $this->cost, $this->settings, $categories, $clusterer )
 		);
 		$this->pipeline->register(
 			new EntityStage(
@@ -210,7 +210,7 @@ final class Plugin {
 	}
 
 	public function reprocessor(): Reprocessor {
-		return new Reprocessor( $this->rewriter(), $this->seo() );
+		return new Reprocessor( $this->rewriter(), $this->seo(), $this->providers );
 	}
 
 	public function imageImporter(): ImageImporter {
@@ -218,7 +218,7 @@ final class Plugin {
 	}
 
 	public function deduplicator(): Deduplicator {
-		return new Deduplicator( $this->settings );
+		return new Deduplicator( $this->settings, new VectorStore() );
 	}
 
 	public function seed_enabled(): bool {

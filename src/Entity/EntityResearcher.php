@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Builds the data for a new entity stub. Degrades gracefully: with no research provider
  * the stub is built from in-article context only (zero external dependency); when a
- * provider is registered, it adds cited external facts + sameAs. Stubs stay strict — only
+ * provider is registered, it adds cited external facts + sameAs. Stubs stay strict: only
  * cited information, never confidently-filled hallucination.
  */
 final class EntityResearcher {
@@ -51,7 +51,7 @@ final class EntityResearcher {
 
 		$prompt = sprintf(
 			"For the %s \"%s\", fill in these details from the article and well-known facts. "
-			. "Leave a field empty if you are not confident — do not guess. Fields: %s.\n\nARTICLE:\n%s",
+			. "Leave a field empty if you are not confident. Do not guess. Fields: %s.\n\nARTICLE:\n%s",
 			$type !== '' ? $type : 'subject',
 			$name,
 			implode( ', ', $labels ),

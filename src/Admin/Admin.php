@@ -2,6 +2,7 @@
 
 namespace AggregateIt\Admin;
 
+use AggregateIt\Ai\ProviderFactory;
 use AggregateIt\Database\Schema;
 use AggregateIt\Pipeline\Pipeline;
 use AggregateIt\Plugin;
@@ -49,6 +50,47 @@ final class Admin {
 		add_action( 'admin_post_aggregate_it_clear_logs', [ $this, 'handle_clear_logs' ] );
 		add_action( 'admin_post_aggregate_it_reset', [ $this, 'handle_reset' ] );
 		add_action( 'admin_notices', [ $this, 'feed_health_notice' ] );
+		add_action( 'admin_notices', [ $this, 'provider_notice' ] );
+		add_action( 'admin_notices', [ $this, 'embedding_notice' ] );
+	}
+
+	public function provider_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$reason = get_transient( ProviderFactory::BLOCKED_TRANSIENT );
+		if ( ! $reason ) {
+			return;
+		}
+		$message = $reason === 'undecryptable'
+			? __( 'Aggregate It: the saved AI API key cannot be decrypted, so articles are on hold. Enter the key again in Settings.', 'aggregate-it' )
+			: __( 'Aggregate It: no AI service is configured, so articles are on hold. Choose a service and add its API key in Settings.', 'aggregate-it' );
+		printf(
+			'<div class="notice notice-warning"><p>%s <a href="%s">%s</a></p></div>',
+			esc_html( $message ),
+			esc_url( admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ),
+			esc_html__( 'Open settings', 'aggregate-it' )
+		);
+	}
+
+	public function embedding_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		$reason = get_transient( 'aggregate_it_embed_degraded' );
+		if ( ! $reason ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			esc_html(
+				sprintf(
+					/* translators: %s: why embeddings failed */
+					__( 'Aggregate It: embeddings are failing (%s). Duplicate detection is degraded, so similar articles may publish as separate posts.', 'aggregate-it' ),
+					(string) $reason
+				)
+			)
+		);
 	}
 
 	public function feed_health_notice(): void {
@@ -153,7 +195,7 @@ final class Admin {
 					'refreshing' => __( 'Refreshing…', 'aggregate-it' ),
 					'seeded'     => __( 'Sample articles added.', 'aggregate-it' ),
 					'running'    => __( 'Working on it…', 'aggregate-it' ),
-					'started'    => __( 'Started — new posts will appear shortly.', 'aggregate-it' ),
+					'started'    => __( 'Started. New posts will appear shortly.', 'aggregate-it' ),
 					'resumed'    => __( 'Back up and running.', 'aggregate-it' ),
 					'failed'     => __( 'Something went wrong. Please try again.', 'aggregate-it' ),
 					'expired'    => __( 'Your session expired. Reload the page to continue.', 'aggregate-it' ),
@@ -179,7 +221,7 @@ final class Admin {
 
 		$s          = $this->plugin->settings();
 		$setup      = [
-			'provider' => $s->provider_key() !== 'mock' && $s->api_key() !== '',
+			'provider' => $this->plugin->providers()->blocked_reason() === null && $s->api_key() !== '',
 			'feeds'    => (bool) $this->plugin->sources()->all(),
 			'types'    => (bool) $this->plugin->rules()->post_types(),
 		];
@@ -325,9 +367,14 @@ final class Admin {
 		$id = (int) ( $_REQUEST['id'] ?? 0 );
 		$this->guard( 'aggregate_it_rewrite_article_' . $id );
 
-		$item = $this->plugin->items()->find( $id );
+		$item   = $this->plugin->items()->find( $id );
+		$reproc = $this->plugin->reprocessor();
+		if ( $reproc->blocked() ) {
+			$this->flash( __( 'Rewrite skipped: no AI provider is configured. Add an API key in Settings, then try again.', 'aggregate-it' ), 'error' );
+			$this->redirect( self::SLUG . '-articles', '', $this->articles_context() );
+		}
 		if ( $item && ! empty( $item->post_id ) ) {
-			$this->plugin->reprocessor()->reprocess( (int) $item->post_id );
+			$reproc->reprocess( (int) $item->post_id );
 		}
 
 		$this->redirect( self::SLUG . '-articles', 'rewritten', $this->articles_context() );
@@ -345,6 +392,10 @@ final class Admin {
 
 		$items     = $this->plugin->items();
 		$reproc    = $action === 'rewrite' ? $this->plugin->reprocessor() : null;
+		if ( $reproc && $reproc->blocked() ) {
+			$this->flash( __( 'Rewrite skipped: no AI provider is configured. Add an API key in Settings, then try again.', 'aggregate-it' ), 'error' );
+			$this->redirect( self::SLUG . '-articles', '', $this->articles_context() );
+		}
 		$refreshed = 0;
 		$busy      = 0;
 
@@ -365,7 +416,7 @@ final class Admin {
 								$refreshed++;
 							}
 						} catch ( \Throwable $e ) {
-							$busy++; // rate-limited / transient — re-run to retry
+							$busy++; // rate-limited / transient, re-run to retry
 						}
 					}
 					break;
@@ -397,7 +448,7 @@ final class Admin {
 			$msg = sprintf( _n( 'Refreshed %d featured image.', 'Refreshed %d featured images.', $refreshed, 'aggregate-it' ), $refreshed );
 			if ( $busy ) {
 				/* translators: %d: number skipped */
-				$msg .= ' ' . sprintf( _n( '%d was skipped because the source was busy — run it again to retry.', '%d were skipped because the source was busy — run it again to retry.', $busy, 'aggregate-it' ), $busy );
+				$msg .= ' ' . sprintf( _n( '%d was skipped because the source was busy. Run it again to retry.', '%d were skipped because the source was busy. Run it again to retry.', $busy, 'aggregate-it' ), $busy );
 			}
 			$this->flash( $msg );
 			$this->redirect( self::SLUG . '-articles', '', $this->articles_context() );
@@ -725,7 +776,7 @@ final class Admin {
 		$this->guard( 'aggregate_it_save_rule' );
 
 		// One field carries both the entity type the AI detects and the post type the
-		// hubs live under — keep it dead simple: "Company" → type "company", CPT "company".
+		// hubs live under. Keep it dead simple: "Company" → type "company", CPT "company".
 		$name        = sanitize_text_field( wp_unslash( $_POST['type_name'] ?? '' ) );
 		$slug        = sanitize_key( $name !== '' ? $name : ( $_POST['target_cpt'] ?? '' ) );
 		$entity_type = sanitize_key( wp_unslash( $_POST['entity_type'] ?? '' ) ) ?: $slug;
@@ -896,7 +947,7 @@ final class Admin {
 		$settings->update(
 			[
 				'brand_name'             => sanitize_text_field( wp_unslash( $_POST['brand_name'] ?? '' ) ),
-				'provider'               => sanitize_key( wp_unslash( $_POST['provider'] ?? 'mock' ) ),
+				'provider'               => sanitize_key( wp_unslash( $_POST['provider'] ?? 'none' ) ),
 				'ai_model'               => sanitize_text_field( wp_unslash( $_POST['ai_model'] ?? '' ) ),
 				'max_output_tokens'      => max( 1024, (int) ( $_POST['max_output_tokens'] ?? 8000 ) ),
 				'target_post_type'       => sanitize_key( wp_unslash( $_POST['target_post_type'] ?? 'post' ) ),
@@ -926,15 +977,24 @@ final class Admin {
 			]
 		);
 
-		$api_key = trim( (string) wp_unslash( $_POST['api_key'] ?? '' ) );
-		if ( $api_key !== '' ) {
-			$settings->set_api_key( $api_key );
+		try {
+			$api_key = trim( (string) wp_unslash( $_POST['api_key'] ?? '' ) );
+			if ( $api_key !== '' ) {
+				$settings->set_api_key( $api_key );
+			}
+
+			$voyage_key = trim( (string) wp_unslash( $_POST['voyage_api_key'] ?? '' ) );
+			if ( $voyage_key !== '' ) {
+				$settings->set_voyage_api_key( $voyage_key );
+			}
+
+			$settings->upgrade_key_encryption();
+		} catch ( \RuntimeException $e ) {
+			$this->redirect( self::SLUG . '-settings', 'key_not_stored' );
 		}
 
-		$voyage_key = trim( (string) wp_unslash( $_POST['voyage_api_key'] ?? '' ) );
-		if ( $voyage_key !== '' ) {
-			$settings->set_voyage_api_key( $voyage_key );
-		}
+		delete_transient( ProviderFactory::BLOCKED_TRANSIENT );
+		delete_transient( 'aggregate_it_embed_degraded' );
 
 		$this->redirect( self::SLUG . '-settings', 'saved' );
 	}
@@ -1071,11 +1131,19 @@ final class Admin {
 				break;
 			case 'dupes_preview':
 				$preview = $this->plugin->deduplicator()->run( true );
+				if ( ! $preview['complete'] ) {
+					$this->flash( $this->dedupe_progress( $preview ) );
+					break;
+				}
 				/* translators: 1: duplicate posts, 2: stories */
 				$this->flash( sprintf( __( 'Preview: %1$d duplicate posts across %2$d stories. See the Activity log for examples. Nothing was changed.', 'aggregate-it' ), $preview['duplicates'], $preview['groups'] ) );
 				break;
 			case 'dupes':
 				$result = $this->plugin->deduplicator()->run( false );
+				if ( ! $result['complete'] ) {
+					$this->flash( $this->dedupe_progress( $result ) );
+					break;
+				}
 				/* translators: %d: number of duplicate posts trashed */
 				$this->flash( sprintf( _n( 'Trashed %d duplicate post, keeping the oldest of its story.', 'Trashed %d duplicate posts, keeping the oldest of each story.', $result['duplicates'], 'aggregate-it' ), $result['duplicates'] ) );
 				break;
@@ -1084,6 +1152,16 @@ final class Admin {
 		}
 
 		$this->redirect( self::SLUG . '-settings', '', [ 'tab' => 'tools' ] );
+	}
+
+	/** @param array{checked:int,total:int} $progress */
+	private function dedupe_progress( array $progress ): string {
+		return sprintf(
+			/* translators: 1: posts checked so far, 2: total posts */
+			__( 'Checked %1$d of %2$d posts. Run this again to continue; nothing is trashed until every post is checked.', 'aggregate-it' ),
+			$progress['checked'],
+			$progress['total']
+		);
 	}
 
 	private function flash( string $message, string $type = 'success' ): void {
@@ -1134,7 +1212,7 @@ final class Admin {
 		};
 	}
 
-	/** @return array<string,mixed> settings safe to export — secrets are never written out */
+	/** @return array<string,mixed> settings safe to export. Secrets are never written out */
 	private function exportable_settings(): array {
 		$all = $this->plugin->settings()->all();
 		unset( $all['api_key'], $all['voyage_api_key'] );
@@ -1185,7 +1263,7 @@ final class Admin {
 		}
 		$save_images = $ftp['save_images_locally'] ?? null;
 		if ( 'true' === $save_images || true === $save_images || '1' === (string) $save_images ) {
-			// Only ever turn import on from an import — never silently disable featured images
+			// Only ever turn import on from an import. Never silently disable featured images
 			// (aggregate-it has no hotlink mode, so 'off' means no image at all).
 			$map['image_mode'] = 'import';
 		}

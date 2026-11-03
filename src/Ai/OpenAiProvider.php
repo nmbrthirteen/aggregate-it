@@ -84,7 +84,7 @@ final class OpenAiProvider extends BaseHttpProvider {
 	/**
 	 * Rewrite our schema into the subset OpenAI's strict mode accepts: every object must list
 	 * all properties as required and forbid extras, and string/number constraints it rejects
-	 * (maxLength and friends) are dropped — length is still guided by the prompt.
+	 * (maxLength and friends) are dropped; length is still guided by the prompt.
 	 *
 	 * @param array<string,mixed> $schema
 	 * @return array<string,mixed>

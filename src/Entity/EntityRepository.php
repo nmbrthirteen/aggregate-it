@@ -96,7 +96,7 @@ final class EntityRepository {
 		}
 	}
 
-	/** Record that a post mentioned this entity — builds the hub's "In the news" timeline. */
+	/** Record that a post mentioned this entity; builds the hub's "In the news" timeline. */
 	public function add_timeline( int $id, int $post_id, string $note ): void {
 		if ( ! $post_id ) {
 			return;
