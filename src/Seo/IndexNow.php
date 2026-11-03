@@ -3,6 +3,7 @@
 namespace AggregateIt\Seo;
 
 use AggregateIt\Settings;
+use AggregateIt\Support\EventLog;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -40,14 +41,13 @@ final class IndexNow {
 		}
 
 		$url = get_permalink( $post_id );
-		if ( ! $url ) {
+		if ( ! $url || get_post_status( $post_id ) !== 'publish' ) {
 			return;
 		}
 
-		$key  = $this->key();
-		$host = wp_parse_url( home_url(), PHP_URL_HOST );
+		$key = $this->key();
 
-		wp_remote_get(
+		$response = wp_remote_get(
 			add_query_arg(
 				[
 					'url'         => rawurlencode( $url ),
@@ -56,8 +56,18 @@ final class IndexNow {
 				],
 				self::ENDPOINT
 			),
-			[ 'blocking' => false, 'timeout' => 2, 'headers' => [ 'Host' => $host ] ]
+			[ 'timeout' => 5 ]
 		);
+
+		if ( is_wp_error( $response ) ) {
+			EventLog::warning( sprintf( 'IndexNow ping for post #%d failed: %s', $post_id, $response->get_error_message() ) );
+			return;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code > 299 ) {
+			EventLog::warning( sprintf( 'IndexNow rejected post #%d with HTTP %d.', $post_id, $code ) );
+		}
 	}
 
 	public function key(): string {

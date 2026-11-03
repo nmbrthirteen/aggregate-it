@@ -194,7 +194,7 @@ $dest_options = [
 							<input type="checkbox" name="respect_robots" value="1" <?php checked( $sc_robots ); ?>>
 							<?php esc_html_e( 'Respect robots.txt', 'aggregate-it' ); ?>
 						</label>
-						<p class="description"><?php esc_html_e( 'Only turn this off for sites you own or have permission to scrape — you are responsible for their terms.', 'aggregate-it' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Only turn this off for sites you own or have permission to scrape. You are responsible for their terms.', 'aggregate-it' ); ?></p>
 					</td>
 				</tr>
 				<tr class="ai-scrape-row ai-scrape-adv">
@@ -319,7 +319,7 @@ $dest_options = [
 					<th><label for="ai-include"><?php esc_html_e( 'Only import if it mentions', 'aggregate-it' ); ?></label></th>
 					<td><input name="include_keywords" id="ai-include" type="text" class="regular-text"
 						value="<?php echo esc_attr( (string) ( $editing->settings['include_keywords'] ?? '' ) ); ?>"
-						placeholder="<?php esc_attr_e( 'comma separated — leave blank for all', 'aggregate-it' ); ?>"></td>
+						placeholder="<?php esc_attr_e( 'comma separated. Leave blank for all', 'aggregate-it' ); ?>"></td>
 				</tr>
 				<tr>
 					<th><label for="ai-exclude"><?php esc_html_e( 'Skip if it mentions', 'aggregate-it' ); ?></label></th>
@@ -428,7 +428,7 @@ $dest_options = [
 						return;
 					}
 					fill( data.suggestion || {} );
-					if ( status ) { status.textContent = 'Detected — showing a sample of what will be scraped…'; }
+					if ( status ) { status.textContent = 'Detected. Showing a sample of what will be scraped…'; }
 					var pv = document.getElementById( 'ai-preview-btn' );
 					if ( pv ) { pv.click(); }
 				} ).catch( function () {
@@ -493,7 +493,7 @@ $dest_options = [
 			if ( ! box ) { return; }
 			box.innerHTML = '';
 			if ( ! rows.length ) {
-				box.textContent = 'No items matched — try Edit selectors below.';
+				box.textContent = 'No items matched. Try Edit selectors below.';
 				return;
 			}
 			var grid = document.createElement( 'div' );
@@ -698,7 +698,7 @@ $dest_options = [
 				$health = $source->health;
 				$health_text = ! empty( $health['last_error'] )
 					? esc_html( sprintf( /* translators: %s: error message */ __( 'Problem: %s', 'aggregate-it' ), $health['last_error'] ) )
-					: ( isset( $health['last_imported'] ) ? sprintf( /* translators: %d: article count */ esc_html__( '%d new articles last time', 'aggregate-it' ), (int) $health['last_imported'] ) : '—' );
+					: ( isset( $health['last_imported'] ) ? sprintf( /* translators: %d: article count */ esc_html__( '%d new articles last time', 'aggregate-it' ), (int) $health['last_imported'] ) : '-' );
 				$import_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_import_now&id=' . $source->id ), 'aggregate_it_import_now_' . $source->id );
 				$delete_url = wp_nonce_url( admin_url( 'admin-post.php?action=aggregate_it_delete_source&id=' . $source->id ), 'aggregate_it_delete_source_' . $source->id );
 				$edit_url   = admin_url( 'admin.php?page=aggregate-it-sources&edit=' . $source->id );
@@ -706,7 +706,7 @@ $dest_options = [
 				<tr>
 					<th scope="row" class="check-column"><input type="checkbox" name="source_ids[]" value="<?php echo (int) $source->id; ?>"></th>
 					<td>
-						<strong><?php echo esc_html( $source->title ?: '—' ); ?></strong>
+						<strong><?php echo esc_html( $source->title ?: '-' ); ?></strong>
 						<div class="row-actions">
 							<span class="check"><a href="<?php echo esc_url( $import_url ); ?>"><?php esc_html_e( 'Check now', 'aggregate-it' ); ?></a> | </span>
 							<span class="edit"><a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'aggregate-it' ); ?></a> | </span>
@@ -715,7 +715,7 @@ $dest_options = [
 					</td>
 					<td class="ai-trunc"><?php echo esc_html( $source->url ); ?></td>
 					<td><span class="post-state"><?php echo esc_html( $source->status ); ?></span></td>
-					<td><?php echo esc_html( $source->last_checked ?: '—' ); ?></td>
+					<td><?php echo esc_html( $source->last_checked ?: '-' ); ?></td>
 					<td><?php echo $health_text; // phpcs:ignore WordPress.Security.EscapeOutput ?></td>
 				</tr>
 			<?php endforeach; ?>

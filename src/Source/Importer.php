@@ -10,7 +10,7 @@ use AggregateIt\Support\EventLog;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pulls feeds and enqueues new items in the `fetched` state. Import stays lightweight —
+ * Pulls feeds and enqueues new items in the `fetched` state. Import stays lightweight,
  * it only parses the feed and stores the feed-provided content; the heavier per-article
  * extraction happens later in ExtractStage, where it gets retry/backoff/rate-limiting.
  */
@@ -327,7 +327,7 @@ final class Importer {
 			return false;
 		}
 
-		// Match the filename only, not the whole URL — a host substring like "silicon"
+		// Match the filename only, not the whole URL: a host substring like "silicon"
 		// (siliconangle.com) would otherwise drop every image from that feed.
 		if ( preg_match( '/(^|[-_.])(logo|icon|sprite|avatar|gravatar|placeholder|default|blank|spacer|favicon)([-_.]|$)/i', basename( $path ) ) ) {
 			return false;

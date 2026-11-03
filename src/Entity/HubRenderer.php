@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Renders entity hub pages as pillar pages: Organization/Person/Product schema with
  * sameAs, plus an auto-growing "Related coverage" list of every post that mentions the
- * entity. Each new post strengthens the hub — the topical-authority + freshness flywheel.
+ * entity. Each new post strengthens the hub: the topical-authority + freshness flywheel.
  */
 final class HubRenderer {
 

@@ -61,7 +61,7 @@ final class HttpFetcher {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code >= 400 ) {
 			// Only negative-cache permanently-gone pages. Caching transient blocks (403/
-			// 429/5xx) would make every retry — and the manual refresh — read an empty body
+			// 429/5xx) would make every retry, and the manual refresh, read an empty body
 			// for an hour, freezing the post without the og:image instead of recovering.
 			if ( in_array( $code, [ 404, 410 ], true ) ) {
 				set_transient( $cache_key, '', self::CACHE_TTL );

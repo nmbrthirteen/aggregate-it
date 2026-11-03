@@ -3,7 +3,7 @@
 How Aggregate It is put together: the pipeline, the data model, the subsystems, the
 configuration schema, and the extension API that the freemium seams depend on.
 
-Read [`DECISIONS.md`](DECISIONS.md) first — this document assumes those choices.
+Read [`DECISIONS.md`](DECISIONS.md) first; this document assumes those choices.
 
 ---
 
@@ -32,7 +32,7 @@ Read [`DECISIONS.md`](DECISIONS.md) first — this document assumes those choice
       Every stage is a job on the custom claim-based queue (the crm-connect pattern).
 ```
 
-The plugin is the runtime *and* the CMS — no external worker. A **custom claim-based DB
+The plugin is the runtime *and* the CMS: no external worker. A **custom claim-based DB
 queue** (see [`CONVENTIONS.md`](CONVENTIONS.md) §5) drives every stage: atomic
 `claim_token` claiming, stale-claim recovery, exponential backoff, dead-letter,
 auto-pause, and a non-blocking "nudge" for low latency. The only outbound calls are: AI
@@ -42,7 +42,7 @@ provider, optional research/keyword providers, source-site fetches, and IndexNow
 
 ## 2. The pipeline (item state machine)
 
-Each row in `ai_items` advances through explicit, **idempotent, resumable** states —
+Each row in `ai_items` advances through explicit, **idempotent, resumable** states,
 **one stage per queue claim**, never the whole pipeline in a single request. A
 monolithic "import + rewrite" call is the anti-pattern we are avoiding.
 
@@ -56,14 +56,14 @@ monolithic "import + rewrite" call is the anti-pattern we are avoiding.
 | ↳ `updated` | Processing (matched cluster) | Novelty gate; if new facts → append dated section, bump `dateModified` | cheap |
 | `entity_linked` | Entity | Resolve/create entities, inject first-mention links, write relationships | optional paid |
 | `published` | Publish | Slug, meta via adapter, JSON-LD, IndexNow ping | free |
-| `failed` | — | Retried w/ exponential backoff; permanent failures → dead-letter + log | — |
+| `failed` | - | Retried w/ exponential backoff; permanent failures → dead-letter + log | - |
 
 **Idempotency:** every stage keys off `content_hash`; re-running a stage is safe.
 **Re-runs:** a post can be re-rewritten (new prompt/model) without re-importing.
 **Pause:** when the daily spend cap trips, the queue's transient auto-pause halts paid
 stages (mirrors crm-connect's auto-pause); free stages continue.
 **Batch API:** the rewrite stage may submit a batch job and set `next_attempt_at` to a
-poll time — the claim loop polls until ready, then advances. No long blocking calls.
+poll time; the claim loop polls until ready, then advances. No long blocking calls.
 
 ---
 
@@ -172,7 +172,7 @@ CREATE TABLE {prefix}_ai_log (
 At single-site moderate volume the live vector set is thousands, not millions.
 Cosine over a few thousand packed float32 rows in PHP is sub-millisecond-per-compare
 and runs inside a queue job, not a web request. External vector DBs
-(Pinecone/Qdrant) are explicitly avoided — they'd break "activate and it just works"
+(Pinecone/Qdrant) are explicitly avoided; they'd break "activate and it just works"
 and the OSS no-paid-dependency rule. A `pgvector`/scale path can be added behind the
 same `VectorStore` interface later.
 
@@ -184,7 +184,7 @@ same `VectorStore` interface later.
 
 - Feed parsing via WordPress core `SimplePie` (already bundled) for RSS/Atom; JSON
   Feed handled separately.
-- **Full-content extraction:** `ContentExtractor` — feed-content-if-full-enough, else
+- **Full-content extraction:** `ContentExtractor`: feed-content-if-full-enough, else
   fetch + GPL-compatible readability port (no JS). `HttpFetcher` enforces `robots.txt`,
   per-domain rate limit, honest UA, response caching.
 - Syntactic dedup by `(source_id, guid)` unique key + `content_hash`.
@@ -192,43 +192,43 @@ same `VectorStore` interface later.
 ### 4.2 Processing
 
 - `Embedder` (provider adapter) → `ai_vectors`.
-- `Clusterer` — 3-signal: cosine ≥ threshold **∧** shared primary entity **∧** within
+- `Clusterer`: 3-signal: cosine ≥ threshold **∧** shared primary entity **∧** within
   `window_until`. Borderline (near threshold) → log, treat as new cluster.
-- `Rewriter` — the **single structured call**. Strict JSON schema output. Prompt is
+- `Rewriter`: the **single structured call**. Strict JSON schema output. Prompt is
   template-driven (per-feed overridable), enforces faithful-rewrite + strip-promo +
   keyword-natural rules.
-- `FactsGuard` — extract numbers/dates/proper-nouns from input & output; any in output
+- `FactsGuard`: extract numbers/dates/proper-nouns from input & output; any in output
   not in input → flag on the item (publishes, but visible in the dashboard).
-- `NoveltyGate` — diff new item's facts against `cluster.fact_set`; no new facts →
+- `NoveltyGate`: diff new item's facts against `cluster.fact_set`; no new facts →
   suppress; new facts → append + merge into `fact_set`.
 
 ### 4.3 Entity engine
 
-- `EntityExtractor` — comes from the rewrite call's `entities[]` (no separate NER call).
-- `EntityResolver` — normalize → exact/alias → type-constrained fuzzy+embedding →
+- `EntityExtractor`: comes from the rewrite call's `entities[]` (no separate NER call).
+- `EntityResolver`: normalize → exact/alias → type-constrained fuzzy+embedding →
   confidence band (link / create / skip-and-log). Batch-dedup guard via a per-run
   pending-creation set.
-- `EntityResearcher` — pluggable. Default: stub from in-article context (zero deps).
+- `EntityResearcher`: pluggable. Default: stub from in-article context (zero deps).
   With a research provider: cited external facts + `sameAs`.
-- `EntityLinker` — first-mention contextual link, capped per post, writes the
+- `EntityLinker`: first-mention contextual link, capped per post, writes the
   relationship taxonomy.
-- `HubRenderer` — entity CPT template: description + cited facts + `sameAs` +
+- `HubRenderer`: entity CPT template: description + cited facts + `sameAs` +
   auto-growing related-posts list + Organization/Person/Product schema.
-- `EntityMerge` — admin tool: merge B→A, repoint links/aliases/relationships/schema.
+- `EntityMerge`: admin tool: merge B→A, repoint links/aliases/relationships/schema.
 
 ### 4.4 Publish / SEO
 
-- `SlugGenerator` — from locked primary keyword.
-- `SeoAdapter` — strategy per active plugin (Yoast / Rank Math / SEOPress / native
+- `SlugGenerator`: from locked primary keyword.
+- `SeoAdapter`: strategy per active plugin (Yoast / Rank Math / SEOPress / native
   fallback): writes title + meta + focus keyword; **suppresses the plugin's schema** on
   our objects.
-- `SchemaGraph` — builds the native JSON-LD `@graph`.
-- `IndexNow` — pings on publish and on novelty update; bumps `dateModified`.
+- `SchemaGraph`: builds the native JSON-LD `@graph`.
+- `IndexNow`: pings on publish and on novelty update; bumps `dateModified`.
 
 ### 4.5 Cost & observability
 
-- `CostMeter` — per call/stage tokens + USD → `ai_log`; aggregates per feed/day.
-- `SpendCap` — hard daily ceiling; trips → paid stages pause, admin notice.
+- `CostMeter`: per call/stage tokens + USD → `ai_log`; aggregates per feed/day.
+- `SpendCap`: hard daily ceiling; trips → paid stages pause, admin notice.
 - Dashboard: pipeline funnel, per-feed costs, facts-guard flags, ambiguous-entity
   queue, original-vs-rewrite diff, feed-health.
 
@@ -280,7 +280,7 @@ Adding support for a new post type = adding a rule. No code.
 ## 6. Extension API (the freemium seams)
 
 Free core must expose clean hooks so premium add-ons (and the community) extend without
-forking. Retrofitting these later is painful — they go in from phase 1.
+forking. Retrofitting these later is painful; they go in from phase 1.
 
 **Provider interfaces** (premium add-ons register implementations):
 
@@ -304,11 +304,11 @@ interface Seo_Adapter {        // one per SEO plugin
 **Key filters/actions** (illustrative):
 
 - `aggregate_it_register_ai_provider`, `…_research_provider`, `…_keyword_provider`
-- `aggregate_it_rewrite_prompt` — mutate the structured-call prompt/schema
-- `aggregate_it_cluster_match` — override/augment the 3-signal decision
-- `aggregate_it_entity_resolve` — inject custom resolution
-- `aggregate_it_before_publish` / `…_after_update` — hook the lifecycle
-- `aggregate_it_schema_graph` — mutate the JSON-LD before output
+- `aggregate_it_rewrite_prompt`: mutate the structured-call prompt/schema
+- `aggregate_it_cluster_match`: override/augment the 3-signal decision
+- `aggregate_it_entity_resolve`: inject custom resolution
+- `aggregate_it_before_publish` / `…_after_update`: hook the lifecycle
+- `aggregate_it_schema_graph`: mutate the JSON-LD before output
 
 Premium add-ons (keyword-data provider, research provider, headless extraction,
 multilingual, strategic-mode packs) are pure consumers of these seams.
@@ -317,7 +317,7 @@ multilingual, strategic-mode packs) are pure consumers of these seams.
 
 ## 7. Failure & safety posture
 
-- **Scaled Content Abuse:** mitigated structurally — living posts + novelty gate +
+- **Scaled Content Abuse:** mitigated structurally: living posts + novelty gate +
   entity value + citations = genuine added value, not thin rewrites.
 - **Hallucination:** faithful-rewrite prompt + deterministic facts-guard; strict cited
   entity stubs; entities degrade to in-article-only without a research provider.

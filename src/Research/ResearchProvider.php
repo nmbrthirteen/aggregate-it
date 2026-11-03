@@ -5,7 +5,7 @@ namespace AggregateIt\Research;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Optional entity enrichment. Absent by default — entities are then created from
+ * Optional entity enrichment. Absent by default; entities are then created from
  * in-article context only. A premium add-on registers an implementation via the
  * `aggregate_it_research_provider` filter to supply cited external facts + sameAs URLs.
  */

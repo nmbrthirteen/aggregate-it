@@ -61,7 +61,7 @@ final class HubColumns {
 		} elseif ( get_post_meta( $post_id, '_ai_canonical_name', true ) ) {
 			printf( '<span style="%sbackground:#e7e7ea;color:#3c434a;">%s</span>', esc_attr( $base ), esc_html__( 'Topic hub', 'aggregate-it' ) );
 		} else {
-			echo '<span style="color:#646970;">—</span>';
+			echo '<span style="color:#646970;">-</span>';
 		}
 	}
 }

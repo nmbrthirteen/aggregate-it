@@ -12,6 +12,8 @@ defined( 'ABSPATH' ) || exit;
 
 final class PostFactory {
 
+	private const UPDATE_MAX_WORDS = 120;
+
 	public function __construct(
 		private Settings $settings,
 		private SlugGenerator $slugs,
@@ -22,8 +24,9 @@ final class PostFactory {
 	/**
 	 * @param array<string,mixed> $structured
 	 * @param string[]            $source_urls
+	 * @param bool                $force_draft hold the post for review whatever the publish setting says
 	 */
-	public function create( int $cluster_id, Item $item, array $structured, string $keyword, array $source_urls ): int {
+	public function create( int $cluster_id, Item $item, array $structured, string $keyword, array $source_urls, bool $force_draft = false ): int {
 		$title = (string) ( $structured['seo_title'] ?? $item->flags['title'] ?? 'Untitled' );
 		$slug  = (string) ( $structured['slug'] ?? '' );
 		$slug  = $this->slugs->generate( $slug !== '' ? $slug : $keyword, $title );
@@ -31,6 +34,7 @@ final class PostFactory {
 		$source    = $item->source_id ? $this->sources->get( $item->source_id ) : null;
 		$status    = $source ? $source->publish_status( $this->settings->publish_status() ) : $this->settings->publish_status();
 		$post_type = $source && $source->post_type_connection() !== '' ? $source->post_type_connection() : $this->settings->target_post_type();
+		$status    = $force_draft ? 'draft' : $status;
 
 		$post_id = wp_insert_post(
 			[
@@ -186,11 +190,11 @@ final class PostFactory {
 
 		$heading = sprintf(
 			/* translators: %s: human-readable date */
-			__( 'Update — %s', 'aggregate-it' ),
+			__( 'Update: %s', 'aggregate-it' ),
 			date_i18n( get_option( 'date_format' ) )
 		);
 
-		$section = "\n\n<!-- aggregate-it-update -->\n<h3>" . esc_html( $heading ) . "</h3>\n" . $this->body( $update_body );
+		$section = "\n\n<!-- aggregate-it-update -->\n<h3>" . esc_html( $heading ) . "</h3>\n" . $this->short_body( $update_body );
 
 		wp_update_post(
 			[
@@ -203,6 +207,26 @@ final class PostFactory {
 		$urls   = is_array( $urls ) ? $urls : [];
 		$urls[] = $source_url;
 		update_post_meta( $post_id, '_ai_source_urls', array_values( array_unique( array_filter( $urls ) ) ) );
+	}
+
+	/** Caps an update at UPDATE_MAX_WORDS so a live post grows by a note, not a second article. */
+	private function short_body( string $text ): string {
+		$budget = self::UPDATE_MAX_WORDS;
+		$html   = '';
+		foreach ( preg_split( '/\n{2,}/', trim( $text ) ) ?: [] as $p ) {
+			$words = preg_split( '/\s+/', trim( $p ), -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+			if ( ! $words ) {
+				continue;
+			}
+			$clipped = count( $words ) > $budget;
+			$p       = implode( ' ', array_slice( $words, 0, $budget ) ) . ( $clipped ? '…' : '' );
+			$html   .= '<p>' . esc_html( $p ) . "</p>\n";
+			$budget -= count( $words );
+			if ( $budget <= 0 ) {
+				break;
+			}
+		}
+		return $html;
 	}
 
 	private function body( string $text ): string {

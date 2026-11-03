@@ -10,8 +10,8 @@ use AggregateIt\Source\Source;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Generalized HTML scraper. At import time it does exactly one fetch — the listing or
- * sitemap page — and turns repeating rows into normalized entries; per-item detail-page
+ * Generalized HTML scraper. At import time it does exactly one fetch (the listing or
+ * sitemap page) and turns repeating rows into normalized entries; per-item detail-page
  * fetches are deliberately left to the pipeline (ExtractStage), where throttle/defer and
  * retry already apply. Nothing here is specific to any site: rows, fields, and their
  * destinations all come from the source's scrape config.

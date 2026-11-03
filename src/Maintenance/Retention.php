@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Daily housekeeping: drop old processed/failed item rows and old log rows so the
- * tables don't grow without bound. Published posts are never touched — only the
+ * tables don't grow without bound. Published posts are never touched; only the
  * internal tracking rows behind the Articles list and the cost log.
  */
 final class Retention {

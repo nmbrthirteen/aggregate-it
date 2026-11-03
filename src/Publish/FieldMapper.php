@@ -6,8 +6,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Routes extracted field values to WordPress post destinations. Each field maps to a
- * destination string — post_title / post_content / post_excerpt / post_date /
- * featured_image / taxonomy:<tax> / meta:<key> — so any scraped shape (events, jobs,
+ * destination string: post_title / post_content / post_excerpt / post_date /
+ * featured_image / taxonomy:<tax> / meta:<key>, so any scraped shape (events, jobs,
  * listings) lands on any post type without site-specific code. Unmapped fields fall back
  * to a sensible default (standard fields to their obvious slot, everything else to meta).
  */

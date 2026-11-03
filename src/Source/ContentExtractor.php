@@ -38,7 +38,7 @@ final class ContentExtractor {
 	}
 
 	/**
-	 * The publisher's chosen share image for this article — the correct hero in almost
+	 * The publisher's chosen share image for this article: the correct hero in almost
 	 * all cases (feed enclosures are often generic/sub-topic images). Fetches the page
 	 * (cached + polite) and returns the best meta image, or '' on any failure.
 	 */
@@ -49,10 +49,10 @@ final class ContentExtractor {
 		try {
 			$html = $this->fetcher->fetch( $url );
 		} catch ( RateLimited $e ) {
-			throw $e; // always retriable — let the queue defer and re-fetch once the host clears
+			throw $e; // always retriable; let the queue defer and re-fetch once the host clears
 		} catch ( \Throwable $e ) {
 			if ( $rethrow ) {
-				throw $e; // transient HTTP/network blip — let the queue retry rather than lose the image
+				throw $e; // transient HTTP/network blip; let the queue retry rather than lose the image
 			}
 			return '';
 		}
@@ -62,7 +62,7 @@ final class ContentExtractor {
 	private function best_meta_image( string $html ): string {
 		foreach ( [ 'og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src' ] as $key ) {
 			$image = $this->meta_content( $html, $key );
-			// Trust the publisher's explicit share tag — it's a deliberate per-article choice.
+			// Trust the publisher's explicit share tag; it's a deliberate per-article choice.
 			// Only the junk heuristic is reserved for the guessed fallbacks below.
 			if ( $image !== '' && strpos( $image, 'data:' ) !== 0 ) {
 				return $image;
@@ -133,7 +133,7 @@ final class ContentExtractor {
 		if ( strpos( $url, 'data:' ) === 0 ) {
 			return true;
 		}
-		// Match the filename only — matching the whole URL false-positives on hosts/paths
+		// Match the filename only: matching the whole URL false-positives on hosts/paths
 		// like siliconangle.com ("icon"), dropping every valid image from that source.
 		$name = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
 		return (bool) preg_match( '/(^|[-_.])(logo|icon|sprite|avatar|gravatar|placeholder|default|blank|spacer|favicon)([-_.]|$)/i', $name );

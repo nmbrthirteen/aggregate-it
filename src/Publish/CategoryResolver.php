@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Maps an AI-suggested category name to a real category term, creating it on first use.
- * Matching is exact by name/slug — substring matching sends unrelated posts to the wrong
+ * Matching is exact by name/slug; substring matching sends unrelated posts to the wrong
  * category. Generic buckets are hidden from the AI's options so it classifies by topic.
  */
 final class CategoryResolver {

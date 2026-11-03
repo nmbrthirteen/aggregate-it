@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Imports a feed/article image into the media library (never hotlinked) and sets it as
- * the featured image with generated alt text. Configurable off/import — default
+ * the featured image with generated alt text. Configurable off/import; default
  * conservative. Source images carry copyright risk, so this is opt-out-able.
  */
 final class ImageImporter {
@@ -60,7 +60,7 @@ final class ImageImporter {
 	/**
 	 * Download first, then name the file from its real MIME. WordPress's media_sideload_image()
 	 * derives the extension from the URL and rejects extensionless URLs ("Invalid image URL.")
-	 * before downloading — but most publishers serve og:image via extensionless CDN/proxy URLs
+	 * before downloading, but most publishers serve og:image via extensionless CDN/proxy URLs
 	 * (imgix, Cloudinary, thumbor, signed URLs), which is why featured images go missing.
 	 */
 	private function sideload( string $url, int $post_id, string $alt ): int {

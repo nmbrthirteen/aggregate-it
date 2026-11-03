@@ -251,7 +251,7 @@ final class RestController {
 		}
 
 		$provider = $this->plugin->providers()->get();
-		if ( $this->plugin->settings()->provider_key() !== 'mock' && $provider->key() === 'mock' ) {
+		if ( $this->plugin->providers()->blocked_reason() !== null ) {
 			return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'Add an AI API key in Settings first.', 'aggregate-it' ) ], 200 );
 		}
 
@@ -285,7 +285,7 @@ final class RestController {
 	public function test(): WP_REST_Response {
 		try {
 			$provider = $this->plugin->providers()->get();
-			if ( $this->plugin->settings()->provider_key() !== 'mock' && $provider->key() === 'mock' ) {
+			if ( $this->plugin->providers()->blocked_reason() !== null ) {
 				return new WP_REST_Response( [ 'ok' => false, 'error' => __( 'No API key saved for the selected service.', 'aggregate-it' ) ], 200 );
 			}
 			$schema   = [

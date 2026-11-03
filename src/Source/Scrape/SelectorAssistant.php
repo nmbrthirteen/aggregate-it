@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Asks the configured AI provider to propose a scrape config from a sample of listing-page
  * HTML: the repeating-item selector and a field map. The proposal is a starting point the
- * user reviews and edits in the form before saving — it is never applied blind.
+ * user reviews and edits in the form before saving; it is never applied blind.
  */
 final class SelectorAssistant {
 

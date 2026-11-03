@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Stores packed float32 embeddings and finds nearest neighbours by brute-force cosine.
  * The live set is thousands of rows at single-site scale, so a full scan inside a queue
- * job is cheap — and it keeps the plugin free of an external vector database.
+ * job is cheap, and it keeps the plugin free of an external vector database.
  */
 final class VectorStore {
 
@@ -44,6 +44,34 @@ final class VectorStore {
 	}
 
 	/**
+	 * Embeddings for many owners at once, keyed by owner id.
+	 *
+	 * @param int[] $owner_ids
+	 * @return array<int,float[]>
+	 */
+	public function get_many( string $owner_type, array $owner_ids ): array {
+		global $wpdb;
+		$ids = array_map( 'intval', $owner_ids );
+		if ( ! $ids ) {
+			return [];
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$rows         = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT owner_id, vector FROM {$this->table()} WHERE owner_type = %s AND owner_id IN ( {$placeholders} )",
+				array_merge( [ $owner_type ], $ids )
+			)
+		);
+
+		$vectors = [];
+		foreach ( (array) $rows as $row ) {
+			$vectors[ (int) $row->owner_id ] = Vector::unpack( (string) $row->vector );
+		}
+		return $vectors;
+	}
+
+	/**
 	 * Best matches for a query vector among rows of $owner_type, scored by cosine.
 	 *
 	 * @param float[] $query
@@ -53,19 +81,20 @@ final class VectorStore {
 	public function similar( string $owner_type, array $query, array $only_ids = [], int $limit = 5 ): array {
 		global $wpdb;
 		$table = $this->table();
+		$dims  = count( $query );
 
 		if ( $only_ids ) {
 			$ids          = array_map( 'intval', $only_ids );
 			$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 			$rows         = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT owner_id, vector FROM {$table} WHERE owner_type = %s AND owner_id IN ( {$placeholders} )",
-					array_merge( [ $owner_type ], $ids )
+					"SELECT owner_id, vector FROM {$table} WHERE owner_type = %s AND dims = %d AND owner_id IN ( {$placeholders} )",
+					array_merge( [ $owner_type, $dims ], $ids )
 				)
 			);
 		} else {
 			$rows = $wpdb->get_results(
-				$wpdb->prepare( "SELECT owner_id, vector FROM {$table} WHERE owner_type = %s", $owner_type )
+				$wpdb->prepare( "SELECT owner_id, vector FROM {$table} WHERE owner_type = %s AND dims = %d", $owner_type, $dims )
 			);
 		}
 

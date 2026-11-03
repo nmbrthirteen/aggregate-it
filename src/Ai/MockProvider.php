@@ -5,9 +5,9 @@ namespace AggregateIt\Ai;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Deterministic, zero-cost provider used for tests and for running the pipeline before
- * a real provider is configured. Output is derived from the input so the same text
- * always yields the same result.
+ * Deterministic, zero-cost provider for tests. Output is derived from the input so the
+ * same text always yields the same result. It returns the source verbatim as the
+ * "rewrite", so ProviderFactory::blocked_reason() keeps it out of publishing.
  */
 final class MockProvider implements AiProvider {
 

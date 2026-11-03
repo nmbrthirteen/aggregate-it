@@ -97,7 +97,7 @@ final class AnthropicProvider implements AiProvider {
 	public function embed( string $text ): array {
 		$voyage_key = $this->settings->voyage_api_key();
 		if ( $voyage_key === '' ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, 'no Voyage AI key is set; Claude has no embeddings of its own' );
 		}
 
 		$response = wp_remote_post(
@@ -113,13 +113,13 @@ final class AnthropicProvider implements AiProvider {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, $response->get_error_message() );
 		}
 
 		$data   = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		$vector = $data['data'][0]['embedding'] ?? null;
 		if ( ! is_array( $vector ) ) {
-			return $this->hash_embedding( $text );
+			return $this->degraded_embedding( $text, (string) ( $data['detail'] ?? $data['error']['message'] ?? 'no vector in response' ) );
 		}
 
 		return [

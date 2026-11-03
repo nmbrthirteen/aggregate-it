@@ -19,6 +19,15 @@ final class FactsGuardTest extends TestCase {
 		$this->assertContains( 'acme corp', $salient );
 	}
 
+	public function test_sentence_openers_and_stopwords_are_not_entities(): void {
+		$salient = $this->guard->salient( 'Shares rose on Monday. The company said Acme Corp would expand. However, Tim Cook disagreed.' );
+		$this->assertNotContains( 'shares', $salient );
+		$this->assertNotContains( 'the', $salient );
+		$this->assertNotContains( 'however', $salient );
+		$this->assertContains( 'acme corp', $salient );
+		$this->assertContains( 'tim cook', $salient );
+	}
+
 	public function test_invented_flags_fabricated_number(): void {
 		$invented = $this->guard->invented( 'Revenue was $5 million', 'Revenue reached $9 million' );
 		$this->assertContains( '9', $invented );

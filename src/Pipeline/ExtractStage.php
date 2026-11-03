@@ -49,7 +49,7 @@ final class ExtractStage implements Stage {
 		$item->flags['content_length'] = mb_strlen( $result['content'] );
 		$item->flags['thin']           = mb_strlen( $result['content'] ) < self::MIN_CONTENT;
 
-		// Prefer the publisher's share image (og:image) over the feed enclosure — the
+		// Prefer the publisher's share image (og:image) over the feed enclosure, the
 		// enclosure is often a generic or sub-topic image, not the article's hero. A
 		// transient fetch failure is rethrown for the first couple of attempts so the queue
 		// retries (and the rate-limit gap clears) rather than freezing the post image-less.

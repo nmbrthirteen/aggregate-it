@@ -41,7 +41,7 @@ Mirror `crm-connect.php` exactly:
 ## 2. Plugin container (`src/Plugin.php`)
 
 - `final class Plugin` **singleton** (`instance()`), private constructor.
-- **Manual dependency injection** — no DI container. Services are constructed in the
+- **Manual dependency injection**: no DI container. Services are constructed in the
   constructor; shared collaborators are passed in explicitly.
 - `boot()` calls `->register()` on each service, loads textdomain, runs
   `Schema::maybe_upgrade()`, and fires `do_action( 'aggregate_it_booted', $this )`.
@@ -72,7 +72,7 @@ final class Importer {
 ## 4. Database (`src/Database/Schema.php`)
 
 - One `Schema` class. **Status/state values are class constants** (`STATE_FETCHED`,
-  `STATE_EXTRACTED`, …) — never bare strings in queries.
+  `STATE_EXTRACTED`, …), never bare strings in queries.
 - `table( string $name )` → `$wpdb->prefix . 'aggregate_it_' . $name`.
 - `install()` builds tables with **`dbDelta`** + `$wpdb->get_charset_collate()`, then
   `update_option( 'aggregate_it_db_version', AGGREGATE_IT_VERSION )`.
@@ -80,7 +80,7 @@ final class Importer {
 - `uninstall()` drops tables + deletes options (called from `uninstall.php`).
 - All timestamps stored UTC via `gmdate( 'Y-m-d H:i:s' )`. Always `$wpdb->prepare`.
 
-## 5. The queue — follow crm-connect's custom claim-based queue (NOT Action Scheduler)
+## 5. The queue: follow crm-connect's custom claim-based queue (NOT Action Scheduler)
 
 This **supersedes the earlier Action Scheduler decision.** crm-connect's queue is a
 proven, dependency-free pattern that solves the WP-Cron reliability complaints, and
@@ -97,10 +97,10 @@ matching it keeps one mental model across both plugins. Reuse it verbatim in sha
 - **The "nudge":** a recurring **1-minute** custom cron interval is the floor, but a
   non-blocking `wp_remote_post` to `admin-ajax.php` (guarded by a `run_token` +
   `hash_equals`) kicks the worker *immediately* after enqueue for low latency. Reuse
-  this — it's why the cron-backed queue feels real-time.
+  this; it's why the cron-backed queue feels real-time.
 
 **Adaptations for the heavier AI pipeline** (the one place AI work stresses the
-pattern — LLM calls take seconds, not the sub-second HTTP of a CRM upsert):
+pattern, LLM calls take seconds, not the sub-second HTTP of a CRM upsert):
 
 - The worker advances each `ai_items` row **one stage per claim**, not the whole
   pipeline in one request.
@@ -116,14 +116,14 @@ pattern — LLM calls take seconds, not the sub-second HTTP of a CRM upsert):
 - **Typed accessor methods per setting** with sane defaults
   (`daily_spend_cap_usd(): float`, `target_post_type(): string`, …).
 - **Secrets (AI/provider API keys) stored encrypted** via `Support\Crypto`
-  (`set_api_key()` encrypts, `api_key()` decrypts) — never plaintext in the DB.
+  (`set_api_key()` encrypts, `api_key()` decrypts), never plaintext in the DB.
 
 ## 7. Support utilities (`src/Support/`)
 
 Port these from crm-connect; they're directly reusable:
-- **`Crypto`** — `aes-256-cbc`, key derived from `AUTH_KEY` via sha256, base64 envelope,
+- **`Crypto`**: `aes-256-cbc`, key derived from `AUTH_KEY` via sha256, base64 envelope,
   graceful fallback when openssl is absent. For all stored API keys.
-- **`EventLog`** — bounded ring buffer (max ~200) in an option, `error/warning/info`.
+- **`EventLog`**: bounded ring buffer (max ~200) in an option, `error/warning/info`.
   Use for admin-facing notices (facts-guard flags, ambiguous entities, paused-queue).
   Per-stage **cost** accounting goes in the queryable `ai_log` *table*, not here.
 - **`Json`**, **`Url`**, plus new ones as needed (`Html`/readability glue, `Vector`
@@ -145,7 +145,7 @@ public function get(): Ai_Provider {
 ```
 
 Same shape for `Research_Provider`, `Keyword_Provider`, and the `Seo_Adapter`
-(resolved by detecting the active SEO plugin). This **is** the freemium seam — premium
+(resolved by detecting the active SEO plugin). This **is** the freemium seam; premium
 add-ons register via the filter.
 
 ## 9. Admin (`src/Admin/`)
@@ -161,7 +161,7 @@ add-ons register via the filter.
 
 ## 10. Distribution & release
 
-**Primary channel: GitHub releases + PUC self-update** (matches crm-connect) — *not*
+**Primary channel: GitHub releases + PUC self-update** (matches crm-connect), *not*
 WordPress.org for v1.
 
 - `bin/release.sh X.Y.Z`: validates semver, bumps the version in the header + the
@@ -171,8 +171,8 @@ WordPress.org for v1.
   install, exclude dev files) and publish the GitHub release asset; PUC consumes it.
 
 > **If a WordPress.org listing is added later** (worth it for the SEO-discoverability of
-> the plugin itself): PUC must be **conditionally disabled** in wp.org builds — the
-> directory forbids third-party update sources — and external-AI-API usage must be
+> the plugin itself): PUC must be **conditionally disabled** in wp.org builds; the
+> directory forbids third-party update sources, and external-AI-API usage must be
 > disclosed in `readme.txt` with BYO-key opt-in. Keep the two build targets in mind but
 > don't carry the cost now.
 

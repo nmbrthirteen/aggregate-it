@@ -12,11 +12,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Decides whether an item belongs to an existing story cluster. Conservative by design:
  * a false merge corrupts a live post, a false split only leaves a duplicate. Requires
- * THREE signals to merge — embedding similarity, an in-window cluster, and at least one
- * shared salient fact (the pre-rewrite stand-in for "shared primary entity"). Borderline
+ * THREE signals to merge: embedding similarity, an in-window cluster, and at least two
+ * shared salient facts (the pre-rewrite stand-in for "shared primary entity"; one shared
+ * token is too easy to hit by accident). Borderline
  * matches are logged and treated as new clusters.
  */
 final class Clusterer {
+
+	private const MIN_SHARED_FACTS = 2;
 
 	public function __construct(
 		private VectorStore $vectors,
@@ -49,11 +52,11 @@ final class Clusterer {
 						$threshold
 					)
 				);
-				return null; // sorted desc — nothing below the top will clear it either
+				return null; // sorted desc; nothing below the top will clear it either
 			}
 
 			$shared = array_intersect( $item_facts, $this->clusters->fact_set( $candidate['owner_id'] ) );
-			if ( count( $shared ) >= 1 ) {
+			if ( count( $shared ) >= self::MIN_SHARED_FACTS ) {
 				return $candidate['owner_id'];
 			}
 

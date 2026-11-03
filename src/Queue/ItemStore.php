@@ -199,7 +199,7 @@ final class ItemStore {
 	/**
 	 * Delete not-yet-published items that are stale: those whose stored publish date is
 	 * older than $cutoff_ts, plus legacy rows imported before publish-date tracking existed
-	 * (no `published_at` key) — that's the backlog this is meant to clear. Items imported
+	 * (no `published_at` key); that's the backlog this is meant to clear. Items imported
 	 * since, with an unknown date (published_at = 0), are kept since freshness can't be told.
 	 */
 	public function purge_stale_queued( int $cutoff_ts ): int {
@@ -386,7 +386,7 @@ final class ItemStore {
 		}
 
 		if ( $search !== '' ) {
-			// Match the published post (its AI title/body) first — that's what users look for —
+			// Match the published post (its AI title/body) first, since users look for it,
 			// then the source URL and the original feed title (which lives in the flags JSON).
 			$like     = '%' . $wpdb->esc_like( $search ) . '%';
 			$where   .= " AND ( post_id IN ( SELECT ID FROM {$wpdb->posts} WHERE post_title LIKE %s OR post_content LIKE %s ) OR url LIKE %s OR flags LIKE %s )";

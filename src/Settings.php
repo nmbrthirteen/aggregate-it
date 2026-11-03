@@ -36,7 +36,7 @@ final class Settings {
 	}
 
 	public function provider_key(): string {
-		return (string) $this->get( 'provider', 'mock' );
+		return (string) $this->get( 'provider', 'none' );
 	}
 
 	public function ai_model(): string {
@@ -52,6 +52,7 @@ final class Settings {
 		return $stored === '' ? '' : Crypto::decrypt( $stored );
 	}
 
+	/** @throws \RuntimeException when the key cannot be encrypted on this site */
 	public function set_voyage_api_key( string $key ): void {
 		$this->set( 'voyage_api_key', $key === '' ? '' : Crypto::encrypt( $key ) );
 	}
@@ -61,8 +62,28 @@ final class Settings {
 		return $stored === '' ? '' : Crypto::decrypt( $stored );
 	}
 
+	/** @throws \RuntimeException when the key cannot be encrypted on this site */
 	public function set_api_key( string $key ): void {
 		$this->set( 'api_key', $key === '' ? '' : Crypto::encrypt( $key ) );
+	}
+
+	/** True when a key is saved but cannot be decrypted (salts changed, or corrupted value). */
+	public function api_key_unreadable(): bool {
+		return (string) $this->get( 'api_key', '' ) !== '' && $this->api_key() === '';
+	}
+
+	/** Re-encrypts keys saved by older releases with the current scheme. */
+	public function upgrade_key_encryption(): void {
+		foreach ( [ 'api_key', 'voyage_api_key' ] as $field ) {
+			$stored = (string) $this->get( $field, '' );
+			if ( $stored === '' || Crypto::is_current( $stored ) || ! Crypto::available() ) {
+				continue;
+			}
+			$plain = Crypto::decrypt( $stored );
+			if ( $plain !== '' ) {
+				$this->set( $field, Crypto::encrypt( $plain ) );
+			}
+		}
 	}
 
 	public function brand_name(): string {

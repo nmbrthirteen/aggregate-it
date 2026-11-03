@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Automatic internal linking between articles. On publish, finds the most semantically
- * similar other stories and cross-links their posts — stored as `_ai_related` meta
+ * similar other stories and cross-links their posts, stored as `_ai_related` meta
  * (both directions, no content churn) and rendered live as a "Related articles" list.
  */
 final class RelatedArticles {

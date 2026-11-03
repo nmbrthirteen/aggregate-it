@@ -17,6 +17,10 @@ $has_key = $settings->api_key() !== '';
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'aggregate-it' ); ?></p></div>
 	<?php endif; ?>
 
+	<?php if ( $notice === 'key_not_stored' ) : ?>
+		<div class="notice notice-error"><p><?php esc_html_e( 'The API key was not saved. This site needs the PHP sodium extension and AUTH_KEY and SECURE_AUTH_SALT in wp-config.php to store keys securely.', 'aggregate-it' ); ?></p></div>
+	<?php endif; ?>
+
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 		<input type="hidden" name="action" value="aggregate_it_save_settings">
 		<?php wp_nonce_field( 'aggregate_it_save_settings' ); ?>
@@ -27,7 +31,7 @@ $has_key = $settings->api_key() !== '';
 				<th><label for="provider"><?php esc_html_e( 'AI service', 'aggregate-it' ); ?></label></th>
 				<td>
 					<select name="provider" id="provider">
-						<option value="mock" <?php selected( $settings->provider_key(), 'mock' ); ?>><?php esc_html_e( 'Mock (free, for testing)', 'aggregate-it' ); ?></option>
+						<option value="none" <?php selected( in_array( $settings->provider_key(), [ 'gemini', 'openai', 'anthropic' ], true ), false ); ?>><?php esc_html_e( 'Not configured', 'aggregate-it' ); ?></option>
 						<option value="gemini" <?php selected( $settings->provider_key(), 'gemini' ); ?>><?php esc_html_e( 'Google Gemini (cheapest)', 'aggregate-it' ); ?></option>
 						<option value="openai" <?php selected( $settings->provider_key(), 'openai' ); ?>><?php esc_html_e( 'OpenAI', 'aggregate-it' ); ?></option>
 						<option value="anthropic" <?php selected( $settings->provider_key(), 'anthropic' ); ?>><?php esc_html_e( 'Claude (Anthropic)', 'aggregate-it' ); ?></option>
@@ -66,7 +70,7 @@ $has_key = $settings->api_key() !== '';
 				<th><label for="voyage_api_key"><?php esc_html_e( 'Voyage key (for Claude)', 'aggregate-it' ); ?></label></th>
 				<td>
 					<input name="voyage_api_key" id="voyage_api_key" type="password" class="regular-text" autocomplete="new-password"
-						placeholder="<?php echo $settings->voyage_api_key() !== '' ? esc_attr__( '•••••••• (saved)', 'aggregate-it' ) : esc_attr__( 'optional — only if you use Claude', 'aggregate-it' ); ?>">
+						placeholder="<?php echo $settings->voyage_api_key() !== '' ? esc_attr__( '•••••••• (saved)', 'aggregate-it' ) : esc_attr__( 'optional: only if you use Claude', 'aggregate-it' ); ?>">
 				</td>
 			</tr>
 			<tr>
